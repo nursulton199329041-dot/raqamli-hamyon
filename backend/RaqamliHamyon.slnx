@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Hamyon.Api/Hamyon.Api.csproj" />
+    <Project Path="src/Hamyon.Domain/Hamyon.Domain.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Hamyon.Tests/Hamyon.Tests.csproj" />
+  </Folder>
+</Solution>
