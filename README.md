@@ -3,7 +3,7 @@
 Shaxsiy va loyiha moliyasini boshqarish: hamyonlar, kirim/xarajat/transfer, qarzlar, loyiha bo'yicha mablag'lar,
 analitika va Excel/PDF/CSV eksport. Backend — ASP.NET Core (.NET 10) + PostgreSQL, ilova — Flutter.
 
-> **Holat:** backend to'liq ishlaydi va testlangan (47 ta integratsion test). Flutter ilovasi yozilgan, lekin
+> **Holat:** backend to'liq ishlaydi va testlangan (45 ta integratsion test). Flutter ilovasi yozilgan, lekin
 > ishlab chiqilgan muhitda Flutter SDK bo'lmagani uchun **kompilyatsiya/ishga tushirish tekshirilmagan**.
 > Batafsil: [PROJECT_STATUS.md](PROJECT_STATUS.md).
 

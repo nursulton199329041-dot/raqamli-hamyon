@@ -30,7 +30,7 @@ Oxirgi yangilanish: 2026-10-15
 - Analitika: summary, timeseries (day/week/month/year), breakdown, byudjet holati.
 - Eksport CSV/XLSX/PDF (aktiv filtrlar bilan), fayl biriktirish (magic-bytes allowlist), offline sync push/pull.
 - Demo seeder (faqat Development + `Demo__Seed=true`).
-- **Testlar: 47/47 o'tdi** (parallel xarajat/transfer, idempotency, qarz, valyuta, izolyatsiya, eksport tuzilishi, sync).
+- **Testlar: 45/45 o'tdi** (parallel xarajat/transfer, idempotency, qarz, valyuta, izolyatsiya, eksport tuzilishi, sync).
 - Jonli smoke: API ishga tushdi, migratsiya + demo seed, login, wallets, analytics, 3 xil eksport, OpenAPI — OK.
 
 ## Flutter ilova — YOZILGAN, TEKSHIRILMAGAN
