@@ -43,6 +43,8 @@ builder.Services.AddSingleton<PasswordHasher>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<ILedgerService, LedgerService>();
 builder.Services.AddScoped<FinanceService>();
+builder.Services.AddScoped<Hamyon.Api.Reports.AnalyticsService>();
+builder.Services.AddScoped<Hamyon.Api.Reports.ExportService>();
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 builder.Services.AddOpenApi();
 builder.Services.AddHttpContextAccessor();
@@ -142,6 +144,9 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
 app.MapAuth();
 app.MapCatalogs();
 app.MapOperations();
+app.MapReports();
+app.MapSync();
+app.MapAttachments();
 
 if (args.Contains("--print-schema"))
 {
@@ -155,6 +160,13 @@ if (app.Configuration.GetValue("Database:AutoMigrate", false))
 {
     using var scope = app.Services.CreateScope();
     await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync();
+}
+
+// Demo data: only in Development and only when explicitly enabled (Demo__Seed=true).
+if (app.Environment.IsDevelopment() && app.Configuration.GetValue("Demo:Seed", false))
+{
+    await Hamyon.Api.Data.DemoSeeder.SeedAsync(app.Services, app.Configuration["Demo:Password"] ?? "Demo12345!");
+    app.Logger.LogInformation("Demo account ready: {Email}", Hamyon.Api.Data.DemoSeeder.DemoEmail);
 }
 
 await app.RunAsync();

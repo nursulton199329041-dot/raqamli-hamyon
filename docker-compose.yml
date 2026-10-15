@@ -1,0 +1,45 @@
+# Raqamli Hamyon — backend + PostgreSQL.
+# Secrets come from .env (copy .env.example). Nothing secret is committed.
+# NOTE: written on a machine without Docker; `docker compose config` was NOT executed here (see PROJECT_STATUS.md).
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: hamyon
+      POSTGRES_USER: hamyon
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - hamyon-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hamyon -d hamyon"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    ports:
+      - "127.0.0.1:5432:5432"
+
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+      ConnectionStrings__Default: "Host=db;Port=5432;Database=hamyon;Username=hamyon;Password=${POSTGRES_PASSWORD}"
+      Jwt__Secret: ${JWT_SECRET:?set JWT_SECRET (>= 32 chars) in .env}
+      Database__AutoMigrate: "true"
+      Cors__Origins__0: ${CORS_ORIGIN:-http://localhost:8080}
+      Demo__Seed: ${DEMO_SEED:-false}
+      Demo__Password: ${DEMO_PASSWORD:-}
+    volumes:
+      - hamyon-uploads:/data/uploads
+    ports:
+      - "127.0.0.1:5080:8080"
+
+volumes:
+  hamyon-pgdata:
+  hamyon-uploads:
