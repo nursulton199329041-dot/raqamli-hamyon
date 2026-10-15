@@ -19,6 +19,11 @@ interface UpdateState {
   store: StoreStatus;
   policy: ClientPolicy | null;
   apiIncompatible: boolean;
+  /** outcome of the last check/apply, shown in settings diagnostics */
+  lastResult: string | null;
+  lastError: string | null;
+  nativeLog: string[];
+  loadNativeLog(): Promise<void>;
   check(reason?: string): Promise<void>;
   checkPolicy(): Promise<void>;
   apply(): Promise<boolean>;
@@ -47,6 +52,19 @@ export const useUpdates = create<UpdateState>((set, get) => ({
   store: 'ok',
   policy: null,
   apiIncompatible: false,
+  lastResult: null,
+  lastError: null,
+  nativeLog: [],
+
+  async loadNativeLog() {
+    try {
+      if (!Updates.isEnabled) return;
+      const rows = await Updates.readLogEntriesAsync(24 * 3600 * 1000);
+      set({ nativeLog: rows.slice(-8).map((r) => `${r.level} ${r.code}: ${r.message}`) });
+    } catch (e) {
+      set({ nativeLog: [`log read failed: ${e instanceof Error ? e.message : String(e)}`] });
+    }
+  },
 
   /**
    * OTA flow: check → download in background → keep as "ready". The new bundle only becomes active on the next
@@ -59,25 +77,34 @@ export const useUpdates = create<UpdateState>((set, get) => ({
     if (reason !== 'manual' && now - lastAt < MIN_INTERVAL_MS) return;
     lastAt = now;
     if (__DEV__ || !Updates.isEnabled) {
-      set({ lastChecked: new Date().toISOString() });
+      const why = __DEV__ ? 'development build: OTA is off' : `expo-updates disabled in this build${Updates.emergencyLaunchReason ? ` (${Updates.emergencyLaunchReason})` : ''}`;
+      set({ lastChecked: new Date().toISOString(), lastResult: why });
       return;
     }
-    set({ checking: true });
+    set({ checking: true, lastError: null });
     try {
       const res = await Updates.checkForUpdateAsync();
       if (res.isAvailable) {
         await log('ota-found', `reason=${reason} channel=${Updates.channel ?? '-'} runtime=${Updates.runtimeVersion ?? '-'}`);
         const fetched = await Updates.fetchUpdateAsync();
         if (fetched.isNew) {
-          set({ ready: true });
-          await log('ota-downloaded', `id=${fetched.manifest && 'id' in fetched.manifest ? String(fetched.manifest.id) : '?'}`);
+          const id = fetched.manifest && 'id' in fetched.manifest ? String(fetched.manifest.id) : '?';
+          set({ ready: true, lastResult: `downloaded ${id}; restart to apply` });
+          await log('ota-downloaded', `id=${id}`);
+        } else {
+          set({ lastResult: 'server update already installed (nothing new to download)' });
         }
       } else {
-        await log('ota-none', `reason=${reason} current=${Updates.updateId ?? 'embedded'}`);
+        const why = 'reason' in res ? String(res.reason) : 'unknown';
+        set({ lastResult: `no update: ${why}` });
+        await log('ota-none', `reason=${reason} why=${why} current=${Updates.updateId ?? 'embedded'}`);
       }
     } catch (e) {
-      await log('ota-error', e instanceof Error ? e.message : String(e));
+      const msg = e instanceof Error ? e.message : String(e);
+      set({ lastError: msg });
+      await log('ota-error', msg);
     } finally {
+      void get().loadNativeLog();
       set({ checking: false, lastChecked: new Date().toISOString() });
     }
   },
@@ -99,10 +126,18 @@ export const useUpdates = create<UpdateState>((set, get) => ({
   async apply() {
     if (!get().ready) return false;
     // Safe-moment guard: never restart under an open money form or while the offline queue is syncing.
-    if (useUi.getState().busy() || useQueue.getState().syncing) return false;
+    if (useUi.getState().busy() || useQueue.getState().syncing) {
+      set({ lastResult: 'restart postponed: a form is open or the queue is syncing' });
+      return false;
+    }
     await log('ota-apply', `from=${Updates.updateId ?? 'embedded'}`);
-    await Updates.reloadAsync();
-    return true;
+    try {
+      await Updates.reloadAsync();
+      return true;
+    } catch (e) {
+      set({ lastError: e instanceof Error ? e.message : String(e) });
+      return false;
+    }
   },
 
   async openStore() {
@@ -121,6 +156,11 @@ export function runtimeInfo() {
     runtimeVersion: Updates.runtimeVersion ?? '-',
     updateId: Updates.updateId ?? 'embedded',
     emergencyLaunch: Updates.isEmergencyLaunch,
+    emergencyReason: Updates.emergencyLaunchReason ?? '-',
+    embeddedLaunch: Updates.isEmbeddedLaunch,
     otaEnabled: Updates.isEnabled,
+    checkAutomatically: Updates.checkAutomatically ?? '-',
+    updateCreatedAt: Updates.createdAt ? Updates.createdAt.toISOString() : '-',
+    updatesUrl: (Constants.expoConfig?.updates as { url?: string } | undefined)?.url ?? '-',
   };
 }

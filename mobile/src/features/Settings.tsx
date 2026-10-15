@@ -3,7 +3,7 @@ import { Alert, Platform, ScrollView, Text, View } from 'react-native';
 import { ApiError } from '@/api/client';
 import { Button, Chip, Field, Label, Segmented, Wrap } from '@/design/Controls';
 import { GlassCard } from '@/design/Glass';
-import { usePalette, useT } from '@/design/theme';
+import { Ink, usePalette, useT } from '@/design/theme';
 import { LANGS } from '@/i18n';
 import { getStorage, type UpdateLogEntry } from '@/offline/storage';
 import { useQueue } from '@/state/queue';
@@ -26,6 +26,7 @@ export function Settings() {
 
   useEffect(() => {
     void getStorage().then((st) => st.updateLog(20)).then(setLog).catch(() => undefined);
+    void useUpdates.getState().loadNativeLog();
   }, [upd.checking, upd.ready]);
 
   const confirm = (title: string, msg: string, ok: () => void) => {
@@ -73,7 +74,28 @@ export function Settings() {
         <Text style={{ color: p.textSecondary, marginTop: 4 }}>
           {t('version')} {info.version} ({info.build}) · {info.channel} · runtime {info.runtimeVersion}
         </Text>
-        <Text style={{ color: p.textSecondary, fontSize: 12 }}>update: {info.updateId}{info.emergencyLaunch ? ' (recovery)' : ''}</Text>
+        <Label>{t('diagnostics')}</Label>
+        {([
+          ['updateId', info.updateId],
+          ['channel', info.channel],
+          ['runtimeVersion', info.runtimeVersion],
+          ['isEnabled', String(info.otaEnabled)],
+          ['isEmbeddedLaunch', String(info.embeddedLaunch)],
+          ['isEmergencyLaunch', `${info.emergencyLaunch}${info.emergencyLaunch ? ` (${info.emergencyReason})` : ''}`],
+          ['checkAutomatically', info.checkAutomatically],
+          ['updateCreatedAt', info.updateCreatedAt],
+          ['updates.url', info.updatesUrl],
+          ['lastChecked', upd.lastChecked ?? '-'],
+          ['lastResult', upd.lastResult ?? '-'],
+          ['lastError', upd.lastError ?? '-'],
+        ] as [string, string][]).map(([k, v]) => (
+          <Text key={k} selectable style={{ color: k === 'lastError' && upd.lastError ? Ink.expense : p.textSecondary, fontSize: 12 }}>
+            {k}: {v}
+          </Text>
+        ))}
+        {upd.nativeLog.map((l, i) => (
+          <Text key={i} selectable numberOfLines={3} style={{ color: p.textSecondary, fontSize: 11 }}>native: {l}</Text>
+        ))}
         {upd.ready && <Text style={{ color: p.accent, marginTop: 6 }}>{t('update_ready')}</Text>}
         <View style={{ flexDirection: 'row', gap: 8 }}>
           <View style={{ flex: 1 }}>

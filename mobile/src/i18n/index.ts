@@ -130,6 +130,7 @@ const T = {
     'Нельзя архивировать кошелёк с остатком. Сначала переведите остаток.',
     'A wallet with a balance cannot be archived. Transfer the balance out first.',
   ],
+  diagnostics: ['Diagnostika', 'Диагностика', 'Diagnostics'],
   api_url: ['Server manzili', 'Адрес сервера', 'Server URL'],
   server_local_warn: [
     'Telefonda «localhost» ishlamaydi. Kompyuter IP manzilini (http://192.168.x.x:5080) yoki https server manzilini kiriting.',

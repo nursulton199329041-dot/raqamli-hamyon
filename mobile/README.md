@@ -65,3 +65,13 @@ Install: open the build URL on the phone → download APK → allow "install unk
 
 iOS: `eas build -p ios --profile preview` (ad-hoc, needs Apple Developer account + `eas device:create`);
 `preview-simulator` profile builds a simulator app (needs macOS to run). OTA: `eas update --channel preview`.
+
+## OTA troubleshooting
+
+Settings → Updates → *Diagnostics* shows `updateId`, `channel`, `runtimeVersion`, `isEnabled`, `isEmbeddedLaunch`,
+`isEmergencyLaunch`, `updates.url`, the last check result and error, and the native expo-updates log.
+
+- `isEnabled: false` or `updates.url: -` → this APK was built without `updates.url`/`projectId`; **only a new build fixes it** (OTA cannot reach it).
+- `channel` must be `preview` and `runtimeVersion` must equal the update's runtime (`eas update:view <group>`).
+- `isEmbeddedLaunch: true` after a downloaded update = the new bundle becomes active on the *next* cold start (swipe the app away, reopen) or via *Restart now*.
+- Server side check (no phone needed): `curl -i https://u.expo.dev/<projectId> -H "expo-platform: android" -H "expo-runtime-version: 1.0.0" -H "expo-channel-name: preview" -H "expo-protocol-version: 1"` must return a manifest.
