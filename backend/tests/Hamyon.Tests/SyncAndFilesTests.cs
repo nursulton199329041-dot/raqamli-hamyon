@@ -69,6 +69,16 @@ public class SyncAndFilesTests(TestApp app) : IClassFixture<TestApp>
         return doc.GetProperty("results").Deserialize<List<SyncResult>>(new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
     }
 
+    [Fact]
+    public async Task Client_policy_is_public_and_versioned()
+    {
+        var res = await app.CreateClient().GetAsync("/api/meta/client-policy");
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+        var j = await res.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(1, j.GetProperty("apiVersion").GetInt32());
+        Assert.Equal("1.0.0", j.GetProperty("minVersion").GetString());
+    }
+
     // ---- attachments
 
     private static readonly byte[] Png = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0];

@@ -57,3 +57,32 @@ history, analytics (donut/bar CustomPainter), projects, debts, settings).
 1. `cd app && flutter create --platforms=android,ios,web,windows . && flutter pub get && flutter analyze`.
 2. Xatolarni tuzatib `flutter test`, keyin `flutter run -d chrome --dart-define=API_URL=http://localhost:5080`.
 3. Backend: `dotnet test backend` (TEST_POSTGRES kerak).
+
+---
+## React Native migration (mobile/) — 2026-10-15
+Flutter client (`app/`) is kept unchanged for reference. New client: `mobile/` (Expo SDK 57, RN 0.86, TS strict,
+expo-router, reanimated 4, gesture-handler, expo-blur, SQLite, SecureStore, TanStack Query + Zustand, SVG).
+
+### Verified (really executed)
+- `tsc --noEmit` clean, `eslint .` clean (incl. React-compiler rules), `jest` 19/19
+  (money/i18n/semver/migrations, offline queue incl. restart + idempotency key reuse, drag&drop zone logic).
+- Backend 46/46 tests (added `/api/meta/client-policy`).
+- `expo export --platform web` OK; web build served and driven in a real browser against the live API
+  (demo account): login, dashboard data, long-press drag wallet→category opened pre-filled expense form,
+  confirm changed the server balance 22 155 000 → 22 005 000 only after confirmation.
+- expo-doctor: 21/21 after removing an invalid `newArchEnabled` key.
+
+### NOT verified (external blockers)
+- Android build/run: no JDK/Android SDK/emulator on this machine; EAS cloud build needs your Expo login.
+- iOS: no macOS/Simulator; EAS iOS build needs Apple Developer account. No iPhone test done.
+- OTA: `eas init` / `eas update` need your Expo account (updates.url + projectId not yet in app.json).
+  Update/rollback flow is implemented but was not exercised against a real update server.
+- Touch-device drag behaviour (only mouse-driven web was exercised); Android `dimezisBlurView` look unverified.
+- SQLite path (native) covered only by unit tests of migrations; web uses localStorage.
+- Store URLs in `app.json -> extra.storeUrls` are placeholders.
+
+### Your steps
+1. `cd mobile && eas login && eas init` (then commit the generated projectId / updates.url).
+2. `eas build -p android --profile preview` and test on a device; same for iOS with Apple credentials.
+3. `eas update --channel preview ...` → verify on a preview build → publish to `production`.
+4. Replace placeholder store URLs; set backend `Client__MinVersion/LatestVersion`.

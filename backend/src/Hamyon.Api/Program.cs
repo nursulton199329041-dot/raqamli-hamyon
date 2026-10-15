@@ -145,6 +145,7 @@ app.MapAuth();
 app.MapCatalogs();
 app.MapOperations();
 app.MapReports();
+app.MapMeta();
 app.MapSync();
 app.MapAttachments();
 

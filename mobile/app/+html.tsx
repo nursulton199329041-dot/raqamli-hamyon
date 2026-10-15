@@ -1,0 +1,18 @@
+import { ScrollViewStyleReset } from 'expo-router/html';
+import type { PropsWithChildren } from 'react';
+
+/** Web-only document shell: full-height dark base so the glass background never shows a white page. */
+export default function Root({ children }: PropsWithChildren) {
+  return (
+    <html lang="uz">
+      <head>
+        <meta charSet="utf-8" />
+        <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover" />
+        <ScrollViewStyleReset />
+        <style dangerouslySetInnerHTML={{ __html: 'html,body,#root{height:100%;background:#050B1A;}' }} />
+      </head>
+      <body>{children}</body>
+    </html>
+  );
+}

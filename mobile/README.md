@@ -1,0 +1,44 @@
+# Raqamli Hamyon — mobile (Expo / React Native / TypeScript)
+
+Android, iOS and Web from one code base. Backend: `../backend` (unchanged .NET 10 + PostgreSQL).
+
+## Run
+```bash
+cd mobile
+npm install
+npm run typecheck && npm run lint && npm test
+npx expo start --web               # React Native Web
+npx expo start                     # Expo Go / dev client (Android, iOS)
+```
+API URL: `app.json -> expo.extra.apiUrl` (default `http://localhost:5080`), editable in Settings.
+Android emulator: `http://10.0.2.2:5080`. Web needs the origin in backend `Cors__Origins__0`.
+
+## Structure
+- `app/` expo-router routes (tabs: Bosh, Tarix, Analitika, Loyihalar, Qarzlar; `/settings`)
+- `src/design` glass design system, SVG icons, charts · `src/dnd` drag & drop
+- `src/state` zustand stores + TanStack Query hooks · `src/offline` SQLite storage/migrations
+- `src/updates` OTA + store-update logic
+
+## Drag & drop
+Long-press (350 ms) then drag. A drop only opens a pre-filled form; money changes only after "Tasdiqlash"
+(API call). Tap on tiles is the accessible alternative.
+
+## Releases and updates (needs YOUR Expo/Apple/Google accounts)
+```bash
+npm i -g eas-cli && eas login
+eas init                       # creates the EAS project id, fills updates.url
+eas build -p android --profile preview      # APK for testers (channel: preview)
+eas build -p ios --profile preview          # needs Apple Developer account
+eas build --profile production --platform all
+eas update --channel preview --message "Fix ..."      # OTA to testers first
+eas update --channel production --message "Fix ..."   # then production
+eas submit -p android|ios --profile production
+```
+Channels: `development`, `preview`, `production` (see `eas.json`). `runtimeVersion` policy `appVersion`
+means an OTA bundle is only delivered to binaries with the same app version, so a JS update can never reach a
+build with incompatible native code. Raise the minimum supported version server-side with
+`Client__MinVersion` / `Client__LatestVersion` (backend env) — older binaries get a blocking "update" screen.
+
+Downloaded OTA bundles activate on the next cold start; the "Restart now" button is refused while a money form
+is open or the offline queue is syncing. expo-updates rolls back to the embedded bundle when a new bundle fails
+to launch. Update events are stored in the local update log (Settings -> Yangilanishlar tarixi).
