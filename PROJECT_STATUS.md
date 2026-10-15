@@ -86,3 +86,10 @@ expo-router, reanimated 4, gesture-handler, expo-blur, SQLite, SecureStore, TanS
 2. `eas build -p android --profile preview` and test on a device; same for iOS with Apple credentials.
 3. `eas update --channel preview ...` → verify on a preview build → publish to `production`.
 4. Replace placeholder store URLs; set backend `Client__MinVersion/LatestVersion`.
+### Android/iOS build tayyorlash — 2026-10-15
+- `eas.json`: `preview` (Android `apk`, iOS ad-hoc), `preview-simulator`, `production` (aab). Kanallar: development/preview/production.
+- `app.config.js`: faqat non-production profillarda HTTP (Android cleartext, iOS ATS local networking). Production — faqat https.
+- Server manzili: `EXPO_PUBLIC_API_URL` (EAS env) > `app.json extra.apiUrl`; login ekranida qo'lda kiritish maydoni va `localhost` ogohlantirishi.
+- expo-doctor 21/21, tsc/eslint toza, jest 20/20.
+- **Bajarilmadi (tashqi sabab):** `eas whoami` → "Not logged in", shuning uchun APK yaratilmadi. JDK/Android SDK/adb lokal o'rnatilmadi (bulutli EAS build uchun kerak emas).
+- Foydalanuvchi qadamlari: `mobile/README.md` → "Android APK for a real phone".

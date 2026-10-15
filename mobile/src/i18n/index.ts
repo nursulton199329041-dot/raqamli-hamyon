@@ -120,6 +120,11 @@ const T = {
   open_store: ['Do‘konni ochish', 'Открыть магазин', 'Open store'],
   later: ['Keyinroq', 'Позже', 'Later'],
   api_url: ['Server manzili', 'Адрес сервера', 'Server URL'],
+  server_local_warn: [
+    'Telefonda «localhost» ishlamaydi. Kompyuter IP manzilini (http://192.168.x.x:5080) yoki https server manzilini kiriting.',
+    'На телефоне «localhost» не работает. Укажите IP компьютера (http://192.168.x.x:5080) или https-адрес сервера.',
+    '“localhost” does not work on a phone. Enter your computer’s LAN IP (http://192.168.x.x:5080) or an https server URL.',
+  ],
   pdf: ['PDF', 'PDF', 'PDF'],
   filters: ['Filtrlar', 'Фильтры', 'Filters'],
   attach: ['Chek biriktirish', 'Прикрепить чек', 'Attach receipt'],

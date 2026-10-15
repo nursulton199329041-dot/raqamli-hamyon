@@ -7,12 +7,16 @@ import { Glyph } from '@/design/Icon';
 import { usePalette, useT } from '@/design/theme';
 import { LANGS } from '@/i18n';
 import { useSession } from '@/state/session';
+import { isLocalUrl } from '@/lib/serverUrl';
 import { useSettings } from '@/state/settings';
 
 export function Auth() {
   const t = useT();
   const p = usePalette();
-  const { lang, update } = useSettings();
+  const { lang, apiUrl, update } = useSettings();
+  const [server, setServer] = useState(apiUrl);
+  const [showServer, setShowServer] = useState(false);
+  const localOnPhone = Platform.OS !== 'web' && isLocalUrl(apiUrl);
   const { login, register } = useSession();
   const [isRegister, setIsRegister] = useState(false);
   const [email, setEmail] = useState('');
@@ -26,6 +30,7 @@ export function Auth() {
     setBusy(true);
     setError(null);
     try {
+      if (server.trim() !== apiUrl) await update({ apiUrl: server.trim() });
       if (isRegister) await register(email.trim(), password, name.trim() || email.trim());
       else await login(email.trim(), password);
     } catch (e) {
@@ -46,9 +51,16 @@ export function Auth() {
           {isRegister && <Field label={t('name')} value={name} onChangeText={setName} />}
           <Field label={t('email')} value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" autoComplete="email" />
           <Field label={t('password')} value={password} onChangeText={setPassword} secureTextEntry autoComplete="password" onSubmitEditing={submit} />
+          {(showServer || localOnPhone) && (
+            <>
+              <Field label={t('api_url')} value={server} onChangeText={setServer} autoCapitalize="none" autoCorrect={false} keyboardType="url" />
+              {localOnPhone && <Text style={{ color: p.textSecondary, marginTop: 6 }}>{t('server_local_warn')}</Text>}
+            </>
+          )}
           <ErrorText>{error}</ErrorText>
           <Button title={t(isRegister ? 'register' : 'login')} busy={busy} onPress={submit} />
           <Button title={t(isRegister ? 'login' : 'register')} variant="tonal" onPress={() => setIsRegister((v) => !v)} />
+          {!showServer && !localOnPhone && <Button title={t('api_url')} variant="tonal" onPress={() => setShowServer(true)} />}
           <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: 16 }}>
             {LANGS.map((l) => <Chip key={l} label={l.toUpperCase()} selected={lang === l} onPress={() => void update({ lang: l })} />)}
           </View>

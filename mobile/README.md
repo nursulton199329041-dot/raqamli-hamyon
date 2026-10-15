@@ -42,3 +42,26 @@ build with incompatible native code. Raise the minimum supported version server-
 Downloaded OTA bundles activate on the next cold start; the "Restart now" button is refused while a money form
 is open or the offline queue is syncing. expo-updates rolls back to the embedded bundle when a new bundle fails
 to launch. Update events are stored in the local update log (Settings -> Yangilanishlar tarixi).
+## Android APK for a real phone (preview)
+
+Cloud build (no JDK/Android SDK needed locally):
+
+```bash
+cd mobile
+npm install -g eas-cli          # or: npx eas-cli@latest <cmd>
+eas login                       # type credentials ONLY into this prompt / browser, never into files
+eas init                        # creates projectId + updates.url in app.json — commit them
+eas env:create --environment preview --name EXPO_PUBLIC_API_URL --value https://YOUR-SERVER --visibility plaintext
+eas build -p android --profile preview      # → APK; EAS prints the download URL / QR
+```
+
+Install: open the build URL on the phone → download APK → allow "install unknown apps" for the browser → install.
+
+**Server address.** `localhost` on a phone is the phone itself. Options:
+- Same Wi-Fi test: run the API with `ASPNETCORE_URLS=http://0.0.0.0:5080`, allow port 5080 in Windows Firewall,
+  and enter `http://<PC LAN IP>:5080` on the login screen ("Server manzili"; the field is saved on the device).
+  Plain HTTP is enabled **only** for `development`/`preview` builds (`app.config.js`); production requires https.
+- Real server: set `EXPO_PUBLIC_API_URL` (EAS environment) to its https URL before building.
+
+iOS: `eas build -p ios --profile preview` (ad-hoc, needs Apple Developer account + `eas device:create`);
+`preview-simulator` profile builds a simulator app (needs macOS to run). OTA: `eas update --channel preview`.
