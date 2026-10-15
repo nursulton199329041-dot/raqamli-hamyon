@@ -6,50 +6,54 @@ Oxirgi yangilanish: 2026-10-15
 | Vosita | Holat |
 |---|---|
 | .NET SDK 10.0.402 | bor |
-| PostgreSQL | tizimda yo'q; portable PG 17.6 (scratchpad) ishlatilmoqda, port 55433 |
-| Docker | **yo'q** — compose fayllari yoziladi, ishga tushirib tekshirilmaydi |
-| Flutter / Dart | **yo'q**, va `storage.googleapis.com`, `pub.dev`, `api.nuget.org` tarmoqdan **ochilmaydi** (timeout) |
-| NuGet | faqat `~/.nuget/packages` keshi (EF Core 10.0.12, Npgsql 10.0.3, JWT, FluentValidation, Serilog, xunit) |
-| `dotnet-ef` | yo'q → migratsiya modeldan generatsiya qilingan SQL orqali (`Data/Migrations`) |
-
-Oqibatlar:
-- Excel/PDF uchun tashqi kutubxona (ClosedXML/QuestPDF) keshda yo'q → `System.IO.Packaging` bilan o'zimiz yozamiz (xlsx), minimal PDF yozuvchi.
-- Flutter kodi **kompilyatsiya qilib tekshirib bo'lmaydi** (SDK ham, pub paketlar ham yo'q). Kod yoziladi, lekin "ishlaydi" deb da'vo qilinmaydi.
+| PostgreSQL | tizimda yo'q; boshqa sessiya papkasidagi portable PG 17.6 nusxasi, port 55433 (testlar va smoke uchun) |
+| Docker | **yo'q** — `docker-compose.yml`/`Dockerfile` yozilgan, **ishga tushirilmagan** |
+| Flutter / Dart | **yo'q**; `storage.googleapis.com`, `pub.dev`, `api.nuget.org` timeout (faqat github.com ochiq) |
+| NuGet | faqat `~/.nuget/packages` keshi |
+| `dotnet-ef` | yo'q → migratsiya modeldan generatsiya qilingan SQL (embedded resource) |
 
 ## Arxitektura
-- `backend/src/Hamyon.Domain` — entitylar, enumlar, Money/Currency qoidalari (decimal, valyuta bo'yicha rounding).
-- `backend/src/Hamyon.Api` — ASP.NET Core minimal API, EF Core (Npgsql), JWT + refresh rotation, ledger.
-- `backend/tests/Hamyon.Tests` — haqiqiy PostgreSQL ustida integratsion testlar (TEST_POSTGRES).
-- Ledger: double-entry. `JournalEntry` + `LedgerLine` (signed), `LedgerAccount.Balance` atomik shartli UPDATE bilan yangilanadi
-  (overdraft va parallel so'rovlardan himoya). Idempotency: `(UserId, IdempotencyKey)` unique + request fingerprint.
-- Loyiha "bucket"i: wallet line'lariga `ProjectId` yoziladi; hamyon balansi = barcha bucketlar yig'indisi.
-- Bekor qilish: reversal entry (original o'chirilmaydi), tahrir = reversal + yangi entry (`ReplacesId`).
+- `backend/src/Hamyon.Domain` — entitylar, enumlar, Currency/Money qoidalari.
+- `backend/src/Hamyon.Api` — minimal API, EF Core (Npgsql), JWT + refresh rotation, ledger, analitika, eksport, sync.
+- Ledger: double-entry (`JournalEntry` + signed `LedgerLine`), `LedgerAccount.Balance` atomik shartli UPDATE bilan
+  (parallel va overdraft himoyasi), idempotency `(UserId, IdempotencyKey)` + fingerprint.
+- Loyiha bucket: wallet line'larida `ProjectId`; hamyon balansi = barcha bucketlar yig'indisi (`/api/reconciliation`).
+- Bekor qilish = reversal entry; tahrir = reversal + yangi entry (`ReplacesId`).
+- Eksport: CSV, XLSX (qo'lda OpenXML, SUMIFS formulalar), PDF (qo'lda yozilgan; kirill → lotin transliteratsiya).
 
-## Bajarildi (tekshirilgan = testdan o'tgan)
-- [x] Git repo, solution, loyiha strukturasi
-- [x] Domain + DbContext + baseline migratsiya (PG da ishlaydi)
-- [x] Auth: register/login/refresh(rotation+reuse detection)/logout, lockout, PBKDF2-SHA512
-- [x] Hamyon, kategoriya, kirim manbai, shaxs, loyiha CRUD (arxivlash, jismoniy o'chirish yo'q)
-- [x] Kirim, xarajat, transfer (valyutalararo kurs bilan), qarz olish/berish/qaytarish, reversal, correction
-- [x] Idempotency, parallel testlar, foydalanuvchilar izolyatsiyasi, reconciliation endpoint
-- [x] Tarix filtrlari va qidiruv
-- Testlar: 30/30 o'tdi (PostgreSQL 17.6)
+## Backend — bajarildi va TEKSHIRILDI (haqiqiy PostgreSQL 17.6)
+- Auth: register/login/refresh (rotation + reuse detection)/logout, lockout, PBKDF2-SHA512, rate limiting, user isolation.
+- Hamyon/toifa/manba/shaxs/loyiha CRUD (arxivlash), standart toifalar yangi foydalanuvchiga.
+- Kirim, xarajat, transfer (valyutalararo, kurs yoki qabul summasi), qarz olish/berish/qaytarish (qisman/to'liq),
+  reversal, correction, balansni tuzatish.
+- Tarix: filtrlar (sana, hamyon, toifa, loyiha, manba, shaxs, tur, valyuta, summa oralig'i) + qidiruv.
+- Analitika: summary, timeseries (day/week/month/year), breakdown, byudjet holati.
+- Eksport CSV/XLSX/PDF (aktiv filtrlar bilan), fayl biriktirish (magic-bytes allowlist), offline sync push/pull.
+- Demo seeder (faqat Development + `Demo__Seed=true`).
+- **Testlar: 47/47 o'tdi** (parallel xarajat/transfer, idempotency, qarz, valyuta, izolyatsiya, eksport tuzilishi, sync).
+- Jonli smoke: API ishga tushdi, migratsiya + demo seed, login, wallets, analytics, 3 xil eksport, OpenAPI — OK.
 
-## Qoldi
-- [ ] Analitika (summary, timeseries, breakdown), byudjet limit holati
-- [ ] Eksport CSV / XLSX / PDF (filtrlar bilan)
-- [ ] Fayl biriktirish (xavfsiz upload)
-- [ ] Offline sync endpointlari (`/api/sync/push`)
-- [ ] Demo ma'lumotlar (faqat Development, alohida demo user)
-- [ ] Docker Compose, .env.example, README, skriptlar
-- [ ] Flutter ilova (design system, dashboard, drag&drop, modullar, lokalizatsiya, offline) — tekshirib bo'lmaydi
-- [ ] Takrorlanuvchi xarajat/shablonlar, eslatmalar (backend)
-
-## Ma'lum cheklovlar / xatolar
-- Flutter SDK yo'qligi sababli frontend build/test/ishga tushirish imkonsiz.
-- Docker yo'q: `docker compose up` tekshirilmagan.
+## Flutter ilova — YOZILGAN, TEKSHIRILMAGAN
+Fayllar `app/lib`: core (api, models, i18n uz/ru/en, storage SQLite/prefs), design (Liquid Glass, ikon tizimi),
+state (Riverpod: session, settings, data, offline queue), features (auth, dashboard + drag&drop, operation sheet,
+history, analytics (donut/bar CustomPainter), projects, debts, settings).
+- SDK bo'lmagani uchun `flutter analyze`, `flutter test`, `flutter build` **bajarilmagan**. Kodda kompilyatsiya
+  xatolari bo'lishi mumkin; birinchi navbatda `flutter create --platforms=... .` va `flutter analyze` kerak.
+- Widget testlar yozilgan (`app/test`), lekin ishga tushirilmagan.
+- Platforma papkalari (android/ios/web) hosil qilinmagan (`flutter create .` kerak).
 - iOS build tekshirilmaydi (Windows).
 
+## Qoldi / ma'lum bo'shliqlar
+- [ ] Flutter: kompilyatsiya + testlarni haqiqiy SDK bilan o'tkazish va xatolarni tuzatish.
+- [ ] Takrorlanuvchi xarajatlar, shablonlar, qarz eslatma bildirishnomalari (backend modeli ham yo'q).
+- [ ] PIN/biometrik kirish, zaxira va tiklash UI, hamyon/toifa tahrirlash va tartiblash UI (API tayyor).
+- [ ] Hamyon va toifa bo'limlarini sozlamalarda yashirish/tartiblash.
+- [ ] Docker compose real tekshiruvi.
+- [ ] Font embedding (PDF'da kirill o'rniga transliteratsiya).
+- [ ] Biznes qoidasi: loyiha bucket manfiy bo'lishi bloklanmaydi (faqat summary'da ko'rinadi).
+- Konvertatsiya kurslari foydalanuvchi tomonidan kiritiladi (tashqi kurs provayderi yo'q).
+
 ## Qayerdan davom etish
-`backend/` da: `dotnet test` (PG kerak: `TEST_POSTGRES="Host=localhost;Port=55433;Username=postgres;Database=postgres"`).
-Keyingi qadam: analitika endpointlari → eksport → demo seed → compose/README → Flutter.
+1. `cd app && flutter create --platforms=android,ios,web,windows . && flutter pub get && flutter analyze`.
+2. Xatolarni tuzatib `flutter test`, keyin `flutter run -d chrome --dart-define=API_URL=http://localhost:5080`.
+3. Backend: `dotnet test backend` (TEST_POSTGRES kerak).
