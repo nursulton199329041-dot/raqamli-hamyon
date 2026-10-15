@@ -93,3 +93,10 @@ expo-router, reanimated 4, gesture-handler, expo-blur, SQLite, SecureStore, TanS
 - expo-doctor 21/21, tsc/eslint toza, jest 20/20.
 - **Bajarilmadi (tashqi sabab):** `eas whoami` → "Not logged in", shuning uchun APK yaratilmadi. JDK/Android SDK/adb lokal o'rnatilmadi (bulutli EAS build uchun kerak emas).
 - Foydalanuvchi qadamlari: `mobile/README.md` → "Android APK for a real phone".
+
+### Lokal ishchi backend (telefon uchun) — 2026-10-15
+- Joylashuv (repo'dan tashqarida): `D:\RaqamliHamyonLocal\{pgsql,pgdata,api,run-api.ps1,jwt.secret}`. Tizim PostgreSQL (5432) boshqa loyihaniki — ishlatilmadi.
+- PostgreSQL 17.6 portativ nusxa: `127.0.0.1:55433`, DB `hamyon_dev` (mavjud demo ma'lumotlar, qayta seed qilinmadi).
+- API: `Hamyon.Api.exe` (Release publish), `http://0.0.0.0:5080`, Scheduled Task `RaqamliHamyon-API` (logon'da ishga tushadi, admin shart emas). Yangilash: `dotnet publish -c Release -o D:\RaqamliHamyonLocal\api` va task'ni qayta ishga tushirish.
+- Tekshirildi: localhost va 192.168.1.2 ustidan `/api/meta/client-policy` 200, `/swagger/index.html` 200, demo login 200.
+- Ochiq muammo: Wi-Fi tarmog'i **Public**, firewall qoidasi esa faqat **Private** profilga — telefon ulanishi uchun admin huquqi bilan tuzatish kerak.
