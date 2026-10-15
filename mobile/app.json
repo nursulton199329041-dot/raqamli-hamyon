@@ -44,14 +44,20 @@
     ],
     "updates": {
       "checkAutomatically": "ON_LOAD",
-      "fallbackToCacheTimeout": 0
+      "fallbackToCacheTimeout": 0,
+      "url": "https://u.expo.dev/9ef52193-1604-4588-b35a-0d28677fce6c"
     },
     "extra": {
       "apiUrl": "http://localhost:5080",
       "storeUrls": {
         "ios": "https://apps.apple.com/app/id0000000000",
         "android": "https://play.google.com/store/apps/details?id=uz.raqamli.hamyon"
+      },
+      "router": {},
+      "eas": {
+        "projectId": "9ef52193-1604-4588-b35a-0d28677fce6c"
       }
-    }
+    },
+    "owner": "raqamli-nazorat-uz"
   }
 }
