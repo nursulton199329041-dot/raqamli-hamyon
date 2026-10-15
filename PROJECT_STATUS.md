@@ -100,3 +100,14 @@ expo-router, reanimated 4, gesture-handler, expo-blur, SQLite, SecureStore, TanS
 - API: `Hamyon.Api.exe` (Release publish), `http://0.0.0.0:5080`, Scheduled Task `RaqamliHamyon-API` (logon'da ishga tushadi, admin shart emas). Yangilash: `dotnet publish -c Release -o D:\RaqamliHamyonLocal\api` va task'ni qayta ishga tushirish.
 - Tekshirildi: localhost va 192.168.1.2 ustidan `/api/meta/client-policy` 200, `/swagger/index.html` 200, demo login 200.
 - Ochiq muammo: Wi-Fi tarmog'i **Public**, firewall qoidasi esa faqat **Private** profilga — telefon ulanishi uchun admin huquqi bilan tuzatish kerak.
+
+### Asosiy panel mantig'i — 2026-10-16
+- Dashboard tartibi: Kirim manbalari → Hamyonlar → Xarajat toifalari. Manba/toifa summalari `analytics/breakdown` (type=1/2) dan, hamyon qoldig'i snapshot'dan (bitta ledger manbasi).
+- Ixcham kartalar (hamyon: ikon+nom+qoldiq+valyuta, 2 ustun; toifa 3 ustun), pastki menyu siqilmaydi, "+" tugmasi olib tashlandi.
+- Drag&drop: wallet→toifa (xarajat), wallet→wallet (transfer), manba→wallet (kirim/qarz), auto-scroll chekkada, bekor qilish/yaroqsiz drop hech narsa o'zgartirmaydi. Bosish bilan muqobil (hamyon amallari, toifa, manba).
+- Hamyon: yaratish (nom, tur, valyuta, boshlang'ich balans, ikon), tahrirlash, arxivlash (qoldiq 0 bo'lsa), ko'rish.
+- Operatsiya formasi: Kimga to'landi / Kimdan (shaxs yaratiladi yoki topiladi), loyiha, izoh.
+- Tuzatilgan xatolar: (1) forma sheet'ida "Saqlash" ekrandan tashqarida qolardi (scroll yo'q), (2) web'da tablar bir-birining ustiga chiqardi.
+- Sinov: `node scripts/e2e-scenario.mjs <api>` — 15/15 PASS (haqiqiy backend, alohida DB hamyon_e2e); web UI E2E (Playwright, 400x850): hamyon yaratish, drag→xarajat, transfer, kirim, tahrirlash, arxiv, bekor qilish; tarix va analitika mos.
+- Tekshirilmagan: haqiqiy Android/iPhone sensorli drag va auto-scroll (faqat sichqoncha bilan web'da).
+- OTA: native bog'liqlik o'zgarmadi (JS-only) → mavjud 1.0.0 build bilan mos; baribir avval `preview` kanalida tekshiring.

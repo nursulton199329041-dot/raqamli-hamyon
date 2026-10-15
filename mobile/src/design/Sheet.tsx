@@ -13,11 +13,11 @@ export function Sheet({ visible, onClose, children, full }: { visible: boolean; 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, justifyContent: 'flex-end' }}>
         <Pressable accessibilityLabel="close" style={[StyleSheet.absoluteFill, { backgroundColor: p.overlay }]} onPress={onClose} />
         <View style={{ maxHeight: full ? '94%' : '88%', paddingHorizontal: 8, paddingBottom: Math.max(insets.bottom, 8) }}>
-          <GlassCard radius={30} padding={0} style={{ backgroundColor: p.dark ? 'rgba(14,24,48,0.92)' : 'rgba(250,251,255,0.95)' }}>
+          <GlassCard radius={30} padding={0} style={{ flexShrink: 1, backgroundColor: p.dark ? 'rgba(14,24,48,0.92)' : 'rgba(250,251,255,0.95)' }}>
             <View style={{ alignItems: 'center', paddingTop: 10 }}>
               <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: p.textSecondary, opacity: 0.5 }} />
             </View>
-            <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 20, paddingTop: 12 }}>
+            <ScrollView style={{ flexShrink: 1 }} keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 20, paddingTop: 12 }}>
               {children}
             </ScrollView>
           </GlassCard>

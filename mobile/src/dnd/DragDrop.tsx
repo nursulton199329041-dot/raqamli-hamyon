@@ -23,7 +23,19 @@ interface Zone {
   rect?: Rect;
 }
 
+/** A vertically scrolling container that the drag may auto-scroll when the finger nears its top/bottom edge. */
+export interface Scroller {
+  ref: RefObject<View | null>;
+  getOffset(): number;
+  getMax(): number;
+  scrollTo(y: number): void;
+}
+
+const EDGE = 84;
+const MAX_STEP = 16;
+
 interface DragCtx {
+  registerScroller(s: Scroller): () => void;
   dragging: DragPayload | null;
   hoverId: string | null;
   /** zone ids that would accept the current payload (to highlight valid targets) */
@@ -54,6 +66,16 @@ export function DragProvider({ children }: { children: ReactNode }) {
   const gy = useSharedValue(0);
   const lift = useSharedValue(0);
   const payloadRef = useRef<DragPayload | null>(null);
+  const scroller = useRef<Scroller | null>(null);
+  const scrollRect = useRef<Rect | undefined>(undefined);
+  const pointer = useRef({ x: 0, y: 0 });
+
+  const registerScroller = useCallback((s: Scroller) => {
+    scroller.current = s;
+    return () => {
+      if (scroller.current === s) scroller.current = null;
+    };
+  }, []);
 
   const zoneAt = useCallback((x: number, y: number): [string, Zone] | null => {
     for (const [id, z] of zones.current) if (hit(z.rect, x, y)) return [id, z];
@@ -77,6 +99,11 @@ export function DragProvider({ children }: { children: ReactNode }) {
         z.rect = { x: mx, y: my, w, h };
       });
     });
+    pointer.current = { x, y };
+    scrollRect.current = undefined;
+    scroller.current?.ref.current?.measureInWindow((mx, my, w, h) => {
+      scrollRect.current = { x: mx, y: my, w, h };
+    });
     setValidIds(valid);
     setGhost(g);
     setDragging(p);
@@ -89,6 +116,7 @@ export function DragProvider({ children }: { children: ReactNode }) {
   const move = useCallback((x: number, y: number) => {
     const p = payloadRef.current;
     if (!p) return;
+    pointer.current = { x, y };
     const found = zoneAt(x, y);
     if (!found) {
       setHoverId((h) => (h === null ? h : null));
@@ -131,6 +159,32 @@ export function DragProvider({ children }: { children: ReactNode }) {
     }
   }, [zoneAt, finish]);
 
+  // Auto-scroll while the finger rests near the top/bottom edge of the scroller. Zone rects are window-relative,
+  // so they are shifted by the scrolled distance and the hover state is recomputed from the same finger position.
+  useEffect(() => {
+    if (!dragging) return;
+    const id = setInterval(() => {
+      const s = scroller.current;
+      const r = scrollRect.current;
+      if (!s || !r) return;
+      const py = pointer.current.y;
+      let dy = 0;
+      if (py < r.y + EDGE) dy = -MAX_STEP * Math.min(1, (r.y + EDGE - py) / EDGE);
+      else if (py > r.y + r.h - EDGE) dy = MAX_STEP * Math.min(1, (py - (r.y + r.h - EDGE)) / EDGE);
+      if (dy === 0) return;
+      const cur = s.getOffset();
+      const next = Math.max(0, Math.min(s.getMax(), cur + dy));
+      const applied = next - cur;
+      if (Math.abs(applied) < 0.5) return;
+      s.scrollTo(next);
+      zones.current.forEach((z) => {
+        if (z.rect) z.rect = { ...z.rect, y: z.rect.y - applied };
+      });
+      move(pointer.current.x, pointer.current.y);
+    }, 16);
+    return () => clearInterval(id);
+  }, [dragging, move]);
+
   const ghostStyle = useAnimatedStyle(() => ({
     transform: [
       { translateX: gx.get() - 80 },
@@ -141,8 +195,8 @@ export function DragProvider({ children }: { children: ReactNode }) {
   }));
 
   const value = useMemo<DragCtx>(
-    () => ({ dragging, hoverId, validIds, rejectedId, registerZone, begin, move, end, cancel: finish }),
-    [dragging, hoverId, validIds, rejectedId, registerZone, begin, move, end, finish],
+    () => ({ dragging, hoverId, validIds, rejectedId, registerZone, registerScroller, begin, move, end, cancel: finish }),
+    [dragging, hoverId, validIds, rejectedId, registerZone, registerScroller, begin, move, end, finish],
   );
 
   return (

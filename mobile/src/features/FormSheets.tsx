@@ -9,6 +9,7 @@ import { Sheet } from '@/design/Sheet';
 import { usePalette, useT } from '@/design/theme';
 import { newKey, parseAmount } from '@/lib/money';
 import { api } from '@/state/runtime';
+import { useCatalog } from '@/state/data';
 import { useUi } from '@/state/ui';
 
 const COLORS = ['#3B82F6', '#22C55E', '#EF4444', '#F59E0B', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316', '#64748B', '#0EA5E9'];
@@ -63,31 +64,38 @@ function useSave(done: () => void) {
   return { busy, error, run };
 }
 
-function WalletForm({ done }: { done(): void }) {
+function WalletForm({ done, walletId }: { done(): void; walletId: string | null }) {
   const t = useT();
+  const cat = useCatalog();
+  const existing = walletId ? cat.wallet(walletId) : undefined;
+  const editing = !!existing;
   const { busy, error, run } = useSave(done);
-  const [name, setName] = useState('');
+  const [name, setName] = useState(existing?.name ?? '');
   const [balance, setBalance] = useState('');
-  const [bank, setBank] = useState('');
-  const [mask, setMask] = useState('');
-  const [currency, setCurrency] = useState('UZS');
-  const [type, setType] = useState(1);
-  const [icon, setIcon] = useState('wallet');
-  const [color, setColor] = useState('#3B82F6');
-  const [overdraft, setOverdraft] = useState(false);
+  const [bank, setBank] = useState(existing?.bankName ?? '');
+  const [mask, setMask] = useState(existing?.maskedNumber ?? '');
+  const [currency, setCurrency] = useState(existing?.currency ?? 'UZS');
+  const [type, setType] = useState(existing?.type ?? 1);
+  const [icon, setIcon] = useState(existing?.icon ?? 'wallet');
+  const [color, setColor] = useState(existing?.color ?? '#3B82F6');
+  const [overdraft, setOverdraft] = useState(existing?.allowOverdraft ?? false);
   const [local, setLocal] = useState<string | null>(null);
   const p = usePalette();
   const types: [number, string][] = [[0, t('cash')], [1, t('card')], [2, t('account')], [3, t('savings')], [4, t('virtual')], [5, t('project_wallet')]];
 
   return (
     <View>
-      <Text style={{ color: p.text, fontSize: 20, fontWeight: '800' }}>{t('new_wallet')}</Text>
+      <Text style={{ color: p.text, fontSize: 20, fontWeight: '800' }}>{t(editing ? 'edit_wallet' : 'new_wallet')}</Text>
       <Field label={t('name')} value={name} onChangeText={setName} maxLength={80} />
-      <Label>{t('type')}</Label>
-      <Wrap>{types.map(([v, l]) => <Chip key={v} label={l} selected={type === v} onPress={() => setType(v)} />)}</Wrap>
-      <Label>{t('currency')}</Label>
-      <Wrap>{CURRENCIES.map((c) => <Chip key={c} label={c} selected={currency === c} onPress={() => setCurrency(c)} />)}</Wrap>
-      <Field label={`${t('initial_balance')} (${currency})`} value={balance} onChangeText={setBalance} keyboardType="decimal-pad" />
+      {!editing && (
+        <>
+          <Label>{t('type')}</Label>
+          <Wrap>{types.map(([v, l]) => <Chip key={v} label={l} selected={type === v} onPress={() => setType(v)} />)}</Wrap>
+          <Label>{t('currency')}</Label>
+          <Wrap>{CURRENCIES.map((c) => <Chip key={c} label={c} selected={currency === c} onPress={() => setCurrency(c)} />)}</Wrap>
+          <Field label={`${t('initial_balance')} (${currency})`} value={balance} onChangeText={setBalance} keyboardType="decimal-pad" />
+        </>
+      )}
       <Field label={t('bank_name')} value={bank} onChangeText={setBank} />
       <Field label={t('masked_number')} value={mask} onChangeText={setMask} maxLength={8} />
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
@@ -101,6 +109,12 @@ function WalletForm({ done }: { done(): void }) {
         const initial = balance.trim() === '' ? 0 : parseAmount(balance);
         if (initial === null) return setLocal(t('initial_balance'));
         setLocal(null);
+        if (editing && walletId) {
+          void run(() => api.patch(`/api/wallets/${walletId}`, {
+            name: name.trim(), icon, color, bankName: bank.trim() || null, maskedNumber: mask.trim() || null, allowOverdraft: overdraft,
+          }));
+          return;
+        }
         void run(() => api.post('/api/wallets', {
           name: name.trim(), type, currency, initialBalance: initial, icon, color,
           bankName: bank.trim() || null, maskedNumber: mask.trim() || null, allowOverdraft: overdraft,
@@ -168,9 +182,10 @@ function ProjectForm({ done }: { done(): void }) {
 export function FormSheets() {
   const form = useUi((s) => s.form);
   const close = useUi((s) => s.closeForm);
+  const formId = useUi((s) => s.formId);
   return (
     <Sheet visible={form !== null} onClose={close} full>
-      {form === 'wallet' && <WalletForm done={close} />}
+      {form === 'wallet' && <WalletForm key={formId ?? 'new'} done={close} walletId={formId} />}
       {form === 'category' && <CategoryForm done={close} source={false} />}
       {form === 'source' && <CategoryForm done={close} source />}
       {form === 'project' && <ProjectForm done={close} />}

@@ -4,7 +4,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GlassCard, Tap } from '@/design/Glass';
 import { Glyph } from '@/design/Icon';
 import { usePalette, useT } from '@/design/theme';
-import { useUi } from '@/state/ui';
 
 const ITEMS = [
   { name: 'index', icon: 'wallet', key: 'home' },
@@ -24,28 +23,25 @@ function FloatingBar({ state, navigation }: BarProps) {
   const p = usePalette();
   const t = useT();
   const insets = useSafeAreaInsets();
-  const openOp = useUi((s) => s.openOp);
   return (
-    <View pointerEvents="box-none" style={{ position: 'absolute', left: 12, right: 12, bottom: Math.max(insets.bottom, 10) }}>
-      <GlassCard radius={30} padding={6}>
+    <View pointerEvents="box-none" style={{ position: 'absolute', left: 10, right: 10, bottom: Math.max(insets.bottom, 8) }}>
+      <GlassCard radius={24} padding={4}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           {ITEMS.map((it, i) => {
             const on = state.index === i;
             return (
               <Tap key={it.name} label={t(it.key)} style={{ flex: 1 }} onPress={() => navigation.navigate(it.name)}>
                 <View style={{
-                  alignItems: 'center', paddingVertical: 8, borderRadius: 22,
+                  alignItems: 'center', paddingVertical: 5, paddingHorizontal: 2, borderRadius: 18,
                   backgroundColor: on ? `${p.accent}38` : 'transparent',
                 }}>
-                  <Glyph name={it.icon} color={on ? p.accent : p.textSecondary} size={22} />
-                  <Text numberOfLines={1} style={{ fontSize: 10, color: on ? p.accent : p.textSecondary, marginTop: 2 }}>{t(it.key)}</Text>
+                  <Glyph name={it.icon} color={on ? p.accent : p.textSecondary} size={20} />
+                  <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}
+                    style={{ fontSize: 10, color: on ? p.accent : p.textSecondary, marginTop: 1, maxWidth: '100%' }}>{t(it.key)}</Text>
                 </View>
               </Tap>
             );
           })}
-          <Tap label="+" onPress={() => openOp({ kind: 'expense' })} style={{ paddingHorizontal: 10 }}>
-            <Glyph name="plus" color={p.accent} size={30} />
-          </Tap>
         </View>
       </GlassCard>
     </View>

@@ -1,10 +1,10 @@
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { TabScreen } from '@/design/TabScreen';
 import { Projects } from '@/features/ProjectsAndDebts';
 
 export default function Screen() {
   return (
-    <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+    <TabScreen>
       <Projects />
-    </SafeAreaView>
+    </TabScreen>
   );
 }

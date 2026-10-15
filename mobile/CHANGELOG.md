@@ -10,3 +10,6 @@ and a version bump (`app.json` -> `version`, Android `versionCode` / iOS `buildN
 - Income / expense / transfer (multi-currency) / debts + repayment, projects, history with filters and search,
   analytics, CSV/XLSX/PDF export, budgets, uz/ru/en, dark/light, offline queue (SQLite) with idempotent sync.
 - OTA update system, store-update policy (`/api/meta/client-policy`), update history log.
+## Unreleased
+- Main panel: income sources → wallets → expense categories with real period totals; compact tiles; compact tab bar.
+- Wallet edit/archive, payee/payer on income & expense, drag auto-scroll, fixed unreachable Save in sheets and overlapping tabs on web.

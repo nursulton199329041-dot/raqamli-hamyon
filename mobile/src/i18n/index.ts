@@ -119,6 +119,17 @@ const T = {
   store_update_required: ['Davom etish uchun ilovani yangilang', 'Обновите приложение, чтобы продолжить', 'Update the app to continue'],
   open_store: ['Do‘konni ochish', 'Открыть магазин', 'Open store'],
   later: ['Keyinroq', 'Позже', 'Later'],
+  edit: ['Tahrirlash', 'Изменить', 'Edit'],
+  archive: ['Arxivlash', 'В архив', 'Archive'],
+  edit_wallet: ['Hamyonni tahrirlash', 'Изменить кошелёк', 'Edit wallet'],
+  payee: ['Kimga to‘landi', 'Кому оплачено', 'Paid to'],
+  payer: ['Kimdan', 'От кого', 'From whom'],
+  op_income_hint: ['Daromad yoki qarz olish', 'Доход или займ', 'Income or borrowing'],
+  archive_nonzero: [
+    'Qoldig‘i bor hamyonni arxivlab bo‘lmaydi. Avval qoldiqni boshqa hamyonga o‘tkazing.',
+    'Нельзя архивировать кошелёк с остатком. Сначала переведите остаток.',
+    'A wallet with a balance cannot be archived. Transfer the balance out first.',
+  ],
   api_url: ['Server manzili', 'Адрес сервера', 'Server URL'],
   server_local_warn: [
     'Telefonda «localhost» ishlamaydi. Kompyuter IP manzilini (http://192.168.x.x:5080) yoki https server manzilini kiriting.',

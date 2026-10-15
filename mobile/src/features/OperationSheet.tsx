@@ -1,12 +1,15 @@
 import * as Haptics from 'expo-haptics';
+import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Platform, Text, View } from 'react-native';
+import { ApiError } from '@/api/client';
 import { fmtDateTime, fmtMoney, parseAmount } from '@/lib/money';
 import { Button, Chip, ErrorText, Field, Label, Wrap } from '@/design/Controls';
 import { Sheet } from '@/design/Sheet';
 import { Ink, usePalette, useT } from '@/design/theme';
 import { useCatalog } from '@/state/data';
 import { useQueue } from '@/state/queue';
+import { api } from '@/state/runtime';
 import { useUi, type OpKind } from '@/state/ui';
 
 const TABS: { kind: OpKind; key: 'income' | 'expense' | 'transfer' | 'debt'; color: string }[] = [
@@ -34,6 +37,7 @@ function OperationForm({ onDone }: { onDone(): void }) {
   const cat = useCatalog();
   const prefill = useUi((s) => s.op)!;
   const submit = useQueue((s) => s.submit);
+  const qc = useQueryClient();
 
   const [kind, setKind] = useState<OpKind>(prefill.kind);
   const [pickedWallet, setWalletId] = useState<string | undefined>(prefill.walletId);
@@ -47,6 +51,7 @@ function OperationForm({ onDone }: { onDone(): void }) {
   const [memo, setMemo] = useState('');
   const [reason, setReason] = useState('');
   const [person, setPerson] = useState('');
+  const [counterparty, setCounterparty] = useState('');
   const [borrowed, setBorrowed] = useState(true);
   const [dueDays, setDueDays] = useState<number | null>(null);
   const [more, setMore] = useState(false);
@@ -67,17 +72,34 @@ function OperationForm({ onDone }: { onDone(): void }) {
     if (value === null) return setError(`${t('amount')}?`);
     if (!walletId) return setError(t('select_wallet'));
     const occurredAt = when.toISOString();
-    const base = { memo: memo.trim() || null, occurredAt, projectId: projectId ?? null };
-    let res;
+    let note = memo.trim();
+    let personId: string | null = null;
     setBusy(true);
     setError(null);
+    const who = counterparty.trim();
+    if (who && (kind === 'income' || kind === 'expense')) {
+      const known = cat.people.find((x) => x.name.toLowerCase() === who.toLowerCase());
+      if (known) personId = known.id;
+      else {
+        try {
+          personId = (await api.post<{ id: string }>('/api/people', { name: who })).id;
+          void qc.invalidateQueries({ queryKey: ['snapshot'] });
+        } catch (e) {
+          if (e instanceof ApiError && !e.isNetwork) { setBusy(false); return setError(e.message); }
+          // offline: keep the name with the operation instead of losing it
+          note = `${kind === 'expense' ? t('payee') : t('payer')}: ${who}${note ? ` — ${note}` : ''}`;
+        }
+      }
+    }
+    const base = { memo: note || null, occurredAt, projectId: projectId ?? null };
+    let res;
     switch (kind) {
       case 'income':
-        res = await submit('income', { walletId, amount: value, incomeSourceId: sourceId ?? null, reason: reason.trim() || null, ...base });
+        res = await submit('income', { walletId, amount: value, incomeSourceId: sourceId ?? null, personId, reason: reason.trim() || null, ...base });
         break;
       case 'expense':
         if (!categoryId) { setBusy(false); return setError(t('select_category')); }
-        res = await submit('expense', { walletId, amount: value, categoryId, ...base });
+        res = await submit('expense', { walletId, amount: value, categoryId, personId, ...base });
         break;
       case 'transfer':
         if (!toWalletId) { setBusy(false); return setError(t('to_wallet')); }
@@ -188,6 +210,10 @@ function OperationForm({ onDone }: { onDone(): void }) {
             ))}
           </Wrap>
         </>
+      )}
+
+      {(kind === 'income' || kind === 'expense') && (
+        <Field label={kind === 'expense' ? t('payee') : t('payer')} value={counterparty} onChangeText={setCounterparty} maxLength={120} />
       )}
 
       <View style={{ marginTop: 10 }}>

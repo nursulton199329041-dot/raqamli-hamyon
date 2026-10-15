@@ -1,10 +1,10 @@
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { TabScreen } from '@/design/TabScreen';
 import { History } from '@/features/History';
 
 export default function Screen() {
   return (
-    <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+    <TabScreen>
       <History />
-    </SafeAreaView>
+    </TabScreen>
   );
 }

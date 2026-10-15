@@ -96,11 +96,12 @@ export function useBudgets() {
   return useQuery({ queryKey: ['budgets'], queryFn: () => api.get<BudgetStatus[]>('/api/analytics/budgets') });
 }
 
-export function useBreakdown(by: string, period: Period) {
+/** `type`: transaction type the breakdown sums (1 income, 2 expense; backend default is expense). */
+export function useBreakdown(by: string, period: Period, type?: number) {
   const from = periodFrom(period);
   return useQuery({
-    queryKey: ['breakdown', by, period],
-    queryFn: () => api.get<BreakdownRow[]>('/api/analytics/breakdown', { by, from }),
+    queryKey: ['breakdown', by, period, type],
+    queryFn: () => api.get<BreakdownRow[]>('/api/analytics/breakdown', { by, from, type }),
   });
 }
 
