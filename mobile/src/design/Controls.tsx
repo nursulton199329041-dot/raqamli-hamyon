@@ -48,7 +48,8 @@ export function Wrap({ children, gap = 8 }: { children: ReactNode; gap?: number 
   return <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap }}>{children}</View>;
 }
 
-export function Button({ title, onPress, color, busy, disabled, style, variant = 'solid' }: {
+export function Button({ title, onPress, color, busy, disabled, style, variant = 'solid', testID }: {
+  testID?: string;
   title: string; onPress(): void; color?: string; busy?: boolean; disabled?: boolean; style?: StyleProp<ViewStyle>;
   variant?: 'solid' | 'tonal' | 'danger';
 }) {
@@ -56,7 +57,7 @@ export function Button({ title, onPress, color, busy, disabled, style, variant =
   const base = variant === 'danger' ? '#EF4444' : (color ?? p.accent);
   const solid = variant === 'solid';
   return (
-    <Tap onPress={onPress} disabled={busy || disabled} label={title} style={[{
+    <Tap testID={testID} onPress={onPress} disabled={busy || disabled} label={title} style={[{
       minHeight: 52, borderRadius: 18, alignItems: 'center', justifyContent: 'center',
       backgroundColor: solid ? base : `${base}2E`, borderWidth: solid ? 0 : 1, borderColor: `${base}80`,
       opacity: disabled ? 0.5 : 1, marginTop: 14,

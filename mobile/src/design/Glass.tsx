@@ -95,17 +95,22 @@ interface PressableProps {
   onPress?: () => void;
   onLongPress?: () => void;
   style?: StyleProp<ViewStyle>;
+  /** style of the outer Pressable (use for flex/width inside rows; style only styles the inner animated view) */
+  containerStyle?: StyleProp<ViewStyle>;
   label?: string;
   disabled?: boolean;
   haptic?: boolean;
+  testID?: string;
 }
 
 /** Soft scale-down + haptic tick. Accessible by default (role=button + label). */
-export function Tap({ children, onPress, onLongPress, style, label, disabled, haptic = true }: PressableProps) {
+export function Tap({ children, onPress, onLongPress, style, containerStyle, label, disabled, haptic = true, testID }: PressableProps) {
   const scale = useSharedValue(1);
   const anim = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   return (
     <Pressable
+      testID={testID}
+      style={containerStyle}
       accessibilityRole="button"
       accessibilityLabel={label}
       disabled={disabled}

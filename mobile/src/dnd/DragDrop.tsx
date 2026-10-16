@@ -38,6 +38,13 @@ export interface Scroller {
 /** Where the finger grabbed the dragged tile (tile-local px) and the tile size; used to draw the ghost. */
 export interface Grab { x: number; y: number; w: number }
 
+type Trace = (event: string, data?: Record<string, number | string | null>) => void;
+let tracer: Trace | null = null;
+/** Diagnostics hook: the touch-test screen subscribes to see raw/window coordinates and hit results on a real device. */
+export function setDragTrace(fn: Trace | null) {
+  tracer = fn;
+}
+
 const EDGE = 84;
 const MAX_STEP = 16;
 const LONG_PRESS_MS = 350;
@@ -109,6 +116,7 @@ export function DragProvider({ children }: { children: ReactNode }) {
 
   const begin = useCallback((p: DragPayload, g: ReactNode, x: number, y: number, grab?: Grab) => {
     payloadRef.current = p;
+    tracer?.('begin', { x: Math.round(x), y: Math.round(y), zones: zones.current.size });
     // Measure every drop zone now (positions change with scrolling). Old rects are dropped first so a stale
     // rectangle from a previous drag can never be hit while the fresh measurement is still in flight.
     const valid = new Set<string>();
@@ -145,6 +153,7 @@ export function DragProvider({ children }: { children: ReactNode }) {
     pointer.current = { x, y };
     place(x, y);
     const found = zoneAt(x, y);
+    tracer?.('move', { x: Math.round(x), y: Math.round(y), zone: found ? found[0] : null });
     if (!found) {
       setHoverId((h) => (h === null ? h : null));
       setRejectedId((h) => (h === null ? h : null));
@@ -179,6 +188,7 @@ export function DragProvider({ children }: { children: ReactNode }) {
   const end = useCallback((x: number, y: number) => {
     const p = payloadRef.current;
     const found = p ? zoneAt(x, y) : null;
+    tracer?.('end', { x: Math.round(x), y: Math.round(y), drop: p && found && found[1].accepts(p) ? found[0] : null });
     finish();
     if (p && found && found[1].accepts(p)) {
       if (Platform.OS !== 'web') void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -287,6 +297,7 @@ export function Draggable({ payload, ghost, children, onTap }: {
     origin.current = null;
     host.current?.measureInWindow((x, y) => {
       origin.current = { x, y };
+      tracer?.('origin', { dx: Math.round(ax - (x + lx)), dy: Math.round(ay - (y + ly)) });
     });
     begin(latest.current.payload, latest.current.ghost, ax, ay, { x: lx, y: ly, w: size.current.w });
   }, [begin]);
@@ -308,6 +319,7 @@ export function Draggable({ payload, ghost, children, onTap }: {
   }, [end, toWindow, settle]);
   const onCancel = useCallback(() => {
     if (!active.current) return;
+    tracer?.('cancel');
     settle();
     cancel();
   }, [cancel, settle]);

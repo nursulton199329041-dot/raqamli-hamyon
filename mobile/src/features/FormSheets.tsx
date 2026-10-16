@@ -111,7 +111,7 @@ export function WalletForm({ done, walletId, onCreated }: { done(): void; wallet
       <ErrorText>{local ?? error}</ErrorText>
       <Button title={t('save')} busy={busy} onPress={() => {
         if (!name.trim()) return setLocal(t('name'));
-        const initial = balance.trim() === '' ? 0 : parseAmount(balance);
+        const initial = /^\s*0*([.,]0*)?\s*$/.test(balance) ? 0 : parseAmount(balance); // an empty or zero opening balance is valid
         if (initial === null) return setLocal(t('initial_balance'));
         setLocal(null);
         if (editing && walletId) {

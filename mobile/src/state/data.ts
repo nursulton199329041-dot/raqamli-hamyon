@@ -51,6 +51,9 @@ export interface Catalog {
   wallets: Wallet[];
   activeWallets: Wallet[];
   categories: Category[];
+  /** categories without a parent: what the dashboard shows */
+  topCategories: Category[];
+  childrenOf(id?: string | null): Category[];
   sources: IncomeSource[];
   people: Person[];
   projects: Project[];
@@ -73,7 +76,10 @@ export function useCatalog(): Catalog {
     const projects = (data?.projects ?? []).filter((c) => !c.isArchived);
     const transactions = [...(data?.transactions ?? [])].sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
     return {
-      loaded: !!data, wallets, activeWallets: wallets.filter((w) => !w.isArchived), categories, sources, people, projects,
+      loaded: !!data, wallets, activeWallets: wallets.filter((w) => !w.isArchived), categories,
+      topCategories: categories.filter((c) => !c.parentId),
+      childrenOf: (id) => (id ? categories.filter((c) => c.parentId === id) : []),
+      sources, people, projects,
       transactions, debts: data?.debts ?? [],
       wallet: (id) => wallets.find((w) => w.id === id),
       category: (id) => categories.find((c) => c.id === id),
@@ -89,6 +95,14 @@ export function useSummary(period: Period) {
   return useQuery({
     queryKey: ['summary', period],
     queryFn: () => api.get<Summary>('/api/analytics/summary', { from }),
+  });
+}
+
+/** Totals for an explicit window (history header): the backend owns the arithmetic, reversed entries excluded. */
+export function useSummaryRange(from: string, to: string) {
+  return useQuery({
+    queryKey: ['summary', 'range', from, to],
+    queryFn: () => api.get<Summary>('/api/analytics/summary', { from, to }),
   });
 }
 

@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, Platform, ScrollView, Text, View } from 'react-native';
 import { ApiError } from '@/api/client';
@@ -15,6 +16,7 @@ import { runtimeInfo, useUpdates } from '@/updates/updates';
 export function Settings() {
   const t = useT();
   const p = usePalette();
+  const router = useRouter();
   const s = useSettings();
   const user = useSession((x) => x.user);
   const signOut = useSession((x) => x.signOut);
@@ -67,6 +69,11 @@ export function Settings() {
         <Button title={t('retry')} variant="tonal" onPress={() => void queue.flush().then(() => queryClient.invalidateQueries())} />
         <Field label={t('api_url')} value={url} onChangeText={setUrl} autoCapitalize="none" autoCorrect={false}
           onSubmitEditing={() => void s.update({ apiUrl: url.trim() })} onBlur={() => void s.update({ apiUrl: url.trim() })} />
+      </GlassCard>
+
+      <GlassCard>
+        <Text style={{ color: p.text, fontWeight: '800' }}>{t('dnd_diag')}</Text>
+        <Button testID="open-dnd-test" title={t('dnd_diag')} variant="tonal" onPress={() => router.push('/dnd-test')} />
       </GlassCard>
 
       <GlassCard>

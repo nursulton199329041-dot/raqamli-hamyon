@@ -50,9 +50,23 @@ const GLYPHS: Record<string, GlyphFn> = {
   undo: (c) => (<Path {...stroke(c)} d="M9 7L4.5 11.5 9 16M5 11.5h9a5 5 0 0 1 0 10h-1" />),
   search: (c) => (<><Circle {...stroke(c)} cx="11" cy="11" r="6.5" /><Path {...stroke(c)} d="M16 16l4 4" /></>),
   refresh: (c) => (<Path {...stroke(c)} d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3M19.5 4.5V9H15" />),
+  backspace: (c) => (<><Path {...stroke(c)} d="M9 5h10a1.5 1.5 0 0 1 1.5 1.5v11A1.5 1.5 0 0 1 19 19H9l-5.5-7z" /><Path {...stroke(c)} d="M12.5 9.5l5 5M17.5 9.5l-5 5" /></>),
+  trash: (c) => (<Path {...stroke(c)} d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l.8 12.2A1.5 1.5 0 0 0 8.8 20.6h6.4a1.5 1.5 0 0 0 1.5-1.4L17.5 7M10 11v6M14 11v6" />),
+  chevronDown: (c) => (<Path {...stroke(c)} d="M6 9.5l6 6 6-6" />),
+  chevronLeft: (c) => (<Path {...stroke(c)} d="M14.5 5.5L8 12l6.5 6.5" />),
+  chevronRight: (c) => (<Path {...stroke(c)} d="M9.5 5.5L16 12l-6.5 6.5" />),
+  filter: (c) => (<Path {...stroke(c)} d="M4 5.5h16l-6 7.2v5.3l-4 2v-7.3z" />),
+  calendar: (c) => (<><Rect {...stroke(c)} x="4" y="5.5" width="16" height="14" rx="2.5" /><Path {...stroke(c)} d="M4 10h16M8.5 3.5v4M15.5 3.5v4" /></>),
+  grid: (c) => (<><Circle cx="6" cy="6" r="1.7" fill={c} /><Circle cx="12" cy="6" r="1.7" fill={c} /><Circle cx="18" cy="6" r="1.7" fill={c} /><Circle cx="6" cy="12" r="1.7" fill={c} /><Circle cx="12" cy="12" r="1.7" fill={c} /><Circle cx="18" cy="12" r="1.7" fill={c} /><Circle cx="6" cy="18" r="1.7" fill={c} /><Circle cx="12" cy="18" r="1.7" fill={c} /><Circle cx="18" cy="18" r="1.7" fill={c} /></>),
+  forward: (c) => (<Path {...stroke(c)} d="M6 6.5l5.5 5.5L6 17.5M12.5 6.5l5.5 5.5-5.5 5.5" />),
+  user: (c) => (<><Circle {...stroke(c)} cx="12" cy="8.5" r="3.6" /><Path {...stroke(c)} d="M4.5 20a7.5 7.5 0 0 1 15 0" /></>),
+  sync: (c) => (<Path {...stroke(c)} d="M4.5 12a7.5 7.5 0 0 1 12.8-5.3L19.5 9M19.5 4.5V9H15M19.5 12a7.5 7.5 0 0 1-12.8 5.3L4.5 15M4.5 19.5V15H9" />),
+  more: (c) => (<><Circle cx="5.5" cy="12" r="1.7" fill={c} /><Circle cx="12" cy="12" r="1.7" fill={c} /><Circle cx="18.5" cy="12" r="1.7" fill={c} /></>),
 };
 
-export const ICON_KEYS = Object.keys(GLYPHS).filter((k) => !['plus', 'settings', 'history', 'chart', 'arrowIn', 'arrowOut', 'swap', 'handshake', 'check', 'close', 'clock', 'share', 'undo', 'search', 'refresh'].includes(k));
+const UI_GLYPHS = ['plus', 'settings', 'history', 'chart', 'arrowIn', 'arrowOut', 'swap', 'handshake', 'check', 'close', 'clock', 'share', 'undo', 'search', 'refresh',
+  'backspace', 'trash', 'chevronDown', 'chevronLeft', 'chevronRight', 'filter', 'calendar', 'grid', 'forward', 'user', 'sync', 'more'];
+export const ICON_KEYS = Object.keys(GLYPHS).filter((k) => !UI_GLYPHS.includes(k));
 
 export function Glyph({ name, color = '#fff', size = 24 }: { name: string; color?: string; size?: number }) {
   const g = GLYPHS[name] ?? GLYPHS.other!;
@@ -60,6 +74,23 @@ export function Glyph({ name, color = '#fff', size = 24 }: { name: string; color
     <Svg width={size} height={size} viewBox="0 0 24 24" accessibilityElementsHidden importantForAccessibility="no">
       {g(color)}
     </Svg>
+  );
+}
+
+/** Round glass-lit badge used by dashboard tiles and the operation sheet endpoints (reference layout uses circles). */
+export function CircleBadge({ name, color = '#6EA8FF', size = 52, ring }: { name: string; color?: string; size?: number; ring?: string }) {
+  return (
+    <View
+      style={{
+        width: size, height: size, borderRadius: size / 2, overflow: 'hidden',
+        borderWidth: ring ? 2 : 0.8, borderColor: ring ?? 'rgba(255,255,255,0.4)',
+        shadowColor: color, shadowOpacity: 0.55, shadowRadius: 9, shadowOffset: { width: 0, height: 3 }, elevation: 5,
+      }}
+    >
+      <LinearGradient colors={[color, `${color}B3`]} start={{ x: 0.2, y: 0 }} end={{ x: 0.8, y: 1 }} style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <Glyph name={name} size={size * 0.5} />
+      </LinearGradient>
+    </View>
   );
 }
 

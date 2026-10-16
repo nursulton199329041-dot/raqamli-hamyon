@@ -1,9 +1,12 @@
 import { create } from 'zustand';
+import type { Tx } from '@/api/types';
 
 export type OpKind = 'income' | 'expense' | 'transfer' | 'debt';
 
 export interface OpPrefill {
   kind: OpKind;
+  /** editing an existing operation (income / expense / transfer): saving corrects it through the ledger (reversal + new entry) */
+  edit?: Tx;
   walletId?: string;
   toWalletId?: string;
   categoryId?: string;
