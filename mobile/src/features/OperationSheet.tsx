@@ -14,7 +14,7 @@ import { CircleBadge, Glyph } from '@/design/Icon';
 import { Keypad } from '@/design/Keypad';
 import { Sheet } from '@/design/Sheet';
 import { Ink, usePalette, useT } from '@/design/theme';
-import { useCatalog } from '@/state/data';
+import { useCatalog, useSnapshot } from '@/state/data';
 import { useQueue } from '@/state/queue';
 import { api } from '@/state/runtime';
 import { useSettings } from '@/state/settings';
@@ -134,6 +134,8 @@ function OperationForm({ prefill, visible, onDone }: { prefill: OpPrefill; visib
   const t = useT();
   const p = usePalette();
   const cat = useCatalog();
+  const snap = useSnapshot();
+  const apiUrl = useSettings((s) => s.apiUrl);
   const submit = useQueue((s) => s.submit);
   const online = useQueue((s) => s.online);
   const qc = useQueryClient();
@@ -394,6 +396,13 @@ function OperationForm({ prefill, visible, onDone }: { prefill: OpPrefill; visib
               </View>
             ))}
           </View>
+        ) : null}
+
+        {!cat.loaded && snap.isError ? (
+          <Tap testID="load-error" label={t('retry')} onPress={() => void snap.refetch()} style={{ padding: 10, borderRadius: 14, backgroundColor: `22`, marginBottom: 8 }}>
+            <Text style={{ color: Ink.expense, fontWeight: '800' }}>{t('picker_failed')}</Text>
+            <Text style={{ color: p.textSecondary, fontSize: 12 }}>{t('picker_failed_hint', { url: apiUrl })}</Text>
+          </Tap>
         ) : null}
 
         <View style={{ flexDirection: 'row', gap: 16 }}>

@@ -12,6 +12,7 @@ import { api, queryClient } from '@/state/runtime';
 import { useSession } from '@/state/session';
 import { useSettings, type ThemeMode } from '@/state/settings';
 import { runtimeInfo, useUpdates } from '@/updates/updates';
+import { ConnectionCard } from './ConnectionCard';
 
 export function Settings() {
   const t = useT();
@@ -60,6 +61,8 @@ export function Settings() {
           <Chip label={s.reduceEffects ? 'ON' : 'OFF'} selected={s.reduceEffects} onPress={() => void s.update({ reduceEffects: !s.reduceEffects })} />
         </Wrap>
       </GlassCard>
+
+      <ConnectionCard />
 
       <GlassCard>
         <Text style={{ color: p.text, fontWeight: '800' }}>{t('syncing')}</Text>

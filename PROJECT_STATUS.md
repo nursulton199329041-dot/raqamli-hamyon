@@ -150,3 +150,16 @@ Yangi: `__tests__/dashboardDrop.test.tsx` (8: wallet→toifa, wallet→wallet, m
 
 **TEKSHIRILMAGAN (aniq):** haqiqiy Android qurilma/emulyatorda sinov o'tkazilmagan (adb/JDK/SDK yo'q). Sensorli long-press+pan, klaviatura va bottom sheet to'qnashuvi, Android blur ko'rinishi faqat kod va jest/veb darajasida. Yomon internet/offline — jest + fake serverda sinalgan, haqiqiy qurilmada emas. Tarix testi oyning 1-kunida (kecha oldingi oyga tushadi) beqaror bo'lishi mumkin. Dizayn: veb'da ochiq mavzuda ko'rildi; qorong'i mavzu kadr-kadr solishtirilmadi.
 **Native o'zgarish:** yo'q (package.json/app.json/eas.json o'zgarmagan) → mavjud 1.0.0 APK'ga preview OTA mos. Production'ga hech narsa yuborilmagan.
+### Ulanish diagnostikasi (telefon ↔ lokal server) — 2026-10-16
+**Aniqlangan sabablar (PC tomonidan o'lchangan):**
+1. **API ishlamayotgan edi:** `:5080` da hech narsa tinglamagan (faqat PostgreSQL 55433). Rejalashtirilgan vazifa `RaqamliHamyon-API` oxirgi marta 10:13 da ishlagan, natija `0xC000013A` (jarayon to'xtatilgan: sessiya/Ctrl+C turi). Aniq sabab (chiqish/qayta ishga tushirish) aniqlanmadi. Vazifa faqat "logon"da ishga tushadi, shuning uchun kirmasdan server ko'tarilmaydi.
+2. **PC manzili o'zgargan:** hozir `192.168.1.5` (DHCP). `192.168.1.2` endi bu kompyuterniki emas (ulanishga urinish rad etildi). Telefondagi saqlangan server manzili `192.168.1.2` bo'lsa, shu o'zi ulanmaslik sababi.
+3. Wi-Fi profili **Public**; `Raqamli Hamyon API` qoidasi faqat Private, lekin `Hamyon.Api.exe` uchun Public dasturiy qoidalar bor (Allow) — firewall to'siq emas ko'rinadi (PC ichidan tekshirilgan; boshqa qurilmadan tasdiqlanmagan).
+
+**Hozirgi holat (tekshirilgan):** vazifa qayta ishga tushirildi; API `0.0.0.0:5080` da tinglaydi; `http://127.0.0.1:5080` va `http://192.168.1.5:5080` `/api/meta/client-policy` → 200; swagger 200; demo login 200, `hamyon_dev` ma'lumotlari saqlangan (6 hamyon, 12 toifa, 3 manba). PostgreSQL 55433 ishlayapti. Backend/ledger/ma'lumotlarga tegilmadi.
+**Telefon uchun tekshiruv manzili:** `http://192.168.1.5:5080/api/meta/client-policy` (telefon brauzerida JSON chiqsa, tarmoq yo'li ishlaydi). Ilovada server manzili `http://192.168.1.5:5080` bo'lishi kerak. PC tomonida: `scripts/phone-link-check.ps1`.
+**Preview APK:** `usesCleartextTraffic=true` (preview profili uchun `expo config` bilan tekshirildi) — http ruxsat.
+
+**Ilovaga qo'shildi (JS):** "Server ulanishi" kartasi (login ekrani + Sozlamalar): joriy API URL, aniq tekshiruv URL, OTA updateId/kanal, "Ulanishni tekshirish" (ok / HTTP xato / tez rad / vaqt tugadi / noto'g'ri manzil — sababi bilan); serversiz sensor sinovi login ekranidan ochiladi ("Sensor (surish) diagnostikasi", API chaqirmaydi); kirimda hamyon ro'yxati yuklanmasa forma va tanlash sahifasida tushunarli xabar (URL bilan, "Qayta urinish"); offline bo'lsa keshdagi ro'yxat va ogohlantirish.
+**Testlar:** jest 89/89 (oldin 78), tsc/eslint toza.
+**Hali tekshirilmagan:** telefondan haqiqiy ulanish va sensorli surish (qurilma yo'q); router "client isolation"; server qayta ishga tushganda avtomatik ko'tarilishi (vazifa faqat logon'da).

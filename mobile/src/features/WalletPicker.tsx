@@ -7,6 +7,8 @@ import { Glyph, IconBadge } from '@/design/Icon';
 import { Ink, usePalette, useT } from '@/design/theme';
 import { fmtMoney } from '@/lib/money';
 import { useCatalog, useSnapshot } from '@/state/data';
+import { useQueue } from '@/state/queue';
+import { useSettings } from '@/state/settings';
 import { WalletForm } from './FormSheets';
 
 /**
@@ -21,6 +23,8 @@ export function WalletPicker({ title, selectedId, excludeId, onSelect, onBack }:
   const p = usePalette();
   const cat = useCatalog();
   const snap = useSnapshot();
+  const apiUrl = useSettings((s) => s.apiUrl);
+  const online = useQueue((s) => s.online);
   const [creating, setCreating] = useState(false);
   const { refetch } = snap;
 
@@ -45,10 +49,15 @@ export function WalletPicker({ title, selectedId, excludeId, onSelect, onBack }:
       <BackRow label={t('back')} title={title} onPress={onBack} />
       {snap.isFetching && wallets.length === 0 ? <ActivityIndicator color={p.accent} style={{ marginVertical: 16 }} /> : null}
       {snap.isError && wallets.length === 0 ? (
-        <View>
-          <Text style={{ color: Ink.expense, marginTop: 8 }}>{snap.error instanceof Error ? snap.error.message : String(snap.error)}</Text>
+        <View testID="picker-error">
+          <Text style={{ color: Ink.expense, marginTop: 8, fontWeight: '800' }}>{t('picker_failed')}</Text>
+          <Text style={{ color: p.textSecondary, marginTop: 4 }}>{t('picker_failed_hint', { url: apiUrl })}</Text>
+          <Text style={{ color: p.textSecondary, fontSize: 11, marginTop: 4 }}>{snap.error instanceof Error ? snap.error.message : String(snap.error)}</Text>
           <Button title={t('retry')} variant="tonal" onPress={() => void refetch()} />
         </View>
+      ) : null}
+      {!online && wallets.length > 0 ? (
+        <Text testID="picker-cached" style={{ color: Ink.debt, marginTop: 8 }}>{t('picker_cached')}</Text>
       ) : null}
       {cat.loaded && wallets.length === 0 && !snap.isError ? (
         <Text style={{ color: p.textSecondary, marginVertical: 12 }}>{t('no_wallets_pick')}</Text>

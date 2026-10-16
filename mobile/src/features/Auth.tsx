@@ -2,13 +2,16 @@ import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, Text, View } from 'react-native';
 import { ApiError } from '@/api/client';
 import { Button, Chip, ErrorText, Field } from '@/design/Controls';
-import { GlassCard } from '@/design/Glass';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { GlassCard, Tap } from '@/design/Glass';
 import { Glyph } from '@/design/Icon';
 import { usePalette, useT } from '@/design/theme';
 import { LANGS } from '@/i18n';
 import { useSession } from '@/state/session';
 import { isLocalUrl } from '@/lib/serverUrl';
 import { useSettings } from '@/state/settings';
+import { ConnectionCard } from './ConnectionCard';
+import { DndDiagnostics } from './DndDiagnostics';
 
 export function Auth() {
   const t = useT();
@@ -24,6 +27,7 @@ export function Auth() {
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [diag, setDiag] = useState(false);
 
   const submit = async () => {
     if (!email.trim() || !password) return setError(`${t('email')} / ${t('password')}`);
@@ -39,6 +43,19 @@ export function Auth() {
       setBusy(false);
     }
   };
+
+  if (diag) {
+    // works without any server or account: only tests gestures and drop zones
+    return (
+      <SafeAreaView style={{ flex: 1 }}>
+        <View style={{ paddingHorizontal: 16, paddingTop: 8, alignItems: 'flex-start' }}>
+          <Tap testID="diag-close" label="close" onPress={() => setDiag(false)}><Glyph name="close" color={p.text} size={26} /></Tap>
+        </View>
+        <Text style={{ color: p.textSecondary, paddingHorizontal: 16 }}>{t('dnd_no_server')}</Text>
+        <DndDiagnostics />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
@@ -61,6 +78,8 @@ export function Auth() {
           <Button title={t(isRegister ? 'register' : 'login')} busy={busy} onPress={submit} />
           <Button title={t(isRegister ? 'login' : 'register')} variant="tonal" onPress={() => setIsRegister((v) => !v)} />
           {!showServer && !localOnPhone && <Button title={t('api_url')} variant="tonal" onPress={() => setShowServer(true)} />}
+          <View style={{ marginTop: 14 }}><ConnectionCard /></View>
+          <Button testID="open-diag" title={t('dnd_diag')} variant="tonal" onPress={() => setDiag(true)} />
           <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: 16 }}>
             {LANGS.map((l) => <Chip key={l} label={l.toUpperCase()} selected={lang === l} onPress={() => void update({ lang: l })} />)}
           </View>
