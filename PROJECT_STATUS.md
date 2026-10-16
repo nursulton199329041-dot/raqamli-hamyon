@@ -1,6 +1,15 @@
 # RAQAMLI HAMYON — PROJECT STATUS
 
-Oxirgi yangilanish: 2026-10-15
+Oxirgi yangilanish: 2026-10-16
+
+## !!! ENG YUQORI USTUVORLIK (keyingi asosiy vazifa)
+**Android'da Drag & Drop va kirim (income) funksiyasini HAQIQIY telefonda ishlatish.** Kod tuzatilgan (d9c9cef) va jest 38/38 o'tgan, lekin haqiqiy Android qurilmada **tasdiqlanmagan** (adb/JDK yo'q). Birinchi navbatda: preview APK + OTA bilan telefonda drag&drop, kirim, hamyon tanlash oqimini tekshirish. Server tayyor: `http://192.168.1.5:5080`.
+
+## Lokal server (2026-10-16, barqarorlashtirilgan)
+- Boot'da login'siz ishga tushadi: tasklar `RaqamliHamyon-PostgreSQL` va `RaqamliHamyon-API-Supervisor` (LocalService). Eski login-task `RaqamliHamyon-API` Disabled.
+- Skriptlar: `scripts/server/` (o'rnatilgan nusxa `D:\RaqamliHamyonLocal\ops`). Hujjat: `docs/ops/LOCAL_SERVER.md` (sabab tahlili, loglar, zaxira, DHCP reservation, muhitlar).
+- Health: `D:\RaqamliHamyonLocal\ops\healthcheck.ps1`. Firewall 5080 faqat LocalSubnet. Production profili faqat shablon.
+- Ochiq: kompyuter kutilmagan o'chishlari (Kernel-Power 41); reboot-dan keyingi avtostart hali jonli sinalmagan; routerda DHCP reservation egasi tomonidan qilinishi kerak.
 
 ## Muhit (tekshirilgan)
 | Vosita | Holat |

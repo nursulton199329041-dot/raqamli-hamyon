@@ -19,3 +19,13 @@ pubspec.lock.bak
 # reference video + extracted frames stay local (the original is on the user's Desktop)
 design-reference/*.MP4
 design-reference/frames/
+
+# lokal server: sirlar, zaxira, loglar, ma'lumotlar (repo'ga kirmasin)
+*.dump
+*.secret
+jwt.secret
+*.part
+pgdata/
+logs/
+backups/
+config.*.local.psd1
