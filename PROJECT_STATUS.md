@@ -111,3 +111,24 @@ expo-router, reanimated 4, gesture-handler, expo-blur, SQLite, SecureStore, TanS
 - Sinov: `node scripts/e2e-scenario.mjs <api>` — 15/15 PASS (haqiqiy backend, alohida DB hamyon_e2e); web UI E2E (Playwright, 400x850): hamyon yaratish, drag→xarajat, transfer, kirim, tahrirlash, arxiv, bekor qilish; tarix va analitika mos.
 - Tekshirilmagan: haqiqiy Android/iPhone sensorli drag va auto-scroll (faqat sichqoncha bilan web'da).
 - OTA: native bog'liqlik o'zgarmadi (JS-only) → mavjud 1.0.0 build bilan mos; baribir avval `preview` kanalida tekshiring.
+
+### Android kritik xatolar: surish-xarajat va kirimda hamyon tanlash — 2026-10-16
+Muammo (haqiqiy APK'da): hamyonni toifaga surib xarajat qilib bo'lmadi; kirim oynasida hamyon tanlab bo'lmadi.
+
+**Topilgan asl sabablar (kod tahlili; qurilmada o'lchanmagan):**
+1. `Sheet` (barcha formalar): `GlassCard` ichki o'rami `flexShrink: 0` (RN default) bo'lgani uchun ScrollView to'liq balandlikda qolib, `maxHeight` bilan kesilardi — Android'da pastdagi hamyon tanlovi va "Tasdiqlash" ko'rinmas va scroll bo'lmas edi. Ustiga `KeyboardAvoidingView` Android'da `behavior` siz edi (edge-to-edge'da klaviatura formani yopadi), `autoFocus` esa klaviaturani darhol ochardi.
+2. Surish: (a) kartochka-"ghost" barmoq bilan harakatlanmasdi (`gx/gy` faqat `begin()` da yozilardi); (b) barmoq o'rni `absoluteX/Y` dan olinardi, drop zonalar esa `measureInWindow` fazosida — Android'da status bar/inset farqi bo'lsa zonaga tushmaydi; (c) gesture har renderda qayta yaratilardi (faol gesture ustida native handler qayta sozlanardi); (d) `Gesture.Exclusive(pan, tap)` o'rniga oddiy `Pressable` bosish ishlatiladi; (e) eski zona rect'lari yangi o'lchov kelguncha qolardi.
+
+**Tuzatishlar (faqat JS/TS, native o'zgarishsiz):**
+- `src/dnd/DragDrop.tsx`: barmoq = `draggable window origin + grab nuqtasi + translation` (hamma narsa bitta `measureInWindow` fazosida); ghost har `move` da joylashadi va tile kengligida; gesture bir marta yaratiladi (refs); zona rect'lari `begin` da tozalanib qayta o'lchanadi; touch-cancel → hech narsa tushmaydi; bosish `Pressable` orqali, drag'dan keyin 400 ms bosish bloklanadi.
+- `src/design/Sheet.tsx` + `Glass.tsx` (`innerStyle`): butun zanjir `flexShrink: 1`, `KeyboardAvoidingView behavior="padding"` har platformada, **footer** (Tasdiqlash) ScrollView'dan tashqarida — doim ko'rinadi/bosiladi.
+- Yangi `src/features/WalletPicker.tsx`: forma ICHIDAGI hamyon tanlash sahifasi (ikkinchi Modal emas → boshqa oyna ostida qolmaydi). Faol hamyonlar backend snapshot'dan (ochilganda refetch): ikon, nom, valyuta, qoldiq, tanlangani belgilanadi. Hamyon yo'q → "Yangi hamyon yaratish" → yaratilgach formaga qaytadi va yangi hamyon avtomatik tanlanadi.
+- `OperationSheet.tsx`: kirim/xarajat/transfer/qarz — hammasida hamyon qatori (kirim: "Qabul qiluvchi hamyon", xarajat: "To'lov hamyoni", transfer: ikkita, qarz: yo'nalishga qarab). "Kirim manbasi" hamyondan alohida. Loyiha, sabab, kimdan/kimga, izoh forma ichida ochiq. Android'da summa maydoni avtofokussiz. Aniq validatsiya va server xabarlari.
+- Tap muqobili (hamyon → Xarajat → toifa → summa → Tasdiqlash) o'zgarishsiz ishlaydi va testlangan.
+
+**Testlar (haqiqiy bajarilgan):** tsc toza, eslint 0 xato, jest **38/38** (oldin 20; +18), expo-doctor 21/21.
+Yangi: `__tests__/dashboardDrop.test.tsx` (8: wallet→toifa, wallet→wallet, manba→wallet, noto'g'ri drop/cancel, ScrollView lock, auto-scroll, long-press 350 ms, tap yo'li; Android touch-fazosi 24 px siljishi bilan) va `__tests__/operationSheet.test.tsx` (10: ochilish, hamyonlar ro'yxati, tanlash, yaratib qaytish, saqlash, balans/tarix/manba jami yangilanishi, validatsiya/server xatosi, har operatsiyada hamyon, orqaga). Backend o'rniga `test-utils/fakeServer.ts` (haqiqiy ledger semantikasi); mutatsiya tekshiruvi: `absoluteX` ga qaytarilsa 3 test yiqiladi.
+
+**TEKSHIRILMAGAN (aniq):** haqiqiy Android qurilma/emulyatorda sinov o'tkazilmagan (bu mashinada adb/JDK/Android SDK yo'q). Jest/Playwright sensorli Android surishni isbotlamaydi. Tuzatishlar sabablar tahliliga asoslangan; telefonda tasdiqlash SIZDA qoladi.
+
+**Native o'zgarish:** yo'q (`package.json`, `app.json`, `app.config.js`, `eas.json` o'zgarmagan; lokal Android fingerprint = EAS build fingerprint `8874963d…`). → faqat JS: mavjud 1.0.0 APK'ga OTA mos, yangi APK shart emas. Production kanaliga hech narsa yuborilmagan.

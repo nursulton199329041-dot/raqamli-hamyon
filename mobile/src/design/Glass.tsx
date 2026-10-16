@@ -40,13 +40,15 @@ interface GlassCardProps {
   tint?: string;
   highlight?: boolean;
   padding?: number;
+  /** style of the inner padded wrapper (e.g. `flexShrink: 1` so a ScrollView inside can shrink and scroll) */
+  innerStyle?: StyleProp<ViewStyle>;
 }
 
 /**
  * Frosted glass surface. One component for both platforms: backdrop blur + translucent fill + hairline border.
  * Android uses expo-blur's `dimezisBlurView`; with "reduce effects" it falls back to the plain translucent fill.
  */
-export function GlassCard({ children, style, radius = 24, tint, highlight, padding = 16 }: GlassCardProps) {
+export function GlassCard({ children, style, radius = 24, tint, highlight, padding = 16, innerStyle }: GlassCardProps) {
   const p = usePalette();
   const reduce = useSettings((s) => s.reduceEffects);
   const border = highlight ? p.accent : p.glassBorder;
@@ -83,7 +85,7 @@ export function GlassCard({ children, style, radius = 24, tint, highlight, paddi
         end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFill}
       />
-      <View style={{ padding }}>{children}</View>
+      <View style={[{ padding }, innerStyle]}>{children}</View>
     </View>
   );
 }

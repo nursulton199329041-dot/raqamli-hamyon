@@ -3,5 +3,5 @@ const jestGlobals = { jest: 'readonly', describe: 'readonly', it: 'readonly', ex
 module.exports = [
   ...expoConfig,
   { ignores: ['dist/*', 'node_modules/*', '.expo/*'] },
-  { files: ['**/__tests__/**', 'jest.setup.js'], languageOptions: { globals: jestGlobals } },
+  { files: ['**/__tests__/**', 'test-utils/**', 'jest.setup.js'], languageOptions: { globals: jestGlobals } },
 ];

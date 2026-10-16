@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Switch, Text, View } from 'react-native';
 import { ApiError } from '@/api/client';
+import type { Wallet } from '@/api/types';
 import { Button, Chip, ErrorText, Field, Label, Wrap } from '@/design/Controls';
 import { ICON_KEYS, IconBadge } from '@/design/Icon';
 import { Tap } from '@/design/Glass';
@@ -44,7 +45,7 @@ export function IconColorPicker({ icon, color, onIcon, onColor }: {
   );
 }
 
-function useSave(done: () => void) {
+function useSave(done: () => void, onResult?: (result: unknown) => void) {
   const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,8 +53,9 @@ function useSave(done: () => void) {
     setBusy(true);
     setError(null);
     try {
-      await fn();
+      const result = await fn();
       await qc.invalidateQueries();
+      onResult?.(result);
       done();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : String(e));
@@ -64,12 +66,15 @@ function useSave(done: () => void) {
   return { busy, error, run };
 }
 
-function WalletForm({ done, walletId }: { done(): void; walletId: string | null }) {
+/** Create/edit wallet form. `onCreated` receives the wallet returned by the backend (after the catalog was refreshed). */
+export function WalletForm({ done, walletId, onCreated }: { done(): void; walletId: string | null; onCreated?(w: Wallet): void }) {
   const t = useT();
   const cat = useCatalog();
   const existing = walletId ? cat.wallet(walletId) : undefined;
   const editing = !!existing;
-  const { busy, error, run } = useSave(done);
+  const { busy, error, run } = useSave(done, (r) => {
+    if (!editing && onCreated && r && typeof r === 'object' && 'id' in r) onCreated(r as Wallet);
+  });
   const [name, setName] = useState(existing?.name ?? '');
   const [balance, setBalance] = useState('');
   const [bank, setBank] = useState(existing?.bankName ?? '');
@@ -115,7 +120,7 @@ function WalletForm({ done, walletId }: { done(): void; walletId: string | null 
           }));
           return;
         }
-        void run(() => api.post('/api/wallets', {
+        void run(() => api.post<Wallet>('/api/wallets', {
           name: name.trim(), type, currency, initialBalance: initial, icon, color,
           bankName: bank.trim() || null, maskedNumber: mask.trim() || null, allowOverdraft: overdraft,
         }, newKey('w')));

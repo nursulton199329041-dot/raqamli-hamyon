@@ -119,10 +119,11 @@ export function Dashboard() {
 
   return (
     <>
-      <View ref={wrapRef} collapsable={false} style={{ flex: 1 }}
+      <View ref={wrapRef} testID="dash-wrap" collapsable={false} style={{ flex: 1 }}
         onLayout={(e) => { viewH.current = e.nativeEvent.layout.height; }}>
         <ScrollView
           ref={scrollRef}
+          testID="dash-scroll"
           scrollEnabled={!dragging}
           scrollEventThrottle={16}
           onScroll={onScroll}

@@ -15,6 +15,8 @@ export type FormSheet = 'wallet' | 'category' | 'source' | 'project' | null;
 
 interface UiState {
   op: OpPrefill | null;
+  /** last opened prefill, kept after close so the sheet can slide out with its content */
+  lastOp: OpPrefill | null;
   /** bumps each time a form opens so a reopened sheet always starts from a clean state */
   opNonce: number;
   form: FormSheet;
@@ -30,10 +32,11 @@ interface UiState {
 
 export const useUi = create<UiState>((set, get) => ({
   op: null,
+  lastOp: null,
   opNonce: 0,
   form: null,
   formId: null,
-  openOp: (p) => set((s) => ({ op: p, opNonce: s.opNonce + 1 })),
+  openOp: (p) => set((s) => ({ op: p, lastOp: p, opNonce: s.opNonce + 1 })),
   closeOp: () => set({ op: null }),
   openForm: (f, id) => set({ form: f, formId: id ?? null }),
   closeForm: () => set({ form: null, formId: null }),

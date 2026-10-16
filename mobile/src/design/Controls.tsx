@@ -17,6 +17,7 @@ export function Field(props: TextInputProps & { label: string; style?: StyleProp
       <Text style={{ color: p.textSecondary, fontSize: 12, marginBottom: 4 }}>{label}</Text>
       <TextInput
         placeholderTextColor={p.textSecondary}
+        accessibilityLabel={label}
         {...rest}
         style={[{
           borderWidth: 1, borderColor: p.glassBorder, backgroundColor: p.glassFill, color: p.text,
