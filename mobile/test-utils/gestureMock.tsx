@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react';
+import { ScrollView as RNScrollView } from 'react-native';
 
 /**
  * react-native-gesture-handler stand-in for component tests. It records the callbacks given to `Gesture.Pan()` per
@@ -41,3 +42,5 @@ export function GestureDetector({ gesture, children }: { gesture: { __rec: Recor
 }
 
 export const GestureHandlerRootView = ({ children }: { children: unknown }) => children;
+
+export const ScrollView = RNScrollView;

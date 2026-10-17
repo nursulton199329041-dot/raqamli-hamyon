@@ -74,10 +74,13 @@ export function Settings() {
           onSubmitEditing={() => void s.update({ apiUrl: url.trim() })} onBlur={() => void s.update({ apiUrl: url.trim() })} />
       </GlassCard>
 
-      <GlassCard>
-        <Text style={{ color: p.text, fontWeight: '800' }}>{t('dnd_diag')}</Text>
-        <Button testID="open-dnd-test" title={t('dnd_diag')} variant="tonal" onPress={() => router.push('/dnd-test')} />
-      </GlassCard>
+      {/* developer tool: not shipped in release builds */}
+      {__DEV__ && (
+        <GlassCard>
+          <Text style={{ color: p.text, fontWeight: '800' }}>{t('dnd_diag')}</Text>
+          <Button testID="open-dnd-test" title={t('dnd_diag')} variant="tonal" onPress={() => router.push('/dnd-test')} />
+        </GlassCard>
+      )}
 
       <GlassCard>
         <Text style={{ color: p.text, fontWeight: '800' }}>{t('updates')}</Text>

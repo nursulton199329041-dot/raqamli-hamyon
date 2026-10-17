@@ -1,7 +1,9 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { ActivityIndicator, RefreshControl, ScrollView, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import { ActivityIndicator, RefreshControl, Text, View, type NativeScrollEvent, type NativeSyntheticEvent, type ViewStyle } from 'react-native';
+import { ScrollView } from 'react-native-gesture-handler';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ApiError } from '@/api/client';
 import type { BreakdownRow, Category, IncomeSource, Wallet } from '@/api/types';
 import { Chip, Wrap } from '@/design/Controls';
@@ -63,6 +65,7 @@ export function Dashboard() {
   const p = usePalette();
   const lang = useSettings((s) => s.lang);
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const qc = useQueryClient();
   const cat = useCatalog();
   const snap = useSnapshot();
@@ -100,7 +103,9 @@ export function Dashboard() {
     [registerScroller],
   );
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    offset.current = e.nativeEvent.contentOffset.y;
+    // While a drag auto-scrolls, the offset we last COMMANDED is the truth: native scroll events arrive late and a stale one
+    // would pull the position backwards (the page then stalls or jitters and drop zones drift).
+    if (!dragging) offset.current = e.nativeEvent.contentOffset.y;
   };
 
   const byCurrency = new Map<string, number>();
@@ -150,7 +155,7 @@ export function Dashboard() {
           scrollEventThrottle={16}
           onScroll={onScroll}
           onContentSizeChange={(_w, h) => { maxOffset.current = Math.max(0, h - viewH.current); }}
-          contentContainerStyle={{ padding: 10, paddingBottom: 96, gap: 8 }}
+          contentContainerStyle={{ padding: 10, paddingBottom: 84 + Math.max(insets.bottom, 8), gap: 8 }}
           refreshControl={<RefreshControl refreshing={snap.isFetching} onRefresh={() => void snap.refetch()} tintColor={p.accent} />}
         >
           <UpdateBanner />
@@ -170,7 +175,7 @@ export function Dashboard() {
                 {snap.isFetching || queue.syncing ? <ActivityIndicator size="small" color={p.textSecondary} /> : <Glyph name="sync" color={p.text} size={22} />}
               </Tap>
             </View>
-            <Tap testID="period-button" label={periodLabel(lang, period, () => t('all'))} onPress={() => setPeriodMenu(true)} style={{ flex: 1 }}>
+            <Tap testID="period-button" label={periodLabel(lang, period, () => t('all'))} onPress={() => setPeriodMenu(true)} containerStyle={{ flex: 1 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
                 <Text numberOfLines={1} style={{ color: p.text, fontSize: 15, fontWeight: '600' }}>{periodLabel(lang, period, () => t('all'))}</Text>
                 <Glyph name="chevronDown" color={p.textSecondary} size={14} />
@@ -189,7 +194,7 @@ export function Dashboard() {
           {/* 1. INCOME SOURCES */}
           <Section title={t('income_sources')} total={fmtAmounts(incomeTotals)} collapsed={!!collapsed.income} onToggle={() => toggle('income')} testID="section-income">
             {cat.sources.map((s) => <SourceTile key={s.id} source={s} amounts={incomeBy.get(s.id)} />)}
-            <AddTile label={t('new_source')} onPress={() => openForm('source')} />
+            <AddTile cell={CELL5} label={t('new_source')} onPress={() => openForm('source')} />
           </Section>
 
           {/* 2. WALLETS — balance is always under the icon */}
@@ -201,7 +206,7 @@ export function Dashboard() {
               </View>
             ) : null}
             {cat.activeWallets.map((w) => <WalletTile key={w.id} wallet={w} onActions={() => { setActionError(null); setActionsFor(w); }} />)}
-            <AddTile label={t('new_wallet')} onPress={() => openForm('wallet')} />
+            <AddTile cell={CELL2} wide label={t('new_wallet')} onPress={() => openForm('wallet')} />
           </Section>
 
           {/* 3. EXPENSE CATEGORIES */}
@@ -211,7 +216,7 @@ export function Dashboard() {
               <CategoryTile key={c.id} category={c}
                 amounts={sumAmounts(expenseBy.get(c.id), ...cat.childrenOf(c.id).map((ch) => expenseBy.get(ch.id)))} />
             ))}
-            <AddTile label={t('new_category')} onPress={() => openForm('category')} />
+            <AddTile cell={CELL3} label={t('new_category')} onPress={() => openForm('category')} />
           </Section>
 
           {(budgets.data ?? []).filter((b) => b.exceeded || b.percent >= 80).map((b) => (
@@ -260,7 +265,7 @@ export function Dashboard() {
   );
 }
 
-/** A dashboard block: header with title + period total, then a 5-column grid of circular tiles that always wraps cleanly. */
+/** A dashboard block: header with title + period total, then a wrapping grid (sources 5 / wallets 2 / categories 3 columns). */
 function Section({ title, total, totalColor, collapsed, onToggle, children, testID }: {
   title: string; total: string; totalColor?: string; collapsed: boolean; onToggle(): void; children: ReactNode; testID: string;
 }) {
@@ -280,46 +285,83 @@ function Section({ title, total, totalColor, collapsed, onToggle, children, test
   );
 }
 
-/** Name above, round icon, amount below: the reference tile. */
-function Tile({ name, icon, color, amounts, amountColor, ring, grow }: {
-  name: string; icon: string; color: string; amounts?: Amounts; amountColor: string; ring?: string; grow?: boolean;
-}) {
-  const p = usePalette();
+function AmountLines({ amounts, color, base = 11 }: { amounts?: Amounts; color: string; base?: number }) {
+  if (!amounts || amounts.length === 0) return <Text numberOfLines={1} style={{ color, fontSize: base, fontWeight: '800' }}>0</Text>;
   return (
-    <View style={{ alignItems: 'center', gap: 3, width: '100%', transform: [{ scale: grow ? 1.1 : 1 }] }}>
-      <Text numberOfLines={1} style={{ color: p.textSecondary, fontSize: 10.5, maxWidth: '100%' }}>{name}</Text>
-      <CircleBadge name={icon} color={color} size={52} ring={ring} />
-      {!amounts || amounts.length === 0 ? (
-        <Text numberOfLines={1} style={{ color: p.text, fontSize: 11, fontWeight: '800' }}>0</Text>
-      ) : amounts.map((x) => {
+    <>
+      {amounts.map((x) => {
         const txt = fmtMoney(x.total, x.currency);
         // long figures shrink (adjustsFontSizeToFit is native-only), like the reference app
-        const size = txt.length > 14 ? 8 : txt.length > 12 ? 9 : txt.length > 10 ? 10 : 11;
+        const size = txt.length > 14 ? base - 3 : txt.length > 12 ? base - 2 : txt.length > 10 ? base - 1 : base;
         return (
           <Text key={x.currency} adjustsFontSizeToFit minimumFontScale={0.6} numberOfLines={1}
-            style={{ color: x.total < 0 ? Ink.expense : amountColor, fontSize: size, fontWeight: '800', maxWidth: '100%' }}>
+            style={{ color: x.total < 0 ? Ink.expense : color, fontSize: size, fontWeight: '800', maxWidth: '100%' }}>
             {txt}
           </Text>
         );
       })}
+    </>
+  );
+}
+
+/**
+ * One visual system for all three sections. Compact (sources 5 / categories 3 per row): name above, round icon, amount below.
+ * Wide (wallets, 2 per row): glass pill with the icon on the left and name + balance on the right. Names wrap to two
+ * lines instead of being cut off.
+ */
+function Tile({ name, icon, color, amounts, amountColor, ring, grow, wide }: {
+  name: string; icon: string; color: string; amounts?: Amounts; amountColor: string; ring?: string; grow?: boolean; wide?: boolean;
+}) {
+  const p = usePalette();
+  const scale = { transform: [{ scale: grow ? 1.06 : 1 }] };
+  if (wide) {
+    return (
+      <View style={[{
+        flexDirection: 'row', alignItems: 'center', gap: 8, width: '100%', paddingVertical: 6, paddingHorizontal: 8, borderRadius: 22,
+        borderWidth: 1.5, borderColor: ring ?? p.glassBorder, backgroundColor: p.glassFill,
+      }, scale]}>
+        <CircleBadge name={icon} color={color} size={44} />
+        <View style={{ flex: 1, gap: 1 }}>
+          <Text numberOfLines={2} style={{ color: p.textSecondary, fontSize: 12 }}>{name}</Text>
+          <AmountLines amounts={amounts} color={amountColor} base={14} />
+        </View>
+      </View>
+    );
+  }
+  return (
+    <View style={[{ alignItems: 'center', gap: 3, width: '100%' }, scale]}>
+      <Text numberOfLines={2} style={{ color: p.textSecondary, fontSize: 10.5, maxWidth: '100%', textAlign: 'center', minHeight: 26 }}>{name}</Text>
+      <CircleBadge name={icon} color={color} size={52} ring={ring} />
+      <AmountLines amounts={amounts} color={amountColor} />
     </View>
   );
 }
 
-const CELL = { width: '20%' as const, paddingHorizontal: 1 };
+const CELL5 = { width: '20%' as const, paddingHorizontal: 1 };
+const CELL3 = { width: '33.3333%' as const, paddingHorizontal: 3 };
+const CELL2 = { width: '50%' as const, paddingHorizontal: 3 };
 
-function AddTile({ label, onPress }: { label: string; onPress(): void }) {
+function AddTile({ label, onPress, cell, wide }: { label: string; onPress(): void; cell: ViewStyle; wide?: boolean }) {
   const p = usePalette();
   return (
-    <View style={CELL}>
+    <View style={cell}>
       <Tap label={label} onPress={onPress}>
-        <View style={{ alignItems: 'center', gap: 3 }}>
-          <Text numberOfLines={1} style={{ color: p.textSecondary, fontSize: 10.5 }}> </Text>
-          <View style={{ width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', backgroundColor: p.glassFill, borderWidth: 1, borderColor: p.glassBorder }}>
-            <Glyph name="plus" color={p.textSecondary} size={22} />
+        {wide ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 6, paddingHorizontal: 8, borderRadius: 22, borderWidth: 1, borderStyle: 'dashed', borderColor: p.glassBorder }}>
+            <View style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: p.glassFill }}>
+              <Glyph name="plus" color={p.textSecondary} size={22} />
+            </View>
+            <Text numberOfLines={2} style={{ flex: 1, color: p.textSecondary, fontSize: 12 }}>{label}</Text>
           </View>
-          <Text numberOfLines={1} style={{ color: p.textSecondary, fontSize: 10, maxWidth: '100%' }}>{label}</Text>
-        </View>
+        ) : (
+          <View style={{ alignItems: 'center', gap: 3 }}>
+            <Text numberOfLines={2} style={{ fontSize: 10.5, minHeight: 26 }}> </Text>
+            <View style={{ width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', backgroundColor: p.glassFill, borderWidth: 1, borderColor: p.glassBorder }}>
+              <Glyph name="plus" color={p.textSecondary} size={22} />
+            </View>
+            <Text numberOfLines={2} style={{ color: p.textSecondary, fontSize: 10, maxWidth: '100%', textAlign: 'center' }}>{label}</Text>
+          </View>
+        )}
       </Tap>
     </View>
   );
@@ -335,7 +377,7 @@ function WalletTile({ wallet, onActions }: { wallet: Wallet; onActions(): void }
     else openOp({ kind: 'income', walletId: wallet.id, sourceId: pl.id });
   };
   return (
-    <View style={CELL}>
+    <View style={CELL2}>
       <DropZone id={`wallet:${wallet.id}`} accepts={accepts} onDrop={onDrop}>
         {({ active, rejected, valid }) => (
           <Draggable payload={{ kind: 'wallet', id: wallet.id }} onTap={onActions}
@@ -346,7 +388,7 @@ function WalletTile({ wallet, onActions }: { wallet: Wallet; onActions(): void }
               accessibilityActions={[{ name: 'activate', label: 'Actions' }]}
               onAccessibilityAction={onActions}
             >
-              <Tile name={wallet.name} icon={wallet.icon} color={wallet.color} grow={active}
+              <Tile wide name={wallet.name} icon={wallet.icon} color={wallet.color} grow={active}
                 ring={active ? p.accent : rejected ? Ink.expense : valid ? `${p.accent}99` : undefined}
                 amounts={[{ currency: wallet.currency, total: wallet.balance }]} amountColor={p.text} />
             </View>
@@ -361,7 +403,7 @@ function CategoryTile({ category, amounts }: { category: Category; amounts?: Amo
   const p = usePalette();
   const openOp = useUi((s) => s.openOp);
   return (
-    <View style={CELL}>
+    <View style={CELL3}>
       <DropZone
         id={`cat:${category.id}`}
         accepts={(pl) => pl.kind === 'wallet'}
@@ -382,7 +424,7 @@ function SourceTile({ source, amounts }: { source: IncomeSource; amounts?: Amoun
   const p = usePalette();
   const openOp = useUi((s) => s.openOp);
   return (
-    <View style={CELL}>
+    <View style={CELL5}>
       <Draggable payload={{ kind: 'source', id: source.id }} onTap={() => openOp({ kind: 'income', sourceId: source.id })}
         ghost={<View style={{ alignItems: 'center' }}><CircleBadge name={source.icon} color={source.color} size={62} ring={p.accent} /></View>}>
         <Tile name={source.name} icon={source.icon} color={source.color} amounts={amounts} amountColor={p.text} />

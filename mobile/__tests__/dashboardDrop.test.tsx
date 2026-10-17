@@ -1,4 +1,5 @@
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react-native';
+import { ScrollView } from 'react-native';
 import { Dashboard } from '@/features/Dashboard';
 import { OperationSheet } from '@/features/OperationSheet';
 import { useSettings } from '@/state/settings';
@@ -58,6 +59,19 @@ describe('dashboard: three sections, always-visible balances', () => {
     expect(textOf('section-income-total')).toBe('0');
     expect(screen.getAllByText('Kommunal').length).toBeGreaterThan(0);
     expect(screen.queryByText('Svet')).toBeNull(); // sub-category is chosen inside the operation form
+  });
+
+  it('grid: wallets are 2 per row, expense categories 3 per row, income sources 5 per row', async () => {
+    useLayout(BOXES);
+    await ready();
+    const cellWidth = (id: string) => {
+      let n = screen.getByTestId(id).parent;
+      while (n && !(n.props?.style && !Array.isArray(n.props.style) && n.props.style.width)) n = n.parent;
+      return n?.props.style.width;
+    };
+    expect(cellWidth('drop:wallet:w1')).toBe('50%');
+    expect(cellWidth('drop:cat:c1')).toBe('33.3333%');
+    expect(cellWidth('drag:source:s1')).toBe('20%');
   });
 
   it('collapsing a section hides its tiles without touching data', async () => {
@@ -159,7 +173,8 @@ describe('dashboard drag & drop (Android-like touch space: absoluteY is 24px bel
     await act(async () => { rec.onStart?.(ev); });
     expect(screen.getByTestId('dash-scroll').props.scrollEnabled).toBe(false);
     await act(async () => { rec.onEnd?.({ ...ev, translationX: 900, translationY: 900 }, true); });
-    expect(screen.getByTestId('dash-scroll').props.scrollEnabled).toBe(true);
+    // a missed drop flies the tile back first (~200 ms), then the page unlocks
+    await waitFor(() => expect(screen.getByTestId('dash-scroll').props.scrollEnabled).toBe(true));
   });
 
   it('the gesture is a 350 ms long-press pan (taps and normal scrolling are not hijacked)', async () => {
@@ -170,11 +185,19 @@ describe('dashboard drag & drop (Android-like touch space: absoluteY is 24px bel
 });
 
 describe('auto-scroll during a drag keeps drop zones in sync', () => {
-  it('dragging to the bottom edge scrolls the page and the category that scrolls under the finger becomes the target', async () => {
+  // The category strip lives in CONTENT space at y=900 and moves up by the REAL scroll offset. The native scroll events the
+  // page receives LAG behind the real offset (as on a busy Android UI thread), which used to make the shifted zone rectangle
+  // drift away from the real one -> the drop landed on "nothing" (drop:null).
+  it.each([
+    ['accurate scroll events', 0],
+    ['scroll events lagging 40px behind', 40],
+  ])('dragging to the bottom edge scrolls the page and the category that scrolls under the finger becomes the target (%s)', async (_n, lag) => {
     jest.useFakeTimers();
     try {
-      // c1 starts below the visible area (y 900) and can only be reached after scrolling
+      let realScroll = 0;
+      const spy = jest.spyOn(ScrollView.prototype, 'scrollTo').mockImplementation(((o: { y: number }) => { realScroll = o.y; }) as never);
       const boxes = { ...BOXES, 'drop:cat:c1': { x: 20, y: 900, w: 110, h: 50 } };
+      Object.defineProperty(boxes['drop:cat:c1'], 'y', { get: () => 900 - realScroll, enumerable: true });
       useLayout(boxes, ANDROID_STATUS_BAR);
       await renderApp(<><Dashboard /><OperationSheet /></>);
       await screen.findByText('1 000 000 UZS');
@@ -191,11 +214,15 @@ describe('auto-scroll during a drag keeps drop zones in sync', () => {
       await act(async () => { rec.onUpdate?.(at(45, 460)); });
       expect(useUi.getState().op).toBeNull();
 
-      // ~10.3px per 16ms tick at this finger depth: 15 ticks scroll ~154px, so the strip (y 900..950) now spans y 746..796
-      for (let i = 0; i < 15; i += 1) await act(async () => { jest.advanceTimersByTime(16); });
+      for (let i = 0; i < 15; i += 1) {
+        await act(async () => { jest.advanceTimersByTime(16); });
+        await fireEvent(screen.getByTestId('dash-scroll'), 'scroll', { nativeEvent: { contentOffset: { x: 0, y: Math.max(0, realScroll - lag) } } });
+      }
+      expect(realScroll).toBeGreaterThan(100); // the page really scrolled
       await act(async () => { rec.onEnd?.(at(45, 460), true); });
 
       expect(useUi.getState().op).toEqual({ kind: 'expense', walletId: 'w1', categoryId: 'c1' });
+      spy.mockRestore();
     } finally {
       jest.useRealTimers();
     }

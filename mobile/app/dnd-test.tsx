@@ -9,6 +9,7 @@ import { DndDiagnostics } from '@/features/DndDiagnostics';
 export default function DndTestScreen() {
   const router = useRouter();
   const p = usePalette();
+  if (!__DEV__) return null; // developer tool only
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <View style={{ paddingHorizontal: 16, paddingTop: 8, alignItems: 'flex-start' }}>

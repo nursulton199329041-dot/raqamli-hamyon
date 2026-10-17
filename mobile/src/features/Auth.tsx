@@ -44,7 +44,7 @@ export function Auth() {
     }
   };
 
-  if (diag) {
+  if (__DEV__ && diag) {
     // works without any server or account: only tests gestures and drop zones
     return (
       <SafeAreaView style={{ flex: 1 }}>
@@ -79,7 +79,7 @@ export function Auth() {
           <Button title={t(isRegister ? 'login' : 'register')} variant="tonal" onPress={() => setIsRegister((v) => !v)} />
           {!showServer && !localOnPhone && <Button title={t('api_url')} variant="tonal" onPress={() => setShowServer(true)} />}
           <View style={{ marginTop: 14 }}><ConnectionCard /></View>
-          <Button testID="open-diag" title={t('dnd_diag')} variant="tonal" onPress={() => setDiag(true)} />
+          {__DEV__ && <Button testID="open-diag" title={t('dnd_diag')} variant="tonal" onPress={() => setDiag(true)} />}
           <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: 16 }}>
             {LANGS.map((l) => <Chip key={l} label={l.toUpperCase()} selected={lang === l} onPress={() => void update({ lang: l })} />)}
           </View>

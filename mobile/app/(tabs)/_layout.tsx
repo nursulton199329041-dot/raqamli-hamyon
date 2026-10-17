@@ -30,9 +30,9 @@ function FloatingBar({ state, navigation }: BarProps) {
           {ITEMS.map((it, i) => {
             const on = state.index === i;
             return (
-              <Tap key={it.name} label={t(it.key)} style={{ flex: 1 }} onPress={() => navigation.navigate(it.name)}>
+              <Tap key={it.name} label={t(it.key)} containerStyle={{ flex: 1 }} onPress={() => navigation.navigate(it.name)}>
                 <View style={{
-                  alignItems: 'center', paddingVertical: 5, paddingHorizontal: 2, borderRadius: 18,
+                  alignItems: 'center', justifyContent: 'center', minHeight: 48, paddingVertical: 6, paddingHorizontal: 2, borderRadius: 18,
                   backgroundColor: on ? `${p.accent}38` : 'transparent',
                 }}>
                   <Glyph name={it.icon} color={on ? p.accent : p.textSecondary} size={20} />
