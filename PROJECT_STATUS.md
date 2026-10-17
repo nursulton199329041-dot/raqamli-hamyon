@@ -172,3 +172,10 @@ Yangi: `__tests__/dashboardDrop.test.tsx` (8: wallet→toifa, wallet→wallet, m
 **Ilovaga qo'shildi (JS):** "Server ulanishi" kartasi (login ekrani + Sozlamalar): joriy API URL, aniq tekshiruv URL, OTA updateId/kanal, "Ulanishni tekshirish" (ok / HTTP xato / tez rad / vaqt tugadi / noto'g'ri manzil — sababi bilan); serversiz sensor sinovi login ekranidan ochiladi ("Sensor (surish) diagnostikasi", API chaqirmaydi); kirimda hamyon ro'yxati yuklanmasa forma va tanlash sahifasida tushunarli xabar (URL bilan, "Qayta urinish"); offline bo'lsa keshdagi ro'yxat va ogohlantirish.
 **Testlar:** jest 89/89 (oldin 78), tsc/eslint toza.
 **Hali tekshirilmagan:** telefondan haqiqiy ulanish va sensorli surish (qurilma yo'q); router "client isolation"; server qayta ishga tushganda avtomatik ko'tarilishi (vazifa faqat logon'da).
+
+### Qayta tekshiruv (sessiya davomi) — 2026-10-17
+- Git: ish daraxti toza; lokal server skriptlari allaqachon commit qilingan (4805776), yangi o'zgarish yo'q.
+- Server (haqiqiy o'lchov): `healthcheck.ps1` hammasi OK (PG 127.0.0.1:55433, `/health` ok, Users=2, ikkala task Running, zaxira 20261017). `/api/meta/client-policy` 200.
+- **PC LAN manzili yana o'zgargan: `192.168.1.11`** (oldin .2, keyin .5). `192.168.1.5` endi javob bermaydi. Telefon ilovasida server manzili `http://192.168.1.11:5080` bo'lishi kerak. Router'da DHCP reservation hali qilinmagan — shu sabab manzil qayta-qayta o'zgaryapti.
+- Mobil: tsc toza, jest 89/89. Kod ko'rib chiqildi (`src/dnd/DragDrop.tsx`: window-space koordinata, bir marta yaratiladigan gesture, cancel, auto-scroll; `GestureHandlerRootView` mavjud) — yangi nuqson topilmadi, kod o'zgartirilmadi.
+- **HAQIQIY ANDROID SENSORLI SINOV O'TKAZILMADI** (adb/JDK/qurilma yo'q). Web/jest natijalari Android sensorli test o'rnini bosmaydi. Telefonda: Sozlamalar → "Sensor (surish) diagnostikasi", so'ng hamyon→toifa, hamyon→hamyon, manba→hamyon, kirimda hamyon tanlash.
