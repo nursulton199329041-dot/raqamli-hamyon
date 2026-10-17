@@ -191,3 +191,6 @@ Yangi: `__tests__/dashboardDrop.test.tsx` (8: wallet→toifa, wallet→wallet, m
 **Diagnostika:** Sensor diagnostikasi (login ekrani, Sozlamalar, `/dnd-test`) faqat `__DEV__` da; release/preview APK'da ko'rinmaydi.
 **Testlar:** tsc toza, eslint toza, expo-doctor 21/21, jest 97/97 (oldin 89; +8: chetdan tushirish, uzoq tushirish, qabul qiluvchi zona ustuvorligi, drop oldidan qayta o'lchash, takroriy end, rad etilganda qaytish, qayta urinish, log sababi, ustunlar; auto-scroll testi kechikkan scroll hodisalari bilan). `expo export --platform android` bundle muvaffaqiyatli. Native bog'liqlik o'zgarmadi.
 **HAQIQIY ANDROID QURILMADA SINALMADI** (adb/JDK/qurilma yo'q; web brauzer ham bu sessiyada ishlatilmadi — vizual natija ko'rilmagan). OTA hali yuborilmagan.
+
+### OTA → preview — 2026-10-17
+Commit 83bcd0f, `eas update --channel preview` (runtime 1.0.0, android fingerprint 8874963d… = o'rnatilgan APK). Update group b9020e3c-686d-437c-8d22-1d3b3e6ac8f0, Android update ID 01a14a9c-c0af-7b05-98a8-2bc6d3c6ca7d. Production'ga tegilmadi. Telefonda tasdiqlanmagan.
