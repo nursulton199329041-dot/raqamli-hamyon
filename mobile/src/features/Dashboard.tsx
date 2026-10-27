@@ -10,18 +10,26 @@ import { Chip, Wrap } from '@/design/Controls';
 import { GlassCard, Tap } from '@/design/Glass';
 import { CircleBadge, Glyph } from '@/design/Icon';
 import { Sheet } from '@/design/Sheet';
-import { Ink, usePalette, useT } from '@/design/theme';
+import { EmptyState, ErrorState, LoadingState } from '@/design/States';
+import { Ink, usePalette, useT, type Palette } from '@/design/theme';
+import { HIT, iconSize, radii, space, type } from '@/design/tokens';
 import { DropZone, Draggable, useDrag, type DragPayload } from '@/dnd/DragDrop';
 import type { Lang } from '@/i18n';
 import { monthShort } from '@/lib/dates';
 import { fmtMoney } from '@/lib/money';
-import { useBreakdown, useBudgets, useCatalog, useSnapshot, type Period } from '@/state/data';
+import { useBreakdown, useBudgets, useCatalog, useSnapshot, useSummary, type Period } from '@/state/data';
 import { useQueue } from '@/state/queue';
 import { api } from '@/state/runtime';
 import { useSession } from '@/state/session';
 import { useSettings } from '@/state/settings';
 import { useUi, type OpKind } from '@/state/ui';
+import { BalanceSummary } from './BalanceSummary';
 import { UpdateBanner } from './UpdateBanner';
+
+const headerButton = (p: Palette): ViewStyle => ({
+  width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center',
+  backgroundColor: p.glassFill, borderWidth: 1, borderColor: p.glassBorder,
+});
 
 type Amounts = { currency: string; total: number }[];
 
@@ -74,6 +82,7 @@ export function Dashboard() {
   const [periodMenu, setPeriodMenu] = useState(false);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const budgets = useBudgets();
+  const summary = useSummary(period);
   const incomeBy = amountsById(useBreakdown('source', period, 1).data);
   const expenseBy = amountsById(useBreakdown('category', period, 2).data);
   const { dragging, registerScroller } = useDrag();
@@ -155,63 +164,64 @@ export function Dashboard() {
           scrollEventThrottle={16}
           onScroll={onScroll}
           onContentSizeChange={(_w, h) => { maxOffset.current = Math.max(0, h - viewH.current); }}
-          contentContainerStyle={{ padding: 10, paddingBottom: 84 + Math.max(insets.bottom, 8), gap: 8 }}
+          contentContainerStyle={{ paddingHorizontal: space.md, paddingTop: space.sm, paddingBottom: 96 + Math.max(insets.bottom, 8), gap: space.md }}
           refreshControl={<RefreshControl refreshing={snap.isFetching} onRefresh={() => void snap.refetch()} tintColor={p.accent} />}
         >
           <UpdateBanner />
 
-          {/* top bar: account + sync | period | more */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <View style={{
-              flexDirection: 'row', alignItems: 'center', borderRadius: 22, borderWidth: 1, borderColor: p.glassBorder, backgroundColor: p.glassFill,
-              paddingHorizontal: 6, paddingVertical: 4, gap: 4,
-            }}>
-              <Tap label={user?.displayName ?? 'account'} onPress={() => router.push('/settings')}>
-                <View style={{ width: 32, height: 32, borderRadius: 16, borderWidth: 1.5, borderColor: p.text, alignItems: 'center', justifyContent: 'center' }}>
-                  <Text style={{ color: p.text, fontWeight: '800', fontSize: 14 }}>{(user?.displayName ?? '?').slice(0, 1).toUpperCase()}</Text>
-                </View>
-              </Tap>
-              <Tap testID="sync-button" label={t('sync_now')} onPress={sync} style={{ width: 34, height: 34, alignItems: 'center', justifyContent: 'center' }}>
-                {snap.isFetching || queue.syncing ? <ActivityIndicator size="small" color={p.textSecondary} /> : <Glyph name="sync" color={p.text} size={22} />}
-              </Tap>
-            </View>
-            <Tap testID="period-button" label={periodLabel(lang, period, () => t('all'))} onPress={() => setPeriodMenu(true)} containerStyle={{ flex: 1 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-                <Text numberOfLines={1} style={{ color: p.text, fontSize: 15, fontWeight: '600' }}>{periodLabel(lang, period, () => t('all'))}</Text>
-                <Glyph name="chevronDown" color={p.textSecondary} size={14} />
+          {/* header: account | app name + sync state | sync | settings */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingHorizontal: space.xs }}>
+            <Tap label={user?.displayName ?? 'account'} onPress={() => router.push('/settings')}
+              style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: `${p.accent}29`, borderWidth: 1, borderColor: `${p.accent}66` }}>
+              <Text style={[type.headline, { color: p.accent }]}>{(user?.displayName ?? '?').slice(0, 1).toUpperCase()}</Text>
+            </Tap>
+            <View style={{ flex: 1 }}>
+              <Text numberOfLines={1} style={[type.headline, { color: p.text }]}>{t('app')}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs }}>
+                <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: statusColor }} />
+                <Text testID="sync-status" numberOfLines={1} style={[type.caption, { color: p.textSecondary, flexShrink: 1 }]}>{status}</Text>
               </View>
+            </View>
+            <Tap testID="sync-button" label={t('sync_now')} onPress={sync} style={headerButton(p)}>
+              {snap.isFetching || queue.syncing ? <ActivityIndicator size="small" color={p.textSecondary} /> : <Glyph name="sync" color={p.text} size={iconSize.md} />}
             </Tap>
-            <Tap label={t('settings')} onPress={() => router.push('/settings')}
-              style={{ width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: p.glassBorder, backgroundColor: p.glassFill, alignItems: 'center', justifyContent: 'center' }}>
-              <Glyph name="more" color={p.text} size={22} />
+            <Tap label={t('settings')} onPress={() => router.push('/settings')} style={headerButton(p)}>
+              <Glyph name="settings" color={p.text} size={iconSize.md} />
             </Tap>
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 4 }}>
-            <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: statusColor }} />
-            <Text numberOfLines={1} style={{ color: p.textSecondary, fontSize: 11 }}>{status}</Text>
-          </View>
+
+          <BalanceSummary wallets={cat.activeWallets} primary={user?.defaultCurrency} summary={summary.data} loading={summary.isLoading || !cat.loaded}
+            periodLabel={periodLabel(lang, period, () => t('all'))} onPeriod={() => setPeriodMenu(true)} />
+
+          {snap.isError && !cat.loaded ? (
+            <GlassCard radius={radii.lg} padding={space.sm}>
+              <ErrorState testID="dash-error" title={t('dash_load_error')} message={snap.error instanceof Error ? snap.error.message : undefined}
+                retry={t('retry')} onRetry={() => void snap.refetch()} />
+            </GlassCard>
+          ) : null}
 
           {/* 1. INCOME SOURCES */}
-          <Section title={t('income_sources')} total={fmtAmounts(incomeTotals)} collapsed={!!collapsed.income} onToggle={() => toggle('income')} testID="section-income">
+          <Section title={t('income_sources')} total={fmtAmounts(incomeTotals)} totalColor={Ink.income} collapsed={!!collapsed.income} onToggle={() => toggle('income')} testID="section-income">
+            {!cat.loaded && snap.isLoading ? <LoadingState rows={1} columns={4} /> : null}
             {cat.sources.map((s) => <SourceTile key={s.id} source={s} amounts={incomeBy.get(s.id)} />)}
-            <AddTile cell={CELL5} label={t('new_source')} onPress={() => openForm('source')} />
+            <AddTile cell={CELL4} label={t('new_source')} onPress={() => openForm('source')} />
           </Section>
 
-          {/* 2. WALLETS — balance is always under the icon */}
+          {/* 2. WALLETS — balance is always under the name */}
           <Section title={t('wallets')} total={fmtAmounts(walletTotals)} totalColor={walletTotals.some((x) => x.total < 0) ? Ink.expense : undefined}
             collapsed={!!collapsed.wallets} onToggle={() => toggle('wallets')} testID="section-wallets">
+            {!cat.loaded && snap.isLoading ? <LoadingState rows={1} columns={2} /> : null}
             {cat.loaded && cat.activeWallets.length === 0 ? (
-              <View style={{ width: '100%', paddingVertical: 6 }}>
-                <Text style={{ color: p.textSecondary }}>{t('empty_wallets')}</Text>
-              </View>
+              <EmptyState testID="wallets-empty" icon="wallet" title={t('empty_wallets')} action={t('create_wallet')} onAction={() => openForm('wallet')} />
             ) : null}
             {cat.activeWallets.map((w) => <WalletTile key={w.id} wallet={w} onActions={() => { setActionError(null); setActionsFor(w); }} />)}
-            <AddTile cell={CELL2} wide label={t('new_wallet')} onPress={() => openForm('wallet')} />
+            {cat.activeWallets.length > 0 ? <AddTile cell={CELL2} wide label={t('new_wallet')} onPress={() => openForm('wallet')} /> : null}
           </Section>
 
           {/* 3. EXPENSE CATEGORIES */}
           <Section title={t('expense_categories')} total={fmtAmounts(expenseTotals)} totalColor={Ink.expense}
             collapsed={!!collapsed.expense} onToggle={() => toggle('expense')} testID="section-expense">
+            {!cat.loaded && snap.isLoading ? <LoadingState rows={1} columns={3} /> : null}
             {cat.topCategories.map((c) => (
               <CategoryTile key={c.id} category={c}
                 amounts={sumAmounts(expenseBy.get(c.id), ...cat.childrenOf(c.id).map((ch) => expenseBy.get(ch.id)))} />
@@ -271,21 +281,21 @@ function Section({ title, total, totalColor, collapsed, onToggle, children, test
 }) {
   const p = usePalette();
   return (
-    <GlassCard radius={22} padding={8} style={{ marginTop: 2 }}>
-      <Tap testID={`${testID}-header`} label={title} onPress={onToggle}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 4, paddingBottom: collapsed ? 0 : 6 }}>
-          <View style={{ transform: [{ rotate: collapsed ? '-90deg' : '0deg' }] }}><Glyph name="chevronDown" color={p.textSecondary} size={14} /></View>
-          <Text accessibilityRole="header" style={{ color: p.text, fontSize: 17, fontWeight: '800' }}>{title}</Text>
+    <GlassCard radius={radii.xl} padding={space.md}>
+      <Tap testID={`${testID}-header`} label={title} onPress={onToggle} haptic={false}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, minHeight: 32, paddingBottom: collapsed ? 0 : space.sm }}>
+          <Text accessibilityRole="header" numberOfLines={1} style={[type.headline, { color: p.text, flexShrink: 1 }]}>{title}</Text>
           <Text testID={`${testID}-total`} adjustsFontSizeToFit minimumFontScale={0.6} numberOfLines={1}
-            style={{ flex: 1, textAlign: 'right', color: totalColor ?? p.text, fontSize: 15, fontWeight: '700' }}>{total}</Text>
+            style={[type.callout, { flex: 1, textAlign: 'right', color: totalColor ?? p.textSecondary, fontVariant: ['tabular-nums'] }]}>{total}</Text>
+          <View style={{ transform: [{ rotate: collapsed ? '-90deg' : '0deg' }] }}><Glyph name="chevronDown" color={p.textSecondary} size={iconSize.sm} /></View>
         </View>
       </Tap>
-      {!collapsed ? <View style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: 8 }}>{children}</View> : null}
+      {!collapsed ? <View style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: space.md, marginHorizontal: -space.xs }}>{children}</View> : null}
     </GlassCard>
   );
 }
 
-function AmountLines({ amounts, color, base = 11 }: { amounts?: Amounts; color: string; base?: number }) {
+function AmountLines({ amounts, color, base = 12.5 }: { amounts?: Amounts; color: string; base?: number }) {
   if (!amounts || amounts.length === 0) return <Text numberOfLines={1} style={{ color, fontSize: base, fontWeight: '800' }}>0</Text>;
   return (
     <>
@@ -317,29 +327,29 @@ function Tile({ name, icon, color, amounts, amountColor, ring, grow, wide }: {
   if (wide) {
     return (
       <View style={[{
-        flexDirection: 'row', alignItems: 'center', gap: 8, width: '100%', paddingVertical: 6, paddingHorizontal: 8, borderRadius: 22,
-        borderWidth: 1.5, borderColor: ring ?? p.glassBorder, backgroundColor: p.glassFill,
+        flexDirection: 'row', alignItems: 'center', gap: space.sm, width: '100%', minHeight: 68, paddingVertical: space.sm, paddingHorizontal: space.sm,
+        borderRadius: radii.lg, borderWidth: ring ? 1.5 : 1, borderColor: ring ?? p.glassBorder, backgroundColor: p.glassFillStrong,
       }, scale]}>
-        <CircleBadge name={icon} color={color} size={44} />
-        <View style={{ flex: 1, gap: 1 }}>
-          <Text numberOfLines={2} style={{ color: p.textSecondary, fontSize: 12 }}>{name}</Text>
-          <AmountLines amounts={amounts} color={amountColor} base={14} />
+        <CircleBadge name={icon} color={color} size={iconSize.badge - 4} />
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text numberOfLines={2} style={[type.footnote, { color: p.textSecondary }]}>{name}</Text>
+          <AmountLines amounts={amounts} color={amountColor} base={15} />
         </View>
       </View>
     );
   }
   return (
-    <View style={[{ alignItems: 'center', gap: 3, width: '100%' }, scale]}>
-      <Text numberOfLines={2} style={{ color: p.textSecondary, fontSize: 10.5, maxWidth: '100%', textAlign: 'center', minHeight: 26 }}>{name}</Text>
-      <CircleBadge name={icon} color={color} size={52} ring={ring} />
+    <View style={[{ alignItems: 'center', gap: space.xs, width: '100%' }, scale]}>
+      <CircleBadge name={icon} color={color} size={iconSize.badge} ring={ring} />
+      <Text numberOfLines={2} style={[type.caption, { color: p.text, maxWidth: '100%', textAlign: 'center', minHeight: 30, fontWeight: '600' }]}>{name}</Text>
       <AmountLines amounts={amounts} color={amountColor} />
     </View>
   );
 }
 
-const CELL5 = { width: '20%' as const, paddingHorizontal: 1 };
-const CELL3 = { width: '33.3333%' as const, paddingHorizontal: 3 };
-const CELL2 = { width: '50%' as const, paddingHorizontal: 3 };
+const CELL4 = { width: '25%' as const, paddingHorizontal: space.xs };
+const CELL3 = { width: '33.3333%' as const, paddingHorizontal: space.xs };
+const CELL2 = { width: '50%' as const, paddingHorizontal: space.xs };
 
 function AddTile({ label, onPress, cell, wide }: { label: string; onPress(): void; cell: ViewStyle; wide?: boolean }) {
   const p = usePalette();
@@ -347,19 +357,18 @@ function AddTile({ label, onPress, cell, wide }: { label: string; onPress(): voi
     <View style={cell}>
       <Tap label={label} onPress={onPress}>
         {wide ? (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 6, paddingHorizontal: 8, borderRadius: 22, borderWidth: 1, borderStyle: 'dashed', borderColor: p.glassBorder }}>
-            <View style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: p.glassFill }}>
-              <Glyph name="plus" color={p.textSecondary} size={22} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, minHeight: 68, padding: space.sm, borderRadius: radii.lg, borderWidth: 1, borderStyle: 'dashed', borderColor: p.textSecondary + '55' }}>
+            <View style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: p.glassFill }}>
+              <Glyph name="plus" color={p.accent} size={iconSize.md} />
             </View>
-            <Text numberOfLines={2} style={{ flex: 1, color: p.textSecondary, fontSize: 12 }}>{label}</Text>
+            <Text numberOfLines={2} style={[type.footnote, { flex: 1, color: p.textSecondary }]}>{label}</Text>
           </View>
         ) : (
-          <View style={{ alignItems: 'center', gap: 3 }}>
-            <Text numberOfLines={2} style={{ fontSize: 10.5, minHeight: 26 }}> </Text>
-            <View style={{ width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', backgroundColor: p.glassFill, borderWidth: 1, borderColor: p.glassBorder }}>
-              <Glyph name="plus" color={p.textSecondary} size={22} />
+          <View style={{ alignItems: 'center', gap: space.xs }}>
+            <View style={{ width: iconSize.badge, height: iconSize.badge, borderRadius: iconSize.badge / 2, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderStyle: 'dashed', borderColor: p.textSecondary + '55' }}>
+              <Glyph name="plus" color={p.accent} size={iconSize.md} />
             </View>
-            <Text numberOfLines={2} style={{ color: p.textSecondary, fontSize: 10, maxWidth: '100%', textAlign: 'center' }}>{label}</Text>
+            <Text numberOfLines={2} style={[type.caption, { color: p.textSecondary, maxWidth: '100%', textAlign: 'center', minHeight: HIT - 18 }]}>{label}</Text>
           </View>
         )}
       </Tap>
@@ -424,7 +433,7 @@ function SourceTile({ source, amounts }: { source: IncomeSource; amounts?: Amoun
   const p = usePalette();
   const openOp = useUi((s) => s.openOp);
   return (
-    <View style={CELL5}>
+    <View style={CELL4}>
       <Draggable payload={{ kind: 'source', id: source.id }} onTap={() => openOp({ kind: 'income', sourceId: source.id })}
         ghost={<View style={{ alignItems: 'center' }}><CircleBadge name={source.icon} color={source.color} size={62} ring={p.accent} /></View>}>
         <Tile name={source.name} icon={source.icon} color={source.color} amounts={amounts} amountColor={p.text} />

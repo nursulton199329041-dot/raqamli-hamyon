@@ -37,9 +37,9 @@ const balanceIs = (id: string, text: string) =>
 
 const walletBy = (name: string) => server.wallets.find((w) => w.name === name)!;
 
-/** Creates a wallet through the real "+" tile and wallet form. */
+/** Creates a wallet through the real "+" tile (or the empty-state button when there is none yet) and wallet form. */
 async function createWallet(name: string, balance: string) {
-  await fireEvent.press(screen.getByLabelText('Yangi hamyon'));
+  await fireEvent.press(screen.queryByLabelText('Yangi hamyon') ?? screen.getByLabelText('Yangi hamyon yaratish'));
   await fireEvent.changeText(await screen.findByLabelText('Ism'), name);
   await fireEvent.changeText(screen.getByLabelText(/^Boshlang‘ich balans/), balance);
   await fireEvent.press(screen.getByText('Saqlash'));

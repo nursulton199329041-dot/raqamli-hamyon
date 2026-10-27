@@ -20,6 +20,8 @@ jest.mock('react-native-reanimated', () => {
     useAnimatedStyle: (fn) => fn(),
     withSpring: (v) => v,
     withTiming: (v) => v,
+    withRepeat: (v) => v,
+    useReducedMotion: () => false,
   };
 });
 jest.mock('expo-haptics', () => ({

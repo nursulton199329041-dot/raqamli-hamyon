@@ -61,7 +61,7 @@ describe('dashboard: three sections, always-visible balances', () => {
     expect(screen.queryByText('Svet')).toBeNull(); // sub-category is chosen inside the operation form
   });
 
-  it('grid: wallets are 2 per row, expense categories 3 per row, income sources 5 per row', async () => {
+  it('grid: wallets are 2 per row, expense categories 3 per row, income sources 4 per row', async () => {
     useLayout(BOXES);
     await ready();
     const cellWidth = (id: string) => {
@@ -71,7 +71,7 @@ describe('dashboard: three sections, always-visible balances', () => {
     };
     expect(cellWidth('drop:wallet:w1')).toBe('50%');
     expect(cellWidth('drop:cat:c1')).toBe('33.3333%');
-    expect(cellWidth('drag:source:s1')).toBe('20%');
+    expect(cellWidth('drag:source:s1')).toBe('25%');
   });
 
   it('collapsing a section hides its tiles without touching data', async () => {

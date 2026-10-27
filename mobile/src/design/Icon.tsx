@@ -1,5 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { View } from 'react-native';
+import { Platform, View } from 'react-native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 
 /**
@@ -68,28 +68,41 @@ const UI_GLYPHS = ['plus', 'settings', 'history', 'chart', 'arrowIn', 'arrowOut'
   'backspace', 'trash', 'chevronDown', 'chevronLeft', 'chevronRight', 'filter', 'calendar', 'grid', 'forward', 'user', 'sync', 'more'];
 export const ICON_KEYS = Object.keys(GLYPHS).filter((k) => !UI_GLYPHS.includes(k));
 
+/** Decorative: hidden from screen readers. react-native-svg forwards unknown props to the DOM on web, so web gets aria-hidden. */
+const HIDDEN = Platform.OS === 'web'
+  ? { 'aria-hidden': true }
+  : { accessibilityElementsHidden: true, importantForAccessibility: 'no' as const };
+
 export function Glyph({ name, color = '#fff', size = 24 }: { name: string; color?: string; size?: number }) {
   const g = GLYPHS[name] ?? GLYPHS.other!;
   return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" accessibilityElementsHidden importantForAccessibility="no">
+    <Svg width={size} height={size} viewBox="0 0 24 24" {...HIDDEN}>
       {g(color)}
     </Svg>
   );
 }
 
-/** Round glass-lit badge used by dashboard tiles and the operation sheet endpoints (reference layout uses circles). */
+/**
+ * Round glass-lit badge used by dashboard tiles and the operation sheet endpoints.
+ * The coloured glow sits on an outer, unclipped view (an `overflow: hidden` view cannot cast a shadow on iOS);
+ * Android gets no elevation here — dozens of elevated tiles cost overdraw and draw grey, not coloured, shadows.
+ */
 export function CircleBadge({ name, color = '#6EA8FF', size = 52, ring }: { name: string; color?: string; size?: number; ring?: string }) {
   return (
     <View
       style={{
-        width: size, height: size, borderRadius: size / 2, overflow: 'hidden',
-        borderWidth: ring ? 2 : 0.8, borderColor: ring ?? 'rgba(255,255,255,0.4)',
-        shadowColor: color, shadowOpacity: 0.55, shadowRadius: 9, shadowOffset: { width: 0, height: 3 }, elevation: 5,
+        width: size, height: size, borderRadius: size / 2,
+        shadowColor: color, shadowOpacity: 0.45, shadowRadius: 10, shadowOffset: { width: 0, height: 4 },
       }}
     >
-      <LinearGradient colors={[color, `${color}B3`]} start={{ x: 0.2, y: 0 }} end={{ x: 0.8, y: 1 }} style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <Glyph name={name} size={size * 0.5} />
-      </LinearGradient>
+      <View style={{ flex: 1, borderRadius: size / 2, overflow: 'hidden', borderWidth: ring ? 2 : 1, borderColor: ring ?? 'rgba(255,255,255,0.32)' }}>
+        <LinearGradient colors={[color, `${color}B3`]} start={{ x: 0.2, y: 0 }} end={{ x: 0.8, y: 1 }} style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <Glyph name={name} size={size * 0.5} />
+        </LinearGradient>
+        {/* specular highlight: the "liquid" top edge */}
+        <LinearGradient pointerEvents="none" colors={['rgba(255,255,255,0.38)', 'rgba(255,255,255,0)']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.55 }}
+          style={{ position: 'absolute', left: 0, right: 0, top: 0, height: size * 0.55 }} />
+      </View>
     </View>
   );
 }

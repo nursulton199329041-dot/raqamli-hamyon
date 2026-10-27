@@ -11,28 +11,30 @@ export interface Palette {
   blurTint: 'dark' | 'light';
 }
 
+/** Midnight navy base, blue-violet second layer, electric-blue accent. */
 export const darkPalette: Palette = {
   dark: true,
-  bgTop: '#050B1A', bgBottom: '#0B1B3A',
-  glassFill: 'rgba(255,255,255,0.09)', glassFillStrong: 'rgba(255,255,255,0.16)', glassBorder: 'rgba(255,255,255,0.20)',
-  text: '#F4F7FF', textSecondary: '#A9B6D3', accent: '#6EA8FF',
-  orbA: '#2F6BFF', orbB: '#8FA8D6', overlay: 'rgba(0,0,0,0.55)', blurTint: 'dark',
+  bgTop: '#060A18', bgBottom: '#141A3D',
+  glassFill: 'rgba(255,255,255,0.075)', glassFillStrong: 'rgba(255,255,255,0.14)', glassBorder: 'rgba(255,255,255,0.14)',
+  text: '#F5F7FF', textSecondary: '#A3AECB', accent: '#4D8DFF',
+  orbA: '#2E5BFF', orbB: '#7B5CFF', overlay: 'rgba(2,4,12,0.6)', blurTint: 'dark',
 };
 
+/** Premium off-white, white glass layers, hairline grey borders, high text contrast. */
 export const lightPalette: Palette = {
   dark: false,
-  bgTop: '#F4F6FB', bgBottom: '#DCE4F2',
-  glassFill: 'rgba(255,255,255,0.62)', glassFillStrong: 'rgba(255,255,255,0.85)', glassBorder: 'rgba(255,255,255,0.9)',
-  text: '#0E1630', textSecondary: '#55627D', accent: '#2563EB',
-  orbA: '#9DB8FF', orbB: '#BFD0EE', overlay: 'rgba(14,22,48,0.35)', blurTint: 'light',
+  bgTop: '#F7F8FC', bgBottom: '#E6EAF5',
+  glassFill: 'rgba(255,255,255,0.72)', glassFillStrong: 'rgba(255,255,255,0.92)', glassBorder: 'rgba(15,23,42,0.08)',
+  text: '#0B1220', textSecondary: '#5A6478', accent: '#1F6BFF',
+  orbA: '#B9CCFF', orbB: '#D7CCFF', overlay: 'rgba(11,18,32,0.32)', blurTint: 'light',
 };
 
 /** Semantic finance colours – identical on iOS and Android. */
 export const Ink = {
-  income: '#22C55E',
+  income: '#1FCB8B',
   expense: '#FF6B6B',
-  transfer: '#3B82F6',
-  debt: '#F59E0B',
+  transfer: '#7C6CFF',
+  debt: '#F5A524',
 } as const;
 
 export function usePalette(): Palette {

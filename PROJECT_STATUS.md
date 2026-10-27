@@ -194,3 +194,11 @@ Yangi: `__tests__/dashboardDrop.test.tsx` (8: wallet→toifa, wallet→wallet, m
 
 ### OTA → preview — 2026-10-17
 Commit 83bcd0f, `eas update --channel preview` (runtime 1.0.0, android fingerprint 8874963d… = o'rnatilgan APK). Update group b9020e3c-686d-437c-8d22-1d3b3e6ac8f0, Android update ID 01a14a9c-c0af-7b05-98a8-2bc6d3c6ca7d. Production'ga tegilmadi. Telefonda tasdiqlanmagan.
+
+### Liquid Glass: design tokenlar + bosh sahifa — 2026-10-27 (branch `feat/liquid-glass-home`)
+- Audit: `docs/AUDIT-2026-10-27.md`. `dx=0 dy=0` xato emas (raw va window koordinata mos); RNGH Android `PanGestureHandler` translation'ni root hodisadan oladi — formula to'g'ri. `drop:null` ning isbotlangan sabablari 83bcd0f da tuzatilgan; telefonda hali tasdiqlanmagan.
+- Yangi: `src/design/tokens.ts` (spacing, radius, typography, icon, elevation, motion, haptic, `useReducedMotion`), `src/design/States.tsx` (EmptyState, ErrorState, Skeleton, LoadingState), `src/features/BalanceSummary.tsx` (umumiy balans har valyuta alohida qatorda, asosiy valyuta birinchi; davr bo'yicha kirim/xarajat/sof o'zgarish `/api/analytics/summary` dan).
+- Palitra: midnight navy + ko'k-binafsha, electric blue accent; light — off-white, nozik kulrang chegara. `CircleBadge` soyasi iOS'da kesilmaydi, Android'da elevation olib tashlandi. `Tap` Reduce Motion'ni hurmat qiladi. expo-blur `blurMethod="dimezisBlurViewSdk31Plus"` (eskirgan prop ogohlantirishi yo'qoldi). Glyph web'da `aria-hidden` (React DOM ogohlantirishi yo'qoldi).
+- Bosh sahifa: yangi header (profil, nom, sinxron holati, sinxron, sozlamalar), balans kartasi + davr tanlash, kirim manbalari 4 ustun (oldin 5), hamyonlar 2, toifalar 3; matnlar ≥11.5 px; bo'sh hamyon → EmptyState + "Yangi hamyon yaratish"; yuklanishda skeleton; yuklanmasa ErrorState + qayta urinish. Tab bar: ikon 22, yozuv 11.5, balandlik 54.
+- Tekshirildi: tsc toza, eslint toza, jest 101/101 (+3 BalanceSummary; grid testi 4 ustunga, qabul testi bo'sh holat tugmasiga moslandi), `expo export --platform android` OK. Web (400x860) haqiqiy lokal API + demo hisob: dark va light mode ko'rildi, toifani bosish → xarajat oynasi ochildi (saqlanmadi).
+- TEKSHIRILMAGAN: haqiqiy Android/iOS qurilma; Android blur ko'rinishi; drag & drop bu bosqichda o'zgartirilmadi.

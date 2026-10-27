@@ -1,11 +1,11 @@
 import { BlurView } from 'expo-blur';
-import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { ReactNode } from 'react';
 import { Platform, Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useSettings } from '@/state/settings';
 import { usePalette } from './theme';
+import { haptic as haptics, motion, useReducedMotion } from './tokens';
 
 /** Full-screen gradient with two soft light orbs. */
 export function GlassBackground({ children }: { children: ReactNode }) {
@@ -42,19 +42,22 @@ interface GlassCardProps {
   padding?: number;
   /** style of the inner padded wrapper (e.g. `flexShrink: 1` so a ScrollView inside can shrink and scroll) */
   innerStyle?: StyleProp<ViewStyle>;
+  testID?: string;
 }
 
 /**
  * Frosted glass surface. One component for both platforms: backdrop blur + translucent fill + hairline border.
- * Android uses expo-blur's `dimezisBlurView`; with "reduce effects" it falls back to the plain translucent fill.
+ * Android blurs only on SDK 31+ (`dimezisBlurViewSdk31Plus`; older devices get the translucent fill, the blur is too slow
+ * there); with "reduce effects" every platform falls back to the plain translucent fill.
  */
-export function GlassCard({ children, style, radius = 24, tint, highlight, padding = 16, innerStyle }: GlassCardProps) {
+export function GlassCard({ children, style, radius = 24, tint, highlight, padding = 16, innerStyle, testID }: GlassCardProps) {
   const p = usePalette();
   const reduce = useSettings((s) => s.reduceEffects);
   const border = highlight ? p.accent : p.glassBorder;
   const fill = tint ? `${tint}29` : p.glassFill;
   return (
     <View
+      testID={testID}
       style={[
         {
           borderRadius: radius,
@@ -62,10 +65,10 @@ export function GlassCard({ children, style, radius = 24, tint, highlight, paddi
           borderColor: border,
           overflow: 'hidden',
           shadowColor: highlight ? p.accent : '#000',
-          shadowOpacity: highlight ? 0.5 : 0.18,
-          shadowRadius: highlight ? 18 : 12,
+          shadowOpacity: highlight ? 0.45 : p.dark ? 0.22 : 0.08,
+          shadowRadius: highlight ? 18 : 14,
           shadowOffset: { width: 0, height: 6 },
-          elevation: highlight ? 8 : 3,
+          elevation: highlight ? 6 : 1,
           backgroundColor: reduce ? p.glassFillStrong : undefined,
         },
         style,
@@ -75,7 +78,7 @@ export function GlassCard({ children, style, radius = 24, tint, highlight, paddi
         <BlurView
           intensity={Platform.OS === 'android' ? 40 : 45}
           tint={p.blurTint}
-          experimentalBlurMethod="dimezisBlurView"
+          blurMethod="dimezisBlurViewSdk31Plus"
           style={StyleSheet.absoluteFill}
         />
       )}
@@ -103,9 +106,10 @@ interface PressableProps {
   testID?: string;
 }
 
-/** Soft scale-down + haptic tick. Accessible by default (role=button + label). */
+/** Soft scale-down + haptic tick. Accessible by default (role=button + label). Honors the OS "reduce motion" setting. */
 export function Tap({ children, onPress, onLongPress, style, containerStyle, label, disabled, haptic = true, testID }: PressableProps) {
   const scale = useSharedValue(1);
+  const reduced = useReducedMotion();
   const anim = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   return (
     <Pressable
@@ -113,11 +117,12 @@ export function Tap({ children, onPress, onLongPress, style, containerStyle, lab
       style={containerStyle}
       accessibilityRole="button"
       accessibilityLabel={label}
+      accessibilityState={{ disabled: !!disabled }}
       disabled={disabled}
-      onPressIn={() => scale.set(withSpring(0.96, { damping: 18, stiffness: 320 }))}
-      onPressOut={() => scale.set(withSpring(1, { damping: 14, stiffness: 260 }))}
+      onPressIn={() => { if (!reduced) scale.set(withSpring(0.96, motion.press)); }}
+      onPressOut={() => { if (!reduced) scale.set(withSpring(1, motion.release)); }}
       onPress={() => {
-        if (haptic && Platform.OS !== 'web') void Haptics.selectionAsync();
+        if (haptic) haptics.tick();
         onPress?.();
       }}
       onLongPress={onLongPress}
