@@ -347,7 +347,20 @@ function Tile({ name, icon, color, amounts, amountColor, ring, grow, wide }: {
   );
 }
 
-const CELL4 = { width: '25%' as const, paddingHorizontal: space.xs };
+/**
+ * The card that floats under the finger while dragging: an exact replica of the tile on an opaque glass plate, so it
+ * stays readable above any content it passes over (the drag provider adds the lift scale and the float shadow).
+ */
+function FloatingCard({ children }: { children: ReactNode }) {
+  const p = usePalette();
+  return (
+    <View style={{ borderRadius: radii.lg, padding: space.xs, backgroundColor: p.dark ? 'rgba(20,28,60,0.94)' : 'rgba(255,255,255,0.96)', borderWidth: 1, borderColor: `${p.accent}66` }}>
+      {children}
+    </View>
+  );
+}
+
+const CELL4 ={ width: '25%' as const, paddingHorizontal: space.xs };
 const CELL3 = { width: '33.3333%' as const, paddingHorizontal: space.xs };
 const CELL2 = { width: '50%' as const, paddingHorizontal: space.xs };
 
@@ -390,7 +403,8 @@ function WalletTile({ wallet, onActions }: { wallet: Wallet; onActions(): void }
       <DropZone id={`wallet:${wallet.id}`} accepts={accepts} onDrop={onDrop}>
         {({ active, rejected, valid }) => (
           <Draggable payload={{ kind: 'wallet', id: wallet.id }} onTap={onActions}
-            ghost={<View style={{ alignItems: 'center' }}><CircleBadge name={wallet.icon} color={wallet.color} size={62} ring={p.accent} /></View>}>
+            ghost={<FloatingCard><Tile wide name={wallet.name} icon={wallet.icon} color={wallet.color} ring={p.accent}
+              amounts={[{ currency: wallet.currency, total: wallet.balance }]} amountColor={p.text} /></FloatingCard>}>
             <View
               accessible
               accessibilityLabel={`${wallet.name} ${fmtMoney(wallet.balance, wallet.currency)}`}
@@ -435,7 +449,7 @@ function SourceTile({ source, amounts }: { source: IncomeSource; amounts?: Amoun
   return (
     <View style={CELL4}>
       <Draggable payload={{ kind: 'source', id: source.id }} onTap={() => openOp({ kind: 'income', sourceId: source.id })}
-        ghost={<View style={{ alignItems: 'center' }}><CircleBadge name={source.icon} color={source.color} size={62} ring={p.accent} /></View>}>
+        ghost={<FloatingCard><Tile name={source.name} icon={source.icon} color={source.color} amounts={amounts} amountColor={p.text} ring={p.accent} /></FloatingCard>}>
         <Tile name={source.name} icon={source.icon} color={source.color} amounts={amounts} amountColor={p.text} />
       </Draggable>
     </View>

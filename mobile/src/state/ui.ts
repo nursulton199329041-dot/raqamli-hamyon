@@ -39,7 +39,9 @@ export const useUi = create<UiState>((set, get) => ({
   opNonce: 0,
   form: null,
   formId: null,
-  openOp: (p) => set((s) => ({ op: p, lastOp: p, opNonce: s.opNonce + 1 })),
+  // One operation form at a time: a second open while one is showing (a duplicate drop event, a tap racing a drop)
+  // is ignored, so a single gesture can never stack two forms or lead to two transactions.
+  openOp: (p) => set((s) => (s.op ? s : { op: p, lastOp: p, opNonce: s.opNonce + 1 })),
   closeOp: () => set({ op: null }),
   openForm: (f, id) => set({ form: f, formId: id ?? null }),
   closeForm: () => set({ form: null, formId: null }),

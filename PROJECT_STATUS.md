@@ -202,3 +202,19 @@ Commit 83bcd0f, `eas update --channel preview` (runtime 1.0.0, android fingerpri
 - Bosh sahifa: yangi header (profil, nom, sinxron holati, sinxron, sozlamalar), balans kartasi + davr tanlash, kirim manbalari 4 ustun (oldin 5), hamyonlar 2, toifalar 3; matnlar ≥11.5 px; bo'sh hamyon → EmptyState + "Yangi hamyon yaratish"; yuklanishda skeleton; yuklanmasa ErrorState + qayta urinish. Tab bar: ikon 22, yozuv 11.5, balandlik 54.
 - Tekshirildi: tsc toza, eslint toza, jest 101/101 (+3 BalanceSummary; grid testi 4 ustunga, qabul testi bo'sh holat tugmasiga moslandi), `expo export --platform android` OK. Web (400x860) haqiqiy lokal API + demo hisob: dark va light mode ko'rildi, toifani bosish → xarajat oynasi ochildi (saqlanmadi).
 - TEKSHIRILMAGAN: haqiqiy Android/iOS qurilma; Android blur ko'rinishi; drag & drop bu bosqichda o'zgartirilmadi.
+
+### PHASE 4 — Drag & drop engine — 2026-10-27 (branch `feat/liquid-glass-home`)
+**Asl sabab (manba kodi bilan tasdiqlangan):** RN yangi arxitekturasida (Fabric) ScrollView ichidagi view uchun `measureInWindow` scroll offsetni shadow-tree **state**idan oladi (`ScrollViewShadowNode::getContentOriginOffset` → `stateData.contentOffset`), bu state esa native scroll'dan **asinxron** yangilanadi. 83bcd0f dagi "auto-scroll paytida va drop oldidan qayta o'lchash" shu sababli kechikkan koordinata berardi → zona haqiqiy joyidan pastda o'lchanib, drop `drop:null` bo'lardi (ayniqsa pastki qatorga auto-scroll bilan surilganda). `dx=0 dy=0` xato emas: raw touch va window fazosi mos (RNGH Android translation'ni root hodisasidan hisoblaydi). Mutatsiya tekshiruvi: eski "drop oldidan qayta o'lchash" qaytarilsa, yangi regression testi aynan `op=null` bilan yiqiladi.
+
+**Yechim (`src/dnd/DragDrop.tsx`):**
+- Zonalar drag BOSHLANGANDA (sahifa tinch) bir marta o'lchanadi + o'sha paytdagi scroll offset saqlanadi; drag davomida jonli joy = `y - (buyurilgan offset - o'lchangan offset)` — arifmetika, kechikadigan o'lchov yo'q. Scroller'siz zonalar dropda qayta o'lchanadi (eski xatti-harakat).
+- Floating karta UI thread'da barmoq bilan yuradi (gesture worklet → shared value → animated style); hit-test va highlight JS'da.
+- Grab nuqtasi = touch-down nuqtasi (`e.x - translationX`): long press paytida barmoq siljisa ikki marta qo'shilmaydi.
+- Bir vaqtda bitta drag sessiyasi (UI thread'da `session` claim; `maxPointers(1)`); rad etilgan karta qaytayotganda sessiya darhol bo'shaydi.
+- Ekran o'lchami o'zgarsa (aylantirish/split) drag bekor qilinadi, hech narsa ochilmaydi. Zona onLayout o'zgarsa, auto-scroll tinchigach qayta o'lchanadi.
+- Overlay `zIndex/elevation 1000` — karta hech narsa ortida qolmaydi; karta = tile'ning aniq nusxasi (FloatingCard), lift scale + float soya, Reduce Motion'da animatsiyasiz.
+- `useUi.openOp`: forma ochiq turganda ikkinchi ochilish e'tiborsiz → bitta gesture = bitta forma.
+
+**Testlar (haqiqiy bajarilgan):** tsc toza, eslint toza, jest **112/112** (+11, `__tests__/dragEngine.test.tsx`: 350 ms/1 pointer, window-space karta, grab creep, bitta sessiya, ekran o'lchami, tez scroll'dan keyin drop, ROOT CAUSE kechikkan o'lchov, pastki qator max offsetda, forma ochiq paytida drop, openOp himoyasi, o'z joyiga qo'yilganda tap yo'q). Mavjud 26 drag testi o'zgarishsiz o'tdi. `expo export --platform android` OK.
+
+**HAQIQIY ANDROID QURILMADA SINALMADI:** bu kompyuterda `adb`/Android SDK yo'q. Native o'zgarish yo'q (faqat JS) → mavjud 1.0.0 preview APK'ga OTA mos. OTA yuborilmadi (ruxsat kerak).

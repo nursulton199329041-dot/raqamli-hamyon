@@ -1,17 +1,26 @@
-import * as Haptics from 'expo-haptics';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
-import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Dimensions, Pressable, StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming, type SharedValue } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
+import { elevation, haptic, motion, useReducedMotion } from '@/design/tokens';
 
 /**
  * Smart drag & drop. A drop NEVER moves money: it only reports (payload, zone) so the caller can open a
  * pre-filled confirmation form. Same gesture code on iOS, Android and Web (gesture-handler + reanimated).
  *
- * Coordinates: every rectangle and every pointer position handled here lives in ONE space, the one returned by
- * `measureInWindow`. The finger position is derived as `windowOrigin(draggable) + grabPoint + translation`, never from
- * `absoluteX/Y` alone, because on Android the raw touch space and the window space may differ (status bar / insets).
+ * Coordinates — one space, the one `measureInWindow` returns ("window space"):
+ *  - finger = windowOrigin(draggable) + touch-down point inside it + pan translation. Translation is computed by
+ *    gesture-handler from root-view touch coordinates, so it is not affected by the page scrolling under the finger.
+ *  - zone rectangles are measured ONCE, when the drag starts (the page is at rest then), together with the scroll offset
+ *    at that moment. While the drag auto-scrolls the page, a zone's live position is pure arithmetic:
+ *    `y_measured - (offsetNow - offsetAtMeasure)`, where offsetNow is the offset this engine commanded.
+ *    They are NOT re-measured mid-scroll: on the new architecture `measureInWindow` derives the offset of a view inside a
+ *    ScrollView from the ScrollView's shadow-tree state, which native updates asynchronously — during a programmatic
+ *    scroll it lags, and rectangles re-measured then are off by that lag (the drop then lands on "nothing": drop:null).
+ *
+ * Threads: the floating card follows the finger on the UI thread (gesture worklet -> shared values -> animated style);
+ * hit-testing, highlight state and the drop itself run on the JS thread.
  */
 export interface DragPayload {
   kind: 'wallet' | 'source';
@@ -25,6 +34,8 @@ interface Zone {
   onDrop(p: DragPayload): void;
   ref: RefObject<View | null>;
   rect?: Rect;
+  /** scroller offset the rect was measured at; undefined = the zone does not move with a scroller */
+  scrollAt?: number;
 }
 
 /** A vertically scrolling container that the drag may auto-scroll when the finger nears its top/bottom edge. */
@@ -38,6 +49,18 @@ export interface Scroller {
 /** Where the finger grabbed the dragged tile (tile-local px) and the tile size; used to draw the ghost. */
 export interface Grab { x: number; y: number; w: number }
 
+/** Finger state shared with the gesture worklets (UI thread). */
+interface Finger {
+  x: SharedValue<number>;
+  y: SharedValue<number>;
+  originX: SharedValue<number>;
+  originY: SharedValue<number>;
+  grabX: SharedValue<number>;
+  grabY: SharedValue<number>;
+  /** key of the draggable that owns the current drag session ('' = none): one drag at a time, claimed on the UI thread */
+  session: SharedValue<string>;
+}
+
 type Trace = (event: string, data?: Record<string, number | string | null>) => void;
 let tracer: Trace | null = null;
 /** Diagnostics hook: the touch-test screen subscribes to see raw/window coordinates and hit results on a real device. */
@@ -48,10 +71,12 @@ export function setDragTrace(fn: Trace | null) {
 const EDGE = 84;
 /** A finger that lands this close (px) to a zone still counts: tiles are separated by gaps a thumb easily hits. */
 const NEAR = 14;
-const REMEASURE_MS = 120;
+const MEASURE_TIMEOUT_MS = 120;
 const RETURN_MS = 180;
 const MAX_STEP = 16;
-const LONG_PRESS_MS = 350;
+export const LONG_PRESS_MS = 350;
+/** layout changes of a zone are re-measured only once programmatic scrolling has been quiet this long */
+const SCROLL_SETTLE_MS = 160;
 
 interface DragCtx {
   registerScroller(s: Scroller): () => void;
@@ -62,34 +87,25 @@ interface DragCtx {
   /** zone id hovered by a payload it rejects (invalid drop) */
   rejectedId: string | null;
   registerZone(id: string, zone: Zone): () => void;
-  begin(p: DragPayload, ghost: ReactNode, x: number, y: number, grab?: Grab): void;
+  /** a registered zone changed size/position (onLayout) */
+  zoneMoved(id: string): void;
+  /** returns false when another drag is already running (only one session at a time) */
+  begin(p: DragPayload, ghost: ReactNode, x: number, y: number, grab?: Grab): boolean;
   move(x: number, y: number): void;
   /** `home` = window position the finger had when it grabbed the tile; given, a rejected drop animates the ghost back there. */
   end(x: number, y: number, home?: { x: number; y: number }): void;
   cancel(): void;
+  finger: Finger;
 }
 
 const Ctx = createContext<DragCtx | null>(null);
-
-/** Diagnostics: id and distance of the closest measured zone ("none" when nothing was measured). */
-function nearestInfo(zs: Map<string, Zone>, x: number, y: number): string {
-  let id = 'none';
-  let best = Infinity;
-  zs.forEach((z, zid) => {
-    if (!z.rect || z.rect.w <= 0 || z.rect.h <= 0) return;
-    const d = gap(z.rect, x, y);
-    if (d < best) {
-      best = d;
-      id = zid;
-    }
-  });
-  return best === Infinity ? 'none' : `${id}@${Math.round(best)}px`;
-}
 
 /** Distance from a point to a rectangle (0 when inside). */
 function gap(r: Rect, x: number, y: number) {
   return Math.hypot(Math.max(r.x - x, 0, x - (r.x + r.w)), Math.max(r.y - y, 0, y - (r.y + r.h)));
 }
+
+const keyOf = (p: DragPayload) => `${p.kind}:${p.id}`;
 
 export function DragProvider({ children }: { children: ReactNode }) {
   const zones = useRef(new Map<string, Zone>());
@@ -99,19 +115,29 @@ export function DragProvider({ children }: { children: ReactNode }) {
   const [hoverId, setHoverId] = useState<string | null>(null);
   const [rejectedId, setRejectedId] = useState<string | null>(null);
   const [validIds, setValidIds] = useState<ReadonlySet<string>>(new Set());
-  const gx = useSharedValue(0);
-  const gy = useSharedValue(0);
+  const reduced = useReducedMotion();
+  const fx = useSharedValue(0);
+  const fy = useSharedValue(0);
+  const originX = useSharedValue(0);
+  const originY = useSharedValue(0);
   const grabX = useSharedValue(80);
   const grabY = useSharedValue(30);
+  const session = useSharedValue('');
+  const finger = useMemo<Finger>(
+    () => ({ x: fx, y: fy, originX, originY, grabX, grabY, session }),
+    [fx, fy, originX, originY, grabX, grabY, session],
+  );
+  const ox = useSharedValue(0);
+  const oy = useSharedValue(0);
   const lift = useSharedValue(0);
   const payloadRef = useRef<DragPayload | null>(null);
   const scroller = useRef<Scroller | null>(null);
   const scrollRect = useRef<Rect | undefined>(undefined);
   const pointer = useRef({ x: 0, y: 0 });
   const overlay = useRef<View>(null);
-  const overlayOrigin = useRef({ x: 0, y: 0 });
   const endToken = useRef(0);
-  const lastMeasure = useRef(0);
+  const measured = useRef<Promise<void>>(Promise.resolve());
+  const lastAutoScroll = useRef(0);
 
   const registerScroller = useCallback((s: Scroller) => {
     scroller.current = s;
@@ -120,13 +146,22 @@ export function DragProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  /** Live window rectangle of a zone: measured rect shifted by how far the page was scrolled since the measurement. */
+  const live = useCallback((z: Zone): Rect | undefined => {
+    const r = z.rect;
+    if (!r || r.w <= 0 || r.h <= 0) return undefined;
+    const s = scroller.current;
+    if (z.scrollAt === undefined || !s) return r;
+    return { ...r, y: r.y - (s.getOffset() - z.scrollAt) };
+  }, []);
+
   /** The zone under the finger; otherwise the nearest zone that ACCEPTS the payload within NEAR px (thumb tolerance). */
   const zoneAt = useCallback((x: number, y: number, p?: DragPayload | null): [string, Zone] | null => {
     let best: [string, Zone] | null = null;
     let bestGap = Infinity;
     for (const [id, z] of zones.current) {
-      const r = z.rect;
-      if (!r || r.w <= 0 || r.h <= 0) continue;
+      const r = live(z);
+      if (!r) continue;
       const d = gap(r, x, y);
       if (d === 0) return [id, z];
       if (d <= NEAR && d < bestGap && (!p || z.accepts(p))) {
@@ -135,14 +170,27 @@ export function DragProvider({ children }: { children: ReactNode }) {
       }
     }
     return best;
-  }, []);
+  }, [live]);
 
-  /**
-   * Fresh `measureInWindow` of every zone. Rectangles taken at drag start go stale as soon as the page scrolls (auto-scroll
-   * arithmetic drifts when native scroll events lag), so they are refreshed during auto-scroll and again right before the drop.
-   */
-  const measureZones = useCallback(
-    () =>
+  /** Diagnostics: id and distance of the closest measured zone ("none" when nothing was measured). */
+  const nearestInfo = useCallback((x: number, y: number) => {
+    let id = 'none';
+    let best = Infinity;
+    zones.current.forEach((z, zid) => {
+      const r = live(z);
+      if (!r) return;
+      const d = gap(r, x, y);
+      if (d < best) {
+        best = d;
+        id = zid;
+      }
+    });
+    return best === Infinity ? 'none' : `${id}@${Math.round(best)}px`;
+  }, [live]);
+
+  /** `measureInWindow` the given zones, remembering the scroll offset each measurement belongs to. */
+  const measure = useCallback(
+    (list: Zone[]) =>
       new Promise<void>((resolve) => {
         let pending = 0;
         let settled = false;
@@ -152,73 +200,100 @@ export function DragProvider({ children }: { children: ReactNode }) {
             resolve();
           }
         };
-        zones.current.forEach((z) => {
+        for (const z of list) {
           const node = z.ref.current;
-          if (!node) return;
+          if (!node) continue;
+          const s = scroller.current;
+          const at = s ? s.getOffset() : undefined;
           pending += 1;
           node.measureInWindow((mx, my, w, h) => {
             z.rect = { x: mx, y: my, w, h };
+            z.scrollAt = at;
             pending -= 1;
             if (pending === 0) settle();
           });
-        });
+        }
         if (pending === 0) settle();
-        setTimeout(settle, REMEASURE_MS);
+        setTimeout(settle, MEASURE_TIMEOUT_MS);
       }),
     [],
   );
 
   const registerZone = useCallback((id: string, zone: Zone) => {
     zones.current.set(id, zone);
+    // a zone that appears mid-drag (section expanded, list refreshed) is measured right away
+    if (payloadRef.current) void measure([zone]);
     return () => {
       zones.current.delete(id);
     };
-  }, []);
+  }, [measure]);
 
-  const place = useCallback((x: number, y: number) => {
-    gx.set(x - overlayOrigin.current.x);
-    gy.set(y - overlayOrigin.current.y);
-  }, [gx, gy]);
+  const zoneMoved = useCallback((id: string) => {
+    if (!payloadRef.current) return; // measured fresh at the next drag start anyway
+    const z = zones.current.get(id);
+    if (!z) return;
+    const again = () => {
+      if (!payloadRef.current) return;
+      if (Date.now() - lastAutoScroll.current < SCROLL_SETTLE_MS) setTimeout(again, SCROLL_SETTLE_MS);
+      else void measure([z]);
+    };
+    again();
+  }, [measure]);
+
+  const finish = useCallback(() => {
+    endToken.current += 1;
+    payloadRef.current = null;
+    finger.session.set('');
+    setDragging(null);
+    setGhost(null);
+    setHoverId(null);
+    setRejectedId(null);
+    setValidIds(new Set());
+    lift.set(0);
+  }, [lift, finger]);
 
   const begin = useCallback((p: DragPayload, g: ReactNode, x: number, y: number, grab?: Grab) => {
+    if (payloadRef.current) return false; // one drag at a time
+    const f = finger;
+    if (f.session.get() === '') f.session.set(keyOf(p)); // direct API use (no gesture worklet claimed it)
     endToken.current += 1;
     payloadRef.current = p;
+    pointer.current = { x, y };
     tracer?.('begin', { x: Math.round(x), y: Math.round(y), zones: zones.current.size });
-    // Measure every drop zone now (positions change with scrolling). Old rects are dropped first so a stale
-    // rectangle from a previous drag can never be hit while the fresh measurement is still in flight.
+    // Old rects are dropped first so a stale rectangle from a previous drag can never be hit while the fresh measurement
+    // is still in flight; `end` waits for this measurement.
     const valid = new Set<string>();
     zones.current.forEach((z, id) => {
       if (z.accepts(p)) valid.add(id);
       z.rect = undefined;
-      z.ref.current?.measureInWindow((mx, my, w, h) => {
-        z.rect = { x: mx, y: my, w, h };
-      });
+      z.scrollAt = undefined;
     });
+    measured.current = measure([...zones.current.values()]);
     overlay.current?.measureInWindow((mx, my) => {
-      overlayOrigin.current = { x: mx, y: my };
-      place(pointer.current.x, pointer.current.y);
+      ox.set(mx);
+      oy.set(my);
     });
-    pointer.current = { x, y };
     scrollRect.current = undefined;
     scroller.current?.ref.current?.measureInWindow((mx, my, w, h) => {
       scrollRect.current = { x: mx, y: my, w, h };
     });
-    grabX.set(grab?.x ?? 80);
-    grabY.set(grab?.y ?? 30);
+    if (grab) {
+      f.grabX.set(grab.x);
+      f.grabY.set(grab.y);
+    }
     setGhostWidth(grab?.w ?? 160);
     setValidIds(valid);
     setGhost(g);
     setDragging(p);
-    place(x, y);
-    lift.set(withSpring(1, { damping: 14, stiffness: 220 }));
-    if (Platform.OS !== 'web') void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-  }, [grabX, grabY, lift, place]);
+    lift.set(reduced ? withTiming(1, { duration: 1 }) : withSpring(1, motion.lift));
+    haptic.lift();
+    return true;
+  }, [lift, measure, ox, oy, reduced, finger]);
 
   const move = useCallback((x: number, y: number) => {
     const p = payloadRef.current;
     if (!p) return;
     pointer.current = { x, y };
-    place(x, y);
     const found = zoneAt(x, y, p);
     tracer?.('move', { x: Math.round(x), y: Math.round(y), zone: found ? found[0] : null });
     if (!found) {
@@ -229,67 +304,63 @@ export function DragProvider({ children }: { children: ReactNode }) {
     const [id, z] = found;
     if (z.accepts(p)) {
       setHoverId((h) => {
-        if (h !== id && Platform.OS !== 'web') void Haptics.selectionAsync();
+        if (h !== id) haptic.tick();
         return id;
       });
       setRejectedId(null);
     } else {
       setHoverId(null);
       setRejectedId((h) => {
-        if (h !== id && Platform.OS !== 'web') void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        if (h !== id) haptic.warning();
         return id;
       });
     }
-  }, [zoneAt, place]);
-
-  const finish = useCallback(() => {
-    endToken.current += 1;
-    payloadRef.current = null;
-    setDragging(null);
-    setGhost(null);
-    setHoverId(null);
-    setRejectedId(null);
-    setValidIds(new Set());
-    lift.set(0);
-  }, [lift]);
+  }, [zoneAt]);
 
   const end = useCallback((x: number, y: number, home?: { x: number; y: number }) => {
     const p = payloadRef.current;
     if (!p) return; // a second "end" for the same touch can never produce a second drop
     payloadRef.current = null;
     const token = (endToken.current += 1);
-    void measureZones().then(() => {
-      if (endToken.current !== token) return; // cancelled / replaced while measuring
-      const found = zoneAt(x, y, p);
-      const ok = !!found && found[1].accepts(p);
-      const reason = ok ? 'drop' : found ? 'rejected' : zones.current.size === 0 ? 'no-zones' : 'no-zone-under-finger';
-      tracer?.('end', {
-        x: Math.round(x), y: Math.round(y), drop: ok && found ? found[0] : null, reason, zones: zones.current.size,
-        nearest: nearestInfo(zones.current, x, y),
+    void measured.current
+      // zones that do not live in the scroller have no scroll arithmetic: re-measure those before deciding
+      .then(() => (scroller.current ? undefined : measure([...zones.current.values()])))
+      .then(() => {
+        if (endToken.current !== token) return; // cancelled / replaced while measuring
+        const found = zoneAt(x, y, p);
+        const ok = !!found && found[1].accepts(p);
+        const reason = ok ? 'drop' : found ? 'rejected' : zones.current.size === 0 ? 'no-zones' : 'no-zone-under-finger';
+        tracer?.('end', {
+          x: Math.round(x), y: Math.round(y), drop: ok && found ? found[0] : null, reason, zones: zones.current.size,
+          nearest: nearestInfo(x, y), scroll: scroller.current ? Math.round(scroller.current.getOffset()) : null,
+        });
+        if (ok && found) {
+          finish();
+          haptic.success();
+          found[1].onDrop(p);
+          return;
+        }
+        if (home) {
+          // rejected / missed: the card flies back to where it was picked up, then the drag state is cleared
+          setHoverId(null);
+          const f = finger;
+          // the fly-back is cosmetic: the session is free at once, so the next long-press is never swallowed
+          f.session.set('');
+          const d = reduced ? 1 : RETURN_MS;
+          f.x.set(withTiming(home.x, { duration: d }));
+          f.y.set(withTiming(home.y, { duration: d }));
+          haptic.warning();
+          setTimeout(() => {
+            if (endToken.current === token) finish();
+          }, d + 20);
+        } else {
+          finish();
+        }
       });
-      if (ok && found) {
-        finish();
-        if (Platform.OS !== 'web') void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        found[1].onDrop(p);
-        return;
-      }
-      if (home) {
-        // rejected / missed: the tile flies back to where it was picked up, then the drag state is cleared
-        setHoverId(null);
-        gx.set(withTiming(home.x - overlayOrigin.current.x, { duration: RETURN_MS }));
-        gy.set(withTiming(home.y - overlayOrigin.current.y, { duration: RETURN_MS }));
-        if (Platform.OS !== 'web') void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-        setTimeout(() => {
-          if (endToken.current === token) finish();
-        }, RETURN_MS + 20);
-      } else {
-        finish();
-      }
-    });
-  }, [zoneAt, finish, measureZones, gx, gy]);
+  }, [zoneAt, nearestInfo, finish, measure, reduced, finger]);
 
-  // Auto-scroll while the finger rests near the top/bottom edge of the scroller. Zone rects are window-relative,
-  // so they are shifted by the scrolled distance and the hover state is recomputed from the same finger position.
+  // Auto-scroll while the finger rests near the top/bottom edge of the scroller. Zone positions follow by arithmetic
+  // (see `live`), so the hover state is simply recomputed from the same finger position.
   useEffect(() => {
     if (!dragging) return;
     const id = setInterval(() => {
@@ -303,43 +374,55 @@ export function DragProvider({ children }: { children: ReactNode }) {
       if (dy === 0) return;
       const cur = s.getOffset();
       const next = Math.max(0, Math.min(s.getMax(), cur + dy));
-      const applied = next - cur;
-      if (Math.abs(applied) < 0.5) return;
+      if (Math.abs(next - cur) < 0.5) return;
       s.scrollTo(next);
-      zones.current.forEach((z) => {
-        if (z.rect) z.rect = { ...z.rect, y: z.rect.y - applied };
-      });
+      lastAutoScroll.current = Date.now();
       move(pointer.current.x, pointer.current.y);
-      const now = Date.now();
-      if (now - lastMeasure.current > REMEASURE_MS) {
-        lastMeasure.current = now;
-        void measureZones().then(() => move(pointer.current.x, pointer.current.y));
-      }
     }, 16);
     return () => clearInterval(id);
-  }, [dragging, move, measureZones]);
+  }, [dragging, move]);
+
+  // Rotation / split screen / window resize: every measured rectangle is now wrong. Drop the drag (nothing is opened).
+  useEffect(() => {
+    const sub = Dimensions.addEventListener('change', () => {
+      zones.current.forEach((z) => {
+        z.rect = undefined;
+        z.scrollAt = undefined;
+      });
+      if (payloadRef.current) {
+        tracer?.('cancel', { reason: 'dimensions' });
+        finish();
+      }
+    });
+    return () => sub.remove();
+  }, [finish]);
 
   const ghostStyle = useAnimatedStyle(() => ({
     transform: [
-      { translateX: gx.get() - grabX.get() },
-      { translateY: gy.get() - grabY.get() },
-      { scale: 1 + 0.08 * lift.get() },
+      { translateX: finger.x.get() - ox.get() - finger.grabX.get() },
+      { translateY: finger.y.get() - oy.get() - finger.grabY.get() },
+      { scale: 1 + 0.05 * lift.get() },
     ],
-    opacity: 0.97,
+    shadowOpacity: 0.32 * lift.get(),
   }));
 
   const value = useMemo<DragCtx>(
-    () => ({ dragging, hoverId, validIds, rejectedId, registerZone, registerScroller, begin, move, end, cancel: finish }),
-    [dragging, hoverId, validIds, rejectedId, registerZone, registerScroller, begin, move, end, finish],
+    () => ({
+      dragging, hoverId, validIds, rejectedId, registerZone, zoneMoved, registerScroller, begin, move, end, cancel: finish,
+      finger,
+    }),
+    [dragging, hoverId, validIds, rejectedId, registerZone, zoneMoved, registerScroller, begin, move, end, finish, finger],
   );
 
   return (
     <Ctx.Provider value={value}>
       {children}
-      {/* Always mounted so its window origin can be measured before the first ghost frame. */}
-      <View ref={overlay} collapsable={false} pointerEvents="none" style={StyleSheet.absoluteFill}>
+      {/* Always mounted so its window origin can be measured before the first ghost frame; drawn above every screen. */}
+      <View ref={overlay} collapsable={false} pointerEvents="none" style={[StyleSheet.absoluteFill, { zIndex: 1000, elevation: 1000 }]}>
         {dragging && (
-          <Animated.View style={[{ position: 'absolute', left: 0, top: 0, width: ghostWidth }, ghostStyle]}>{ghost}</Animated.View>
+          <Animated.View testID="drag-ghost" style={[{ position: 'absolute', left: 0, top: 0, width: ghostWidth }, elevation.float, ghostStyle]}>
+            {ghost}
+          </Animated.View>
         )}
       </View>
     </Ctx.Provider>
@@ -353,82 +436,79 @@ export function useDrag(): DragCtx {
 }
 
 /**
- * Long-press (350 ms) then drag. `ghost` is what follows the finger.
+ * Long-press (350 ms) then drag. `ghost` is the floating card that follows the finger.
  *
- * The gesture object is created once and reads the latest props through refs: re-creating it on every render
- * (the old behaviour, because `ghost` is a fresh element each render) re-configures the native handler while it is
- * active, which is unreliable on Android. A short tap is a plain `Pressable` press, the same path every other
- * button in the app uses; it is suppressed after a drag so releasing on the origin tile cannot also fire it.
+ * The gesture object is created once and reads the latest props through refs (re-creating it while active re-configures
+ * the native handler, which is unreliable on Android). The worklets keep the floating card glued to the finger on the UI
+ * thread; JS gets the same window-space position for hit-testing. A short tap is a plain `Pressable` press, the same
+ * path every other button uses; it is suppressed right after a drag so releasing on the origin tile cannot also fire it.
  */
 export function Draggable({ payload, ghost, children, onTap }: {
   payload: DragPayload; ghost: ReactNode; children: ReactNode; onTap?: () => void;
 }) {
   const d = useDrag();
-  const { begin, move, end, cancel } = d;
+  const { begin, move, end, cancel, finger } = d;
   const isSource = d.dragging?.id === payload.id && d.dragging.kind === payload.kind;
 
   const host = useRef<View>(null);
   const latest = useRef({ payload, ghost, onTap });
   const size = useRef({ w: 160, h: 60 });
-  const grab = useRef({ x: 0, y: 0 });
-  const origin = useRef<{ x: number; y: number } | null>(null);
   const active = useRef(false);
   const drift = useRef({ x: 0, y: 0 });
   const justDragged = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const myKey = useSharedValue(keyOf(payload));
 
   useEffect(() => {
     latest.current = { payload, ghost, onTap };
+    myKey.set(keyOf(payload));
   });
 
-  const toWindow = useCallback((tx: number, ty: number, ax: number, ay: number) => {
-    const o = origin.current;
-    return o ? { x: o.x + grab.current.x + tx, y: o.y + grab.current.y + ty } : { x: ax, y: ay };
-  }, []);
-
-  // JS-side handlers (React nodes and payloads never cross into the worklet runtime).
-  const onBegin = useCallback((lx: number, ly: number, ax: number, ay: number) => {
-    clearTimeout(timer.current);
-    active.current = true;
-    justDragged.current = true;
-    grab.current = { x: lx, y: ly };
-    drift.current = { x: 0, y: 0 };
-    origin.current = null;
-    host.current?.measureInWindow((x, y) => {
-      origin.current = { x, y };
-      tracer?.('origin', { dx: Math.round(ax - (x + lx)), dy: Math.round(ay - (y + ly)) });
-    });
-    begin(latest.current.payload, latest.current.ghost, ax, ay, { x: lx, y: ly, w: size.current.w });
-  }, [begin]);
-  const onMove = useCallback((tx: number, ty: number, ax: number, ay: number) => {
-    if (!active.current) return;
-    const p = toWindow(tx, ty, ax, ay);
-    // raw touch coordinate minus the window-space finger, measured on EVERY move (not only at the start)
-    drift.current = { x: Math.max(drift.current.x, Math.abs(ax - p.x)), y: Math.max(drift.current.y, Math.abs(ay - p.y)) };
-    move(p.x, p.y);
-  }, [move, toWindow]);
-  const settle = useCallback(() => {
+  const release = useCallback(() => {
     active.current = false;
     clearTimeout(timer.current);
     timer.current = setTimeout(() => { justDragged.current = false; }, 400);
   }, []);
-  const onEnd = useCallback((tx: number, ty: number, ax: number, ay: number) => {
+
+  // JS-side handlers (React nodes and payloads never cross into the worklet runtime).
+  const onBegin = useCallback((gx: number, gy: number, ax: number, ay: number) => {
+    clearTimeout(timer.current);
+    justDragged.current = true;
+    drift.current = { x: 0, y: 0 };
+    if (!begin(latest.current.payload, latest.current.ghost, ax, ay, { x: gx, y: gy, w: size.current.w })) {
+      release();
+      return;
+    }
+    active.current = true;
+    // the measured window origin replaces the worklet's estimate (absolute minus local); same space as the zones
+    host.current?.measureInWindow((x, y) => {
+      finger.originX.set(x);
+      finger.originY.set(y);
+      tracer?.('origin', { dx: Math.round(ax - (x + gx)), dy: Math.round(ay - (y + gy)) });
+    });
+  }, [begin, finger, release]);
+  const onMove = useCallback((x: number, y: number, ax: number, ay: number) => {
     if (!active.current) return;
-    const p = toWindow(tx, ty, ax, ay);
-    tracer?.('finger', { rawMinusWindowX: Math.round(ax - p.x), rawMinusWindowY: Math.round(ay - p.y), maxDriftX: Math.round(drift.current.x), maxDriftY: Math.round(drift.current.y) });
-    settle();
+    // raw touch coordinate minus the window-space finger, measured on EVERY move (not only at the start)
+    drift.current = { x: Math.max(drift.current.x, Math.abs(ax - x)), y: Math.max(drift.current.y, Math.abs(ay - y)) };
+    move(x, y);
+  }, [move]);
+  const onEnd = useCallback((x: number, y: number, ax: number, ay: number) => {
+    if (!active.current) return;
+    tracer?.('finger', { rawMinusWindowX: Math.round(ax - x), rawMinusWindowY: Math.round(ay - y), maxDriftX: Math.round(drift.current.x), maxDriftY: Math.round(drift.current.y) });
+    release();
     const node = host.current;
-    const g = grab.current;
-    // a missed / rejected drop flies the ghost back to where the tile was picked up (measured fresh: the page may have scrolled)
-    if (node) node.measureInWindow((x, y) => end(p.x, p.y, { x: x + g.x, y: y + g.y }));
-    else end(p.x, p.y);
-  }, [end, toWindow, settle]);
+    const g = { x: finger.grabX.get(), y: finger.grabY.get() };
+    // a missed / rejected drop flies the card back to where it was picked up (measured fresh: the page may have scrolled)
+    if (node) node.measureInWindow((hx, hy) => end(x, y, { x: hx + g.x, y: hy + g.y }));
+    else end(x, y);
+  }, [end, finger, release]);
   const onCancel = useCallback(() => {
     if (!active.current) return;
     tracer?.('cancel');
-    settle();
+    release();
     cancel();
-  }, [cancel, settle]);
+  }, [cancel, release]);
 
   useEffect(() => () => {
     clearTimeout(timer.current);
@@ -440,20 +520,41 @@ export function Draggable({ payload, ghost, children, onTap }: {
     () =>
       Gesture.Pan()
         .activateAfterLongPress(LONG_PRESS_MS)
+        .maxPointers(1)
         .onStart((e) => {
-          scheduleOnRN(onBegin, e.x, e.y, e.absoluteX, e.absoluteY);
+          // claim the single drag session on the UI thread: a second finger on another tile cannot start a parallel drag
+          if (finger.session.get() !== '') return;
+          finger.session.set(myKey.get());
+          // touch-down point inside the tile (the finger may have crept a few px during the long press)
+          const gx = e.x - e.translationX;
+          const gy = e.y - e.translationY;
+          finger.grabX.set(gx);
+          finger.grabY.set(gy);
+          finger.originX.set(e.absoluteX - e.x);
+          finger.originY.set(e.absoluteY - e.y);
+          finger.x.set(e.absoluteX);
+          finger.y.set(e.absoluteY);
+          scheduleOnRN(onBegin, gx, gy, e.absoluteX, e.absoluteY);
         })
         .onUpdate((e) => {
-          scheduleOnRN(onMove, e.translationX, e.translationY, e.absoluteX, e.absoluteY);
+          if (finger.session.get() !== myKey.get()) return;
+          const x = finger.originX.get() + finger.grabX.get() + e.translationX;
+          const y = finger.originY.get() + finger.grabY.get() + e.translationY;
+          finger.x.set(x);
+          finger.y.set(y);
+          scheduleOnRN(onMove, x, y, e.absoluteX, e.absoluteY);
         })
         .onEnd((e) => {
-          scheduleOnRN(onEnd, e.translationX, e.translationY, e.absoluteX, e.absoluteY);
+          if (finger.session.get() !== myKey.get()) return;
+          const x = finger.originX.get() + finger.grabX.get() + e.translationX;
+          const y = finger.originY.get() + finger.grabY.get() + e.translationY;
+          scheduleOnRN(onEnd, x, y, e.absoluteX, e.absoluteY);
         })
         // Touch cancelled (parent took the touch, app backgrounded, ...): drop nothing, restore the tile.
         .onFinalize((_e, success) => {
-          if (!success) scheduleOnRN(onCancel);
+          if (!success && finger.session.get() === myKey.get()) scheduleOnRN(onCancel);
         }),
-    [onBegin, onMove, onEnd, onCancel],
+    [onBegin, onMove, onEnd, onCancel, finger, myKey],
   );
   /* eslint-enable react-hooks/refs */
 
@@ -469,7 +570,7 @@ export function Draggable({ payload, ghost, children, onTap }: {
         testID={`drag:${payload.kind}:${payload.id}`}
         collapsable={false}
         onLayout={(e) => { size.current = { w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height }; }}
-        style={{ opacity: isSource ? 0.35 : 1 }}
+        style={{ opacity: isSource ? 0.3 : 1 }}
       >
         {onTap ? <Pressable accessible={false} onPress={press}>{children}</Pressable> : children}
       </View>
@@ -485,7 +586,7 @@ export function DropZone({ id, accepts, onDrop, children }: {
   const d = useDrag();
   const ref = useRef<View>(null);
   const latest = useRef({ accepts, onDrop });
-  const { registerZone } = d;
+  const { registerZone, zoneMoved } = d;
 
   useEffect(() => {
     latest.current = { accepts, onDrop };
@@ -497,7 +598,7 @@ export function DropZone({ id, accepts, onDrop, children }: {
   );
 
   return (
-    <View ref={ref} testID={`drop:${id}`} collapsable={false}>
+    <View ref={ref} testID={`drop:${id}`} collapsable={false} onLayout={() => zoneMoved(id)}>
       {children({ active: d.hoverId === id, rejected: d.rejectedId === id, valid: d.validIds.has(id) })}
     </View>
   );
