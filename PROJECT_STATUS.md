@@ -218,3 +218,9 @@ Commit 83bcd0f, `eas update --channel preview` (runtime 1.0.0, android fingerpri
 **Testlar (haqiqiy bajarilgan):** tsc toza, eslint toza, jest **112/112** (+11, `__tests__/dragEngine.test.tsx`: 350 ms/1 pointer, window-space karta, grab creep, bitta sessiya, ekran o'lchami, tez scroll'dan keyin drop, ROOT CAUSE kechikkan o'lchov, pastki qator max offsetda, forma ochiq paytida drop, openOp himoyasi, o'z joyiga qo'yilganda tap yo'q). Mavjud 26 drag testi o'zgarishsiz o'tdi. `expo export --platform android` OK.
 
 **HAQIQIY ANDROID QURILMADA SINALMADI:** bu kompyuterda `adb`/Android SDK yo'q. Native o'zgarish yo'q (faqat JS) → mavjud 1.0.0 preview APK'ga OTA mos. OTA yuborilmadi (ruxsat kerak).
+
+### OTA → preview (Phase 4) — 2026-10-27
+- Tekshiruvlar: commit `b0012f1` (`feat/liquid-glass-home`); 83bcd0f'dan beri native fayllar (package.json/lock, app.json, app.config.js, eas.json) o'zgarmagan; lokal Android fingerprint `8874963d…` = preview APK `aa758bb7` (runtime 1.0.0). EAS'da faqat `preview` kanali bor (→ `preview` branch); production kanali yo'q va tegilmadi.
+- `eas update --channel preview --environment preview --message "Phase 4: drag & drop engine"` (`--environment` non-interactive rejim uchun majburiy; oldingi preview OTA ham `preview` muhitida).
+- Natija: update group `ff0e82fa-7be7-4d13-97fd-0e714ba455bf`; Android `01a17e1d-6fb0-75bf-9b2b-ebc0c711877c`, iOS `01a17e1d-6fb0-709d-af1e-773f31d9e9a7`; runtime 1.0.0; Android fingerprint `8874963d…` (APK bilan mos). EAS commit belgisi `b0012f1*` — `*` faqat kuzatilmagan (untracked) yordamchi papkalar sababli, kod commit bilan bir xil.
+- Telefonda hali tasdiqlanmagan. Main'ga merge / push qilinmagan. Backend va ma'lumotlar bazasiga tegilmagan.
