@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ActivityIndicator, RefreshControl, Text, View, type NativeScrollEvent, type NativeSyntheticEvent, type ViewStyle } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,12 +11,13 @@ import { GlassCard, Tap } from '@/design/Glass';
 import { CircleBadge, Glyph } from '@/design/Icon';
 import { Sheet } from '@/design/Sheet';
 import { EmptyState, ErrorState, LoadingState } from '@/design/States';
+import { useScreenLayout, type Breakpoint } from '@/design/layout';
 import { Ink, usePalette, useT, type Palette } from '@/design/theme';
 import { HIT, iconSize, radii, space, type } from '@/design/tokens';
 import { DropZone, Draggable, useDrag, type DragPayload } from '@/dnd/DragDrop';
 import type { Lang } from '@/i18n';
 import { monthShort } from '@/lib/dates';
-import { fmtMoney } from '@/lib/money';
+import { fitMoney, fmtMoney } from '@/lib/money';
 import { useBreakdown, useBudgets, useCatalog, useSnapshot, useSummary, type Period } from '@/state/data';
 import { useQueue } from '@/state/queue';
 import { api } from '@/state/runtime';
@@ -51,7 +52,9 @@ function sumAmounts(...lists: (Amounts | undefined)[]): Amounts {
   return [...acc].map(([currency, total]) => ({ currency, total }));
 }
 
-const fmtAmounts = (a: Amounts) => (a.length === 0 ? '0' : a.map((x) => fmtMoney(x.total, x.currency)).join(' · '));
+/** Section header total; several currencies share one line, so each is compacted when long. */
+const fmtAmounts = (a: Amounts) => (a.length === 0 ? '0'
+  : a.map((x) => (a.length > 1 ? fitMoney(x.total, x.currency) : fmtMoney(x.total, x.currency))).join(' · '));
 
 /** "01 OKT. – 31 DEK." label for the period chip (same idea as the reference app's date selector). */
 export function periodLabel(lang: Lang, period: Period, t: (k: 'all') => string, now = new Date()): string {
@@ -83,6 +86,12 @@ export function Dashboard() {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const budgets = useBudgets();
   const summary = useSummary(period);
+  const L = useScreenLayout();
+  const cells = useMemo(() => {
+    const c = COLUMNS[L.bp];
+    // below 360px four source tiles leave ~70px each: too narrow for an amount, so three per row
+    return { source: cell(L.width < 360 ? 3 : c.source), wallet: cell(c.wallet), category: cell(c.category) };
+  }, [L.bp, L.width]);
   const incomeBy = amountsById(useBreakdown('source', period, 1).data);
   const expenseBy = amountsById(useBreakdown('category', period, 2).data);
   const { dragging, registerScroller } = useDrag();
@@ -154,7 +163,7 @@ export function Dashboard() {
   const toggle = (k: string) => setCollapsed((c) => ({ ...c, [k]: !c[k] }));
 
   return (
-    <>
+    <Cells.Provider value={cells}>
       <View ref={wrapRef} testID="dash-wrap" collapsable={false} style={{ flex: 1 }}
         onLayout={(e) => { viewH.current = e.nativeEvent.layout.height; }}>
         <ScrollView
@@ -164,7 +173,7 @@ export function Dashboard() {
           scrollEventThrottle={16}
           onScroll={onScroll}
           onContentSizeChange={(_w, h) => { maxOffset.current = Math.max(0, h - viewH.current); }}
-          contentContainerStyle={{ paddingHorizontal: space.md, paddingTop: space.sm, paddingBottom: 96 + Math.max(insets.bottom, 8), gap: space.md }}
+          contentContainerStyle={{ paddingHorizontal: L.gutter, paddingTop: space.sm, paddingBottom: L.bottomSpace + Math.max(insets.bottom, 8), gap: space.md }}
           refreshControl={<RefreshControl refreshing={snap.isFetching} onRefresh={() => void snap.refetch()} tintColor={p.accent} />}
         >
           <UpdateBanner />
@@ -204,7 +213,7 @@ export function Dashboard() {
           <Section title={t('income_sources')} total={fmtAmounts(incomeTotals)} totalColor={Ink.income} collapsed={!!collapsed.income} onToggle={() => toggle('income')} testID="section-income">
             {!cat.loaded && snap.isLoading ? <LoadingState rows={1} columns={4} /> : null}
             {cat.sources.map((s) => <SourceTile key={s.id} source={s} amounts={incomeBy.get(s.id)} />)}
-            <AddTile cell={CELL4} label={t('new_source')} onPress={() => openForm('source')} />
+            <AddTile cell={cells.source} label={t('new_source')} onPress={() => openForm('source')} />
           </Section>
 
           {/* 2. WALLETS — balance is always under the name */}
@@ -215,7 +224,7 @@ export function Dashboard() {
               <EmptyState testID="wallets-empty" icon="wallet" title={t('empty_wallets')} action={t('create_wallet')} onAction={() => openForm('wallet')} />
             ) : null}
             {cat.activeWallets.map((w) => <WalletTile key={w.id} wallet={w} onActions={() => { setActionError(null); setActionsFor(w); }} />)}
-            {cat.activeWallets.length > 0 ? <AddTile cell={CELL2} wide label={t('new_wallet')} onPress={() => openForm('wallet')} /> : null}
+            {cat.activeWallets.length > 0 ? <AddTile cell={cells.wallet} wide label={t('new_wallet')} onPress={() => openForm('wallet')} /> : null}
           </Section>
 
           {/* 3. EXPENSE CATEGORIES */}
@@ -226,7 +235,7 @@ export function Dashboard() {
               <CategoryTile key={c.id} category={c}
                 amounts={sumAmounts(expenseBy.get(c.id), ...cat.childrenOf(c.id).map((ch) => expenseBy.get(ch.id)))} />
             ))}
-            <AddTile cell={CELL3} label={t('new_category')} onPress={() => openForm('category')} />
+            <AddTile cell={cells.category} label={t('new_category')} onPress={() => openForm('category')} />
           </Section>
 
           {(budgets.data ?? []).filter((b) => b.exceeded || b.percent >= 80).map((b) => (
@@ -271,7 +280,7 @@ export function Dashboard() {
           </View>
         )}
       </Sheet>
-    </>
+    </Cells.Provider>
   );
 }
 
@@ -280,14 +289,22 @@ function Section({ title, total, totalColor, collapsed, onToggle, children, test
   title: string; total: string; totalColor?: string; collapsed: boolean; onToggle(): void; children: ReactNode; testID: string;
 }) {
   const p = usePalette();
+  // a long total next to the title would be cut off on phones: give it its own line under the title instead
+  const below = useScreenLayout().width < 480 && title.length + total.length > 30;
+  const totalText = (
+    <Text testID={`${testID}-total`} adjustsFontSizeToFit minimumFontScale={0.6} numberOfLines={1}
+      style={[type.callout, { flex: below ? undefined : 1, textAlign: below ? 'left' : 'right', color: totalColor ?? p.textSecondary, fontVariant: ['tabular-nums'] }]}>{total}</Text>
+  );
   return (
     <GlassCard radius={radii.xl} padding={space.md}>
       <Tap testID={`${testID}-header`} label={title} onPress={onToggle} haptic={false}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, minHeight: 32, paddingBottom: collapsed ? 0 : space.sm }}>
-          <Text accessibilityRole="header" numberOfLines={1} style={[type.headline, { color: p.text, flexShrink: 1 }]}>{title}</Text>
-          <Text testID={`${testID}-total`} adjustsFontSizeToFit minimumFontScale={0.6} numberOfLines={1}
-            style={[type.callout, { flex: 1, textAlign: 'right', color: totalColor ?? p.textSecondary, fontVariant: ['tabular-nums'] }]}>{total}</Text>
-          <View style={{ transform: [{ rotate: collapsed ? '-90deg' : '0deg' }] }}><Glyph name="chevronDown" color={p.textSecondary} size={iconSize.sm} /></View>
+        <View style={{ paddingBottom: collapsed ? 0 : space.sm }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, minHeight: 32 }}>
+            <Text accessibilityRole="header" numberOfLines={1} style={[type.headline, { color: p.text, flexShrink: 1, flex: below ? 1 : undefined }]}>{title}</Text>
+            {below ? null : totalText}
+            <View style={{ transform: [{ rotate: collapsed ? '-90deg' : '0deg' }] }}><Glyph name="chevronDown" color={p.textSecondary} size={iconSize.sm} /></View>
+          </View>
+          {below ? totalText : null}
         </View>
       </Tap>
       {!collapsed ? <View style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: space.md, marginHorizontal: -space.xs }}>{children}</View> : null}
@@ -295,12 +312,12 @@ function Section({ title, total, totalColor, collapsed, onToggle, children, test
   );
 }
 
-function AmountLines({ amounts, color, base = 12.5 }: { amounts?: Amounts; color: string; base?: number }) {
+function AmountLines({ amounts, color, base = 12.5, fit }: { amounts?: Amounts; color: string; base?: number; /** compact long figures (narrow tiles) */ fit?: boolean }) {
   if (!amounts || amounts.length === 0) return <Text numberOfLines={1} style={{ color, fontSize: base, fontWeight: '800' }}>0</Text>;
   return (
     <>
       {amounts.map((x) => {
-        const txt = fmtMoney(x.total, x.currency);
+        const txt = fit ? fitMoney(x.total, x.currency) : fmtMoney(x.total, x.currency);
         // long figures shrink (adjustsFontSizeToFit is native-only), like the reference app
         const size = txt.length > 14 ? base - 3 : txt.length > 12 ? base - 2 : txt.length > 10 ? base - 1 : base;
         return (
@@ -323,7 +340,23 @@ function Tile({ name, icon, color, amounts, amountColor, ring, grow, wide }: {
   name: string; icon: string; color: string; amounts?: Amounts; amountColor: string; ring?: string; grow?: boolean; wide?: boolean;
 }) {
   const p = usePalette();
+  const narrow = useScreenLayout().width < 400;
   const scale = { transform: [{ scale: grow ? 1.06 : 1 }] };
+  if (wide && narrow) {
+    // phones under 400px: icon + name on top, the balance gets the tile's full width below (no cut-off figures)
+    return (
+      <View style={[{
+        gap: space.xs, width: '100%', minHeight: 68, padding: space.sm,
+        borderRadius: radii.lg, borderWidth: ring ? 1.5 : 1, borderColor: ring ?? p.glassBorder, backgroundColor: p.glassFillStrong,
+      }, scale]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
+          <CircleBadge name={icon} color={color} size={32} />
+          <Text numberOfLines={2} style={[type.footnote, { flex: 1, color: p.textSecondary }]}>{name}</Text>
+        </View>
+        <AmountLines amounts={amounts} color={amountColor} base={14} fit />
+      </View>
+    );
+  }
   if (wide) {
     return (
       <View style={[{
@@ -342,7 +375,7 @@ function Tile({ name, icon, color, amounts, amountColor, ring, grow, wide }: {
     <View style={[{ alignItems: 'center', gap: space.xs, width: '100%' }, scale]}>
       <CircleBadge name={icon} color={color} size={iconSize.badge} ring={ring} />
       <Text numberOfLines={2} style={[type.caption, { color: p.text, maxWidth: '100%', textAlign: 'center', minHeight: 30, fontWeight: '600' }]}>{name}</Text>
-      <AmountLines amounts={amounts} color={amountColor} />
+      <AmountLines amounts={amounts} color={amountColor} fit />
     </View>
   );
 }
@@ -360,9 +393,18 @@ function FloatingCard({ children }: { children: ReactNode }) {
   );
 }
 
-const CELL4 ={ width: '25%' as const, paddingHorizontal: space.xs };
-const CELL3 = { width: '33.3333%' as const, paddingHorizontal: space.xs };
-const CELL2 = { width: '50%' as const, paddingHorizontal: space.xs };
+/** Tile widths per column count (exact strings, so layouts stay stable and testable). */
+const WIDTH = { 2: '50%', 3: '33.3333%', 4: '25%', 5: '20%', 6: '16.6667%', 8: '12.5%' } as const;
+type Cols = keyof typeof WIDTH;
+const cell = (n: Cols): ViewStyle => ({ width: WIDTH[n], paddingHorizontal: space.xs });
+
+/** Columns per section: phones keep sources 4 / wallets 2 / categories 3; wider screens use the room instead of stretching tiles. */
+const COLUMNS: Record<Breakpoint, { source: Cols; wallet: Cols; category: Cols }> = {
+  mobile: { source: 4, wallet: 2, category: 3 },
+  tablet: { source: 6, wallet: 3, category: 5 },
+  desktop: { source: 8, wallet: 4, category: 6 },
+};
+const Cells = createContext({ source: cell(4), wallet: cell(2), category: cell(3) });
 
 function AddTile({ label, onPress, cell, wide }: { label: string; onPress(): void; cell: ViewStyle; wide?: boolean }) {
   const p = usePalette();
@@ -399,7 +441,7 @@ function WalletTile({ wallet, onActions }: { wallet: Wallet; onActions(): void }
     else openOp({ kind: 'income', walletId: wallet.id, sourceId: pl.id });
   };
   return (
-    <View style={CELL2}>
+    <View style={useContext(Cells).wallet}>
       <DropZone id={`wallet:${wallet.id}`} accepts={accepts} onDrop={onDrop}>
         {({ active, rejected, valid }) => (
           <Draggable payload={{ kind: 'wallet', id: wallet.id }} onTap={onActions}
@@ -426,7 +468,7 @@ function CategoryTile({ category, amounts }: { category: Category; amounts?: Amo
   const p = usePalette();
   const openOp = useUi((s) => s.openOp);
   return (
-    <View style={CELL3}>
+    <View style={useContext(Cells).category}>
       <DropZone
         id={`cat:${category.id}`}
         accepts={(pl) => pl.kind === 'wallet'}
@@ -447,7 +489,7 @@ function SourceTile({ source, amounts }: { source: IncomeSource; amounts?: Amoun
   const p = usePalette();
   const openOp = useUi((s) => s.openOp);
   return (
-    <View style={CELL4}>
+    <View style={useContext(Cells).source}>
       <Draggable payload={{ kind: 'source', id: source.id }} onTap={() => openOp({ kind: 'income', sourceId: source.id })}
         ghost={<FloatingCard><Tile name={source.name} icon={source.icon} color={source.color} amounts={amounts} amountColor={p.text} ring={p.accent} /></FloatingCard>}>
         <Tile name={source.name} icon={source.icon} color={source.color} amounts={amounts} amountColor={p.text} />

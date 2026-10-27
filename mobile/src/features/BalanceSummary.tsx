@@ -1,12 +1,12 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { Text, View } from 'react-native';
+import { Text, View, useWindowDimensions } from 'react-native';
 import type { Summary, Wallet } from '@/api/types';
 import { GlassCard, Tap } from '@/design/Glass';
 import { Glyph } from '@/design/Icon';
 import { Skeleton } from '@/design/States';
 import { Ink, usePalette, useT } from '@/design/theme';
 import { radii, space, type } from '@/design/tokens';
-import { fmtMoney } from '@/lib/money';
+import { fitMoney, fmtMoney } from '@/lib/money';
 
 type Line = { currency: string; total: number };
 
@@ -19,6 +19,10 @@ export function balanceByCurrency(wallets: Wallet[]): Line[] {
 
 const fmt = (lines: Line[], signed = false) =>
   lines.length === 0 ? '0' : lines.map((l) => `${signed && l.total > 0 ? '+' : ''}${fmtMoney(l.total, l.currency)}`).join(' · ');
+
+/** KPI cells are narrow: one line per currency, compacted when long. */
+const fitLines = (lines: Line[], signed = false) =>
+  lines.length === 0 ? ['0'] : lines.map((l) => `${signed && l.total > 0 ? '+' : ''}${fitMoney(l.total, l.currency)}`);
 
 /**
  * Top "hero" card: total balance (all active wallets) and, for the selected period, income / expense / net change.
@@ -37,6 +41,7 @@ export function BalanceSummary({ wallets, summary, loading, periodLabel, onPerio
   const expense = totals.map((x) => ({ currency: x.currency, total: x.expense }));
   const net = totals.map((x) => ({ currency: x.currency, total: x.netFlow }));
   const netColor = net.some((x) => x.total < 0) ? Ink.expense : net.some((x) => x.total > 0) ? Ink.income : p.text;
+  const stacked = useWindowDimensions().width < 420;
 
   return (
     <GlassCard radius={28} padding={0} testID="balance-summary">
@@ -67,30 +72,48 @@ export function BalanceSummary({ wallets, summary, loading, periodLabel, onPerio
           <Text numberOfLines={1} style={[type.footnote, { color: p.text, fontWeight: '700' }]}>{periodLabel}</Text>
           <Glyph name="chevronDown" color={p.textSecondary} size={12} />
         </Tap>
-        <View style={{ flexDirection: 'row', gap: space.sm }}>
-          <Metric icon="arrowIn" color={Ink.income} label={t('income')} value={fmt(income)} loading={loading && !summary} testID="summary-income" />
-          <Metric icon="arrowOut" color={Ink.expense} label={t('expense')} value={fmt(expense)} loading={loading && !summary} testID="summary-expense" />
-          <Metric icon="swap" color={netColor} label={t('net_change')} value={fmt(net, true)} loading={loading && !summary} testID="summary-net" />
+        {/* three cells side by side need ~120px each; narrower phones get one full-width row per metric instead */}
+        <View testID="summary-metrics" style={{ flexDirection: stacked ? 'column' : 'row', gap: space.sm }}>
+          <Metric stacked={stacked} icon="arrowIn" color={Ink.income} label={t('income')} value={fitLines(income)} loading={loading && !summary} testID="summary-income" />
+          <Metric stacked={stacked} icon="arrowOut" color={Ink.expense} label={t('expense')} value={fitLines(expense)} loading={loading && !summary} testID="summary-expense" />
+          <Metric stacked={stacked} icon="swap" color={netColor} label={t('net_change')} value={fitLines(net, true)} loading={loading && !summary} testID="summary-net" />
         </View>
       </View>
     </GlassCard>
   );
 }
 
-function Metric({ icon, color, label, value, loading, testID }: {
-  icon: string; color: string; label: string; value: string; loading: boolean; testID: string;
+function Metric({ icon, color, label, value, loading, testID, stacked }: {
+  icon: string; color: string; label: string; value: string[]; loading: boolean; testID: string; stacked: boolean;
 }) {
   const p = usePalette();
-  return (
-    <View accessible accessibilityLabel={`${label}: ${value}`}
-      style={{ flex: 1, padding: space.sm, borderRadius: 16, backgroundColor: p.glassFill, borderWidth: 1, borderColor: p.glassBorder, gap: space.xs }}>
-      <View style={{ width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', backgroundColor: `${color}2E` }}>
-        <Glyph name={icon} color={color} size={13} />
+  const badge = (
+    <View style={{ width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', backgroundColor: `${color}2E` }}>
+      <Glyph name={icon} color={color} size={13} />
+    </View>
+  );
+  const values = loading ? <Skeleton width={stacked ? 90 : '80%'} height={14} /> : (
+    <View testID={testID} style={stacked ? { alignItems: 'flex-end' } : undefined}>
+      {value.map((v) => (
+        <Text key={v} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6} style={[type.amount, { color }]}>{v}</Text>
+      ))}
+    </View>
+  );
+  const box = { padding: space.sm, borderRadius: 16, backgroundColor: p.glassFill, borderWidth: 1, borderColor: p.glassBorder } as const;
+  if (stacked) {
+    return (
+      <View accessible accessibilityLabel={`${label}: ${value.join(', ')}`} style={[box, { flexDirection: 'row', alignItems: 'center', gap: space.sm }]}>
+        {badge}
+        <Text numberOfLines={1} style={[type.footnote, { flex: 1, color: p.textSecondary }]}>{label}</Text>
+        {values}
       </View>
+    );
+  }
+  return (
+    <View accessible accessibilityLabel={`${label}: ${value.join(', ')}`} style={[box, { flex: 1, gap: space.xs }]}>
+      {badge}
       <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} style={[type.caption, { color: p.textSecondary }]}>{label}</Text>
-      {loading ? <Skeleton width="80%" height={14} /> : (
-        <Text testID={testID} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.6} style={[type.amount, { color }]}>{value}</Text>
-      )}
+      {values}
     </View>
   );
 }

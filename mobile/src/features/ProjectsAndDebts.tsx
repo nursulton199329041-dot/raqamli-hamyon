@@ -5,7 +5,9 @@ import { ApiError } from '@/api/client';
 import type { Debt, ProjectSummary } from '@/api/types';
 import { Button, Chip, ErrorText, Field, Label, Wrap } from '@/design/Controls';
 import { GlassCard, Tap } from '@/design/Glass';
+import { Grid } from '@/design/Grid';
 import { Glyph, IconBadge } from '@/design/Icon';
+import { useScreenLayout } from '@/design/layout';
 import { Sheet } from '@/design/Sheet';
 import { Ink, usePalette, useT } from '@/design/theme';
 import { fmtDate, fmtMoney, parseAmount } from '@/lib/money';
@@ -20,12 +22,14 @@ export function Projects() {
   const cat = useCatalog();
   const openForm = useUi((s) => s.openForm);
   const [openId, setOpenId] = useState<string | null>(null);
+  const L = useScreenLayout();
   return (
-    <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 140, gap: 10 }}>
+    <ScrollView contentContainerStyle={{ paddingHorizontal: L.gutter, paddingTop: 16, paddingBottom: L.bottomSpace + 16, gap: 12 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
         <Text style={{ flex: 1, color: p.text, fontSize: 24, fontWeight: '800' }}>{t('projects')}</Text>
         <Tap label={t('new_project')} onPress={() => openForm('project')}><Glyph name="plus" color={p.accent} size={28} /></Tap>
       </View>
+      <Grid columns={L.cardColumns}>
       {cat.projects.map((pr) => (
         <Tap key={pr.id} label={pr.name} onPress={() => setOpenId(pr.id)}>
           <GlassCard>
@@ -37,6 +41,7 @@ export function Projects() {
           </GlassCard>
         </Tap>
       ))}
+      </Grid>
       <ProjectSheet id={openId} onClose={() => setOpenId(null)} />
     </ScrollView>
   );
@@ -100,13 +105,15 @@ export function Debts() {
   const [repay, setRepay] = useState<Debt | null>(null);
   const open = cat.debts.filter((d) => d.status === 0);
   const closed = cat.debts.filter((d) => d.status !== 0);
+  const L = useScreenLayout();
 
   return (
-    <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 140, gap: 10 }}>
+    <ScrollView contentContainerStyle={{ paddingHorizontal: L.gutter, paddingTop: 16, paddingBottom: L.bottomSpace + 16, gap: 12 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
         <Text style={{ flex: 1, color: p.text, fontSize: 24, fontWeight: '800' }}>{t('debts')}</Text>
         <Tap label={t('debt')} onPress={() => openOp({ kind: 'debt' })}><Glyph name="plus" color={p.accent} size={28} /></Tap>
       </View>
+      <Grid columns={Math.min(L.cardColumns, Math.max(1, (summary.data?.debts ?? []).length))}>
       {(summary.data?.debts ?? []).map((d) => (
         <GlassCard key={d.currency} tint={Ink.debt}>
           <View style={{ flexDirection: 'row' }}>
@@ -121,10 +128,11 @@ export function Debts() {
           </View>
         </GlassCard>
       ))}
+      </Grid>
       {open.length === 0 && <Text style={{ color: p.textSecondary, textAlign: 'center', marginTop: 30 }}>{t('empty_history')}</Text>}
-      {open.map((d) => <DebtCard key={d.id} debt={d} onRepay={() => setRepay(d)} />)}
+      <Grid columns={L.cardColumns}>{open.map((d) => <DebtCard key={d.id} debt={d} onRepay={() => setRepay(d)} />)}</Grid>
       {closed.length > 0 && <Text style={{ color: p.textSecondary, fontWeight: '700', marginTop: 12 }}>{t('archived')}</Text>}
-      {closed.map((d) => <DebtCard key={d.id} debt={d} />)}
+      <Grid columns={L.cardColumns}>{closed.map((d) => <DebtCard key={d.id} debt={d} />)}</Grid>
       <RepaySheet debt={repay} onClose={() => setRepay(null)} />
     </ScrollView>
   );

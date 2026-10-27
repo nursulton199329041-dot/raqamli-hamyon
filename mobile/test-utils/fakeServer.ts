@@ -76,6 +76,22 @@ export class FakeServer {
     return [...acc].map(([id, total]) => ({ id, name: id, currency: 'UZS', total, percent: 0, count: 1 }));
   }
 
+  /** daily income/expense buckets from the same ledger rows the summary uses */
+  private timeseries() {
+    const by = new Map<string, { currency: string; day: string; income: number; expense: number }>();
+    for (const t of this.txs) {
+      if (!this.live(t) || (t.type !== 1 && t.type !== 2)) continue;
+      const day = t.occurredAt.slice(0, 10);
+      const k = `${t.currency}|${day}`;
+      const row = by.get(k) ?? { currency: t.currency, day, income: 0, expense: 0 };
+      if (t.type === 1) row.income += t.amount;
+      else row.expense += t.amount;
+      by.set(k, row);
+    }
+    return [...by.values()].sort((a, b) => a.day.localeCompare(b.day))
+      .map((r) => ({ period: r.day, start: `${r.day}T00:00:00Z`, currency: r.currency, income: r.income, expense: r.expense }));
+  }
+
   private summary(from?: string, to?: string) {
     const by = new Map<string, { income: number; expense: number }>();
     for (const t of this.txs) {
@@ -198,6 +214,7 @@ export class FakeServer {
       if (path === '/api/sync/pull') return this.snapshot();
       if (path === '/api/analytics/breakdown') return this.breakdown(String(q?.by), Number(q?.type ?? 2));
       if (path === '/api/analytics/budgets') return [];
+      if (path === '/api/analytics/timeseries') return this.timeseries();
       if (path === '/api/analytics/summary') return this.summary(q?.from as string | undefined, q?.to as string | undefined);
       if (path === '/api/transactions') return this.list(q ?? {});
       throw new ApiError(404, 'not_found', `GET ${path}`);

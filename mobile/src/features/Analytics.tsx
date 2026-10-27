@@ -1,31 +1,46 @@
 import { useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, View, type LayoutChangeEvent } from 'react-native';
 import { ApiError } from '@/api/client';
+import type { BreakdownRow } from '@/api/types';
 import { Chip, ErrorText, Segmented } from '@/design/Controls';
-import { GlassCard, Tap } from '@/design/Glass';
+import { GlassCard } from '@/design/Glass';
+import { Grid } from '@/design/Grid';
 import { Glyph } from '@/design/Icon';
-import { Bars, Donut, SLICE_COLORS } from '@/design/charts';
+import { useScreenLayout } from '@/design/layout';
+import { EmptyState, LoadingState } from '@/design/States';
+import { Bars, ChartBox, Donut, LegendDot, SLICE_COLORS } from '@/design/charts';
 import { Ink, usePalette, useT } from '@/design/theme';
+import { radii, space, type } from '@/design/tokens';
 import { fmtMoney } from '@/lib/money';
 import { exportReport } from '@/lib/exporter';
 import { useBreakdown, useBudgets, useSeries, useSummary, type Period } from '@/state/data';
 import { useSettings } from '@/state/settings';
 
+type By = 'category' | 'wallet' | 'project';
+type Gran = 'day' | 'week' | 'month';
+
+/**
+ * Analytics. Every figure comes from the backend analytics endpoints (summary, breakdown, timeseries, budgets).
+ * Layout: mobile = one column; tablet = 2-column grids; desktop = 3 KPI columns and breakdown + trend side by side.
+ */
 export function Analytics() {
   const t = useT();
   const p = usePalette();
+  const L = useScreenLayout();
   const lang = useSettings((s) => s.lang);
   const [period, setPeriod] = useState<Period>('month');
-  const [by, setBy] = useState<'category' | 'wallet' | 'project'>('category');
-  const [gran, setGran] = useState<'day' | 'week' | 'month'>('day');
+  const [by, setBy] = useState<By>('category');
+  const [gran, setGran] = useState<Gran>('day');
   const [err, setErr] = useState<string | null>(null);
   const summary = useSummary(period);
   const breakdown = useBreakdown(by, period);
   const series = useSeries(gran, period);
   const budgets = useBudgets();
 
+  const totals = summary.data?.totals ?? [];
   const currencies = [...new Set((breakdown.data ?? []).map((r) => r.currency))].sort();
   const seriesCurrencies = [...new Set((series.data ?? []).map((r) => r.currency))];
+  const side = L.bp !== 'mobile';
 
   const doExport = async (format: 'xlsx' | 'pdf' | 'csv') => {
     setErr(null);
@@ -37,97 +52,160 @@ export function Analytics() {
   };
 
   return (
-    <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 140, gap: 12 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        <Text style={{ flex: 1, color: p.text, fontSize: 24, fontWeight: '800' }}>{t('analytics')}</Text>
-        <Tap label={t('export')} onPress={() => void doExport('xlsx')}><Glyph name="share" color={p.accent} size={26} /></Tap>
+    <ScrollView testID="analytics-scroll" contentContainerStyle={{ paddingHorizontal: L.gutter, paddingTop: space.lg, paddingBottom: L.bottomSpace + space.lg, gap: space.lg }}>
+      {/* header: title + export */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, flexWrap: 'wrap' }}>
+        <Text accessibilityRole="header" style={[type.title, { flex: 1, minWidth: 140, color: p.text }]}>{t('analytics')}</Text>
+        <View style={{ flexDirection: 'row', gap: space.xs }}>
+          {(['xlsx', 'pdf', 'csv'] as const).map((f) => (
+            <Chip key={f} icon={f === 'xlsx' ? 'share' : undefined} label={f === 'xlsx' ? 'Excel' : f.toUpperCase()} selected={false} onPress={() => void doExport(f)} />
+          ))}
+        </View>
       </View>
-      <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
-        {(['week', 'month', 'year', 'all'] as Period[]).map((x) => <Chip key={x} label={t(x)} selected={period === x} onPress={() => setPeriod(x)} />)}
-      </View>
-      <View style={{ flexDirection: 'row', gap: 6 }}>
-        {(['xlsx', 'pdf', 'csv'] as const).map((f) => (
-          <Chip key={f} label={f === 'xlsx' ? 'Excel' : f.toUpperCase()} selected={false} onPress={() => void doExport(f)} />
-        ))}
+      <View style={{ maxWidth: side ? 460 : undefined }}>
+        <Segmented<Period> value={period} onChange={setPeriod}
+          options={(['week', 'month', 'year', 'all'] as Period[]).map((x) => ({ value: x, label: t(x) }))} />
       </View>
       <ErrorText>{err}</ErrorText>
 
-      {(summary.data?.totals ?? []).map((tt) => (
-        <GlassCard key={tt.currency}>
-          <Text style={{ color: p.textSecondary, fontWeight: '700' }}>{tt.currency}</Text>
-          <View style={{ flexDirection: 'row', marginTop: 6 }}>
-            <KV k={t('income')} v={fmtMoney(tt.income, undefined, true)} c={Ink.income} />
-            <KV k={t('expense')} v={fmtMoney(tt.expense, undefined, true)} c={Ink.expense} />
-            <KV k={t('net_flow')} v={fmtMoney(tt.netFlow, undefined, true)} c={tt.netFlow >= 0 ? Ink.income : Ink.expense} />
-          </View>
-        </GlassCard>
-      ))}
-
-      <Segmented<'category' | 'wallet' | 'project'> value={by} onChange={setBy}
-        options={[{ value: 'category', label: t('category') }, { value: 'wallet', label: t('wallet') }, { value: 'project', label: t('project') }]} />
-
-      {currencies.map((cur) => {
-        const rows = (breakdown.data ?? []).filter((r) => r.currency === cur);
-        return (
-          <GlassCard key={cur}>
-            <Text style={{ color: p.text, fontWeight: '800' }}>{t('expense')} · {cur}</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 10 }}>
-              <Donut percents={rows.map((r) => r.percent)} />
-              <View style={{ flex: 1, gap: 6 }}>
-                {rows.slice(0, 6).map((r, i) => (
-                  <View key={`${r.id}-${i}`} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: SLICE_COLORS[i % SLICE_COLORS.length] }} />
-                    <Text numberOfLines={1} style={{ flex: 1, color: p.text }}>{r.name}</Text>
-                    <Text style={{ color: p.textSecondary }}>{r.percent.toFixed(0)}%</Text>
-                  </View>
-                ))}
-              </View>
+      {/* KPIs: income / expense / net per currency */}
+      {summary.isLoading ? <GlassCard><LoadingState rows={1} columns={3} /></GlassCard> : null}
+      {!summary.isLoading && totals.length === 0 ? (
+        <GlassCard><EmptyState icon="chart" title={t('no_data')} /></GlassCard>
+      ) : null}
+      <Grid columns={Math.min(L.cardColumns, Math.max(1, totals.length))}>
+        {totals.map((tt) => (
+          <GlassCard key={tt.currency} testID={`kpi-${tt.currency}`} radius={radii.xl}>
+            <Text style={[type.caption, { color: p.textSecondary, textTransform: 'uppercase' }]}>{tt.currency}</Text>
+            <View style={{ flexDirection: 'row', gap: space.sm, marginTop: space.sm }}>
+              <Kpi label={t('income')} value={fmtMoney(tt.income, undefined, true)} color={Ink.income} icon="arrowIn" />
+              <Kpi label={t('expense')} value={fmtMoney(tt.expense, undefined, true)} color={Ink.expense} icon="arrowOut" />
+              <Kpi label={t('net_flow')} value={fmtMoney(tt.netFlow, undefined, true)} color={tt.netFlow >= 0 ? Ink.income : Ink.expense} icon="swap" />
             </View>
           </GlassCard>
-        );
-      })}
+        ))}
+      </Grid>
 
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Text style={{ color: p.text, fontWeight: '800', fontSize: 17 }}>{t('trend')}</Text>
-        <View style={{ width: 200 }}>
-          <Segmented<'day' | 'week' | 'month'> value={gran} onChange={setGran}
-            options={[{ value: 'day', label: t('day') }, { value: 'week', label: t('week') }, { value: 'month', label: t('month') }]} />
-        </View>
-      </View>
-      {seriesCurrencies.map((cur) => (
-        <GlassCard key={cur}>
-          <Text style={{ color: p.textSecondary, fontWeight: '700' }}>{cur}</Text>
-          <View style={{ marginTop: 8, alignItems: 'center' }}>
-            <Bars points={(series.data ?? []).filter((s) => s.currency === cur)} width={300} />
+      <Grid columns={side ? 2 : 1}>
+        {/* breakdown by category / wallet / project */}
+        <GlassCard radius={radii.xl} testID="breakdown-card">
+          <Text style={[type.headline, { color: p.text, marginBottom: space.sm }]}>{t('expense')}</Text>
+          <Segmented<By> value={by} onChange={setBy}
+            options={[{ value: 'category', label: t('category') }, { value: 'wallet', label: t('wallet') }, { value: 'project', label: t('project') }]} />
+          <View style={{ gap: space.lg, marginTop: space.md }}>
+            {breakdown.isLoading ? <LoadingState rows={1} columns={2} /> : null}
+            {!breakdown.isLoading && currencies.length === 0 ? <EmptyState icon="chart" title={t('no_data')} /> : null}
+            {currencies.map((cur) => (
+              <BreakdownBlock key={cur} currency={cur} rows={(breakdown.data ?? []).filter((r) => r.currency === cur)} />
+            ))}
           </View>
         </GlassCard>
-      ))}
 
-      {(budgets.data ?? []).length > 0 && <Text style={{ color: p.text, fontWeight: '800', fontSize: 17 }}>{t('budgets')}</Text>}
-      {(budgets.data ?? []).map((b) => (
-        <GlassCard key={b.categoryId} tint={b.exceeded ? Ink.expense : undefined}>
-          <View style={{ flexDirection: 'row' }}>
-            <Text style={{ flex: 1, color: p.text, fontWeight: '700' }}>{b.name}</Text>
-            {b.exceeded && <Text style={{ color: Ink.expense, fontWeight: '700' }}>{t('exceeded')}</Text>}
+        {/* trend */}
+        <GlassCard radius={radii.xl} testID="trend-card">
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, flexWrap: 'wrap', marginBottom: space.sm }}>
+            <Text style={[type.headline, { color: p.text, flex: 1, minWidth: 100 }]}>{t('trend')}</Text>
+            <View style={{ width: 210, maxWidth: '100%' }}>
+              <Segmented<Gran> value={gran} onChange={setGran}
+                options={[{ value: 'day', label: t('day') }, { value: 'week', label: t('week') }, { value: 'month', label: t('month') }]} />
+            </View>
           </View>
-          <View style={{ height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.14)', marginTop: 8, overflow: 'hidden' }}>
-            <View style={{ width: `${Math.min(100, b.percent)}%`, height: 8, backgroundColor: b.exceeded ? Ink.expense : Ink.income }} />
+          <View style={{ flexDirection: 'row', gap: space.md, marginBottom: space.sm }}>
+            <LegendDot color={Ink.income} label={t('income')} />
+            <LegendDot color={Ink.expense} label={t('expense')} />
           </View>
-          <Text style={{ color: p.textSecondary, fontSize: 12, marginTop: 4 }}>
-            {fmtMoney(b.spent, b.currency)} / {fmtMoney(b.limit, b.currency)}
-          </Text>
+          {series.isLoading ? <LoadingState rows={1} columns={4} /> : null}
+          {!series.isLoading && seriesCurrencies.length === 0 ? <EmptyState icon="chart" title={t('no_data')} /> : null}
+          <View style={{ gap: space.md }}>
+            {seriesCurrencies.map((cur) => (
+              <View key={cur} style={{ gap: space.xs }}>
+                <Text style={[type.caption, { color: p.textSecondary }]}>{cur}</Text>
+                <ChartBox height={side ? 220 : 180} testID={`bars-${cur}`}>
+                  {(w) => <Bars points={(series.data ?? []).filter((s) => s.currency === cur)} width={w} height={side ? 220 : 180} />}
+                </ChartBox>
+              </View>
+            ))}
+          </View>
         </GlassCard>
-      ))}
+      </Grid>
+
+      {(budgets.data ?? []).length > 0 && <Text style={[type.headline, { color: p.text }]}>{t('budgets')}</Text>}
+      <Grid columns={L.cardColumns}>
+        {(budgets.data ?? []).map((b) => (
+          <GlassCard key={b.categoryId} tint={b.exceeded ? Ink.expense : undefined} radius={radii.lg}>
+            <View style={{ flexDirection: 'row', gap: space.sm }}>
+              <Text numberOfLines={1} style={[type.callout, { flex: 1, color: p.text }]}>{b.name}</Text>
+              <Text style={[type.callout, { color: b.exceeded ? Ink.expense : p.textSecondary }]}>{b.exceeded ? t('exceeded') : `${b.percent.toFixed(0)}%`}</Text>
+            </View>
+            <View style={{ height: 8, borderRadius: 4, backgroundColor: p.glassFillStrong, marginTop: space.sm, overflow: 'hidden' }}>
+              <View style={{ width: `${Math.min(100, b.percent)}%`, height: 8, backgroundColor: b.exceeded ? Ink.expense : b.percent >= 80 ? Ink.debt : Ink.income }} />
+            </View>
+            <Text style={[type.caption, { color: p.textSecondary, marginTop: space.xs }]}>
+              {fmtMoney(b.spent, b.currency)} / {fmtMoney(b.limit, b.currency)}
+            </Text>
+          </GlassCard>
+        ))}
+      </Grid>
     </ScrollView>
   );
 }
 
-function KV({ k, v, c }: { k: string; v: string; c: string }) {
+function Kpi({ label, value, color, icon }: { label: string; value: string; color: string; icon: string }) {
   const p = usePalette();
   return (
-    <View style={{ flex: 1 }}>
-      <Text style={{ color: p.textSecondary, fontSize: 12 }}>{k}</Text>
-      <Text numberOfLines={1} style={{ color: c, fontWeight: '800' }}>{v}</Text>
+    <View accessible accessibilityLabel={`${label}: ${value}`} style={{ flex: 1, minWidth: 0, gap: 2 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+        <Glyph name={icon} color={color} size={13} />
+        <Text numberOfLines={1} style={[type.caption, { color: p.textSecondary, flexShrink: 1 }]}>{label}</Text>
+      </View>
+      <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[type.amount, { color, fontSize: 16 }]}>{value}</Text>
     </View>
   );
 }
+
+/**
+ * Donut + legend for one currency. The donut is sized from the block's measured width: side by side with the legend
+ * when there is room (>= 380px), stacked and centred otherwise.
+ */
+function BreakdownBlock({ currency, rows }: { currency: string; rows: BreakdownRow[] }) {
+  const p = usePalette();
+  const [w, setW] = useState(0);
+  const onLayout = (e: LayoutChangeEvent) => {
+    const next = Math.floor(e.nativeEvent.layout.width);
+    if (next !== w) setW(next);
+  };
+  const wide = w >= 380;
+  const size = Math.round(Math.max(110, Math.min(wide ? 180 : 200, (wide ? w * 0.4 : w * 0.6))));
+  const total = rows.reduce((s, r) => s + r.total, 0);
+  const shown = rows.slice(0, 7);
+  const rest = rows.slice(7);
+  const legend: { name: string; percent: number; total: number; color: string }[] = [
+    ...shown.map((r, i) => ({ name: r.name, percent: r.percent, total: r.total, color: SLICE_COLORS[i % SLICE_COLORS.length]! })),
+    ...(rest.length > 0 ? [{
+      name: '…', percent: rest.reduce((s, r) => s + r.percent, 0), total: rest.reduce((s, r) => s + r.total, 0), color: SLICE_COLORS[7]!,
+    }] : []),
+  ];
+  return (
+    <View testID={`breakdown-${currency}`} onLayout={onLayout} style={{ flexDirection: wide ? 'row' : 'column', alignItems: 'center', gap: space.lg }}>
+      {w > 0 ? (
+        <Donut size={size} percents={legend.map((l) => l.percent)} center={(
+          <View style={{ alignItems: 'center' }}>
+            <Text style={[type.caption, { color: p.textSecondary }]}>{currency}</Text>
+            <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6} style={[type.amount, { color: p.text, fontSize: 15 }]}>{fmtMoney(total, undefined, true)}</Text>
+          </View>
+        )} />
+      ) : null}
+      <View style={{ flex: wide ? 1 : undefined, alignSelf: 'stretch', gap: space.sm }}>
+        {legend.map((l, i) => (
+          <View key={`${l.name}-${i}`} style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
+            <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: l.color }} />
+            <Text numberOfLines={1} style={[type.footnote, { flex: 1, color: p.text }]}>{l.name}</Text>
+            <Text numberOfLines={1} style={[type.footnote, { color: p.textSecondary, fontVariant: ['tabular-nums'] }]}>{fmtMoney(l.total, undefined, true)}</Text>
+            <Text style={[type.footnote, { width: 40, textAlign: 'right', color: p.text, fontWeight: '700' }]}>{l.percent.toFixed(0)}%</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+

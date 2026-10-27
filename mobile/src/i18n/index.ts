@@ -52,6 +52,7 @@ const T = {
   empty_history: ['Hali operatsiya yo‘q', 'Операций пока нет', 'No operations yet'],
   empty_wallets: ['Hali hamyon yo‘q. Birinchisini yarating.', 'Кошельков пока нет. Создайте первый.', 'No wallets yet. Create your first one.'],
   new_wallet: ['Yangi hamyon', 'Новый кошелёк', 'New wallet'],
+  no_data: ['Bu davr uchun ma’lumot yo‘q', 'Нет данных за этот период', 'No data for this period'],
   net_change: ['Sof o‘zgarish', 'Чистое изменение', 'Net change'],
   dash_load_error: ['Ma’lumot yuklanmadi', 'Данные не загрузились', 'Could not load data'],
   new_project: ['Yangi loyiha', 'Новый проект', 'New project'],

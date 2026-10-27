@@ -14,6 +14,25 @@ export function fmtMoney(v: number, currency?: string, compact = false): string 
   return currency ? `${sign}${body} ${currency}` : `${sign}${body}`;
 }
 
+/**
+ * Money for tight spots (tiles, KPI cells): the full figure while it is short ("850 000 UZS"), otherwise compact
+ * ("1.6 mln UZS"). Web has no adjustsFontSizeToFit, so long figures would be cut off instead of shrinking.
+ */
+export function fitMoney(v: number, currency: string, max = 11): string {
+  const full = fmtMoney(v, currency);
+  return full.length <= max ? full : fmtMoney(v, currency, true);
+}
+
+/** Chart axis label: 0, 950, 12k, 1.5 mln, 2 mlrd (display only). */
+export function compactMoney(v: number): string {
+  const abs = Math.abs(v);
+  const sign = v < 0 ? '−' : '';
+  if (abs >= 1e9) return `${sign}${+(abs / 1e9).toFixed(abs >= 1e10 ? 0 : 1)} mlrd`;
+  if (abs >= 1e6) return `${sign}${+(abs / 1e6).toFixed(abs >= 1e7 ? 0 : 1)} mln`;
+  if (abs >= 1e3) return `${sign}${+(abs / 1e3).toFixed(abs >= 1e4 ? 0 : 1)}k`;
+  return `${sign}${Math.round(abs)}`;
+}
+
 /** Tolerant user input parsing ("1 500 000,50" -> 1500000.5). Null when invalid or not positive. */
 export function parseAmount(input: string): number | null {
   const s = input.replace(/[\s ]/g, '').replace(',', '.');

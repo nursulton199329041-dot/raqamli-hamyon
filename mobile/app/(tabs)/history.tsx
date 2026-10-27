@@ -3,7 +3,7 @@ import { History } from '@/features/History';
 
 export default function Screen() {
   return (
-    <TabScreen>
+    <TabScreen max={820}>
       <History />
     </TabScreen>
   );

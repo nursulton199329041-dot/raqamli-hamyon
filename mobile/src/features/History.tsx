@@ -7,6 +7,7 @@ import { Button, Chip, Label, Wrap } from '@/design/Controls';
 import { GlassCard, Tap } from '@/design/Glass';
 import { CircleBadge, Glyph } from '@/design/Icon';
 import { Sheet } from '@/design/Sheet';
+import { useScreenLayout } from '@/design/layout';
 import { Ink, usePalette, useT } from '@/design/theme';
 import { dayKey, fmtDateTime, fmtMoney } from '@/lib/money';
 import { addMonths, longDay, monthName, monthRange } from '@/lib/dates';
@@ -41,6 +42,7 @@ const isLive = (tx: Tx) => !tx.reversedById && tx.type !== TxType.Reversal;
 export function History() {
   const t = useT();
   const p = usePalette();
+  const L = useScreenLayout();
   const lang = useSettings((s) => s.lang);
   const cat = useCatalog();
   const user = useSession((s) => s.user);
@@ -136,7 +138,7 @@ export function History() {
         testID="history-list"
         data={rows}
         keyExtractor={(r) => r.key}
-        contentContainerStyle={{ paddingBottom: 150 }}
+        contentContainerStyle={{ paddingBottom: L.bottomSpace + 64 }}
         onRefresh={() => void list.refetch()}
         refreshing={list.isRefetching}
         ListHeaderComponent={
@@ -243,7 +245,8 @@ export function History() {
         }}
       />
 
-      <View pointerEvents="box-none" style={{ position: 'absolute', right: 18, bottom: 100 }}>
+      {/* above the floating tab bar on phones/tablets; the desktop sidebar leaves the bottom free */}
+      <View pointerEvents="box-none" style={{ position: 'absolute', right: 18, bottom: L.sidebar ? 24 : 100 }}>
         <Tap testID="fab-add" label={t('expense')} onPress={() => openOp({ kind: 'expense' })}
           style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: p.accent, alignItems: 'center', justifyContent: 'center', elevation: 6 }}>
           <Glyph name="plus" color="#fff" size={28} />
