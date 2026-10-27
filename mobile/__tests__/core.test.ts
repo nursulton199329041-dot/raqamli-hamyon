@@ -16,10 +16,10 @@ describe('parseAmount', () => {
 describe('fmtMoney', () => {
   it('groups thousands and keeps sign', () => {
     expect(fmtMoney(1500000, 'UZS')).toBe('1\u202F500\u202F000 UZS');
-    expect(fmtMoney(-250.5)).toBe('−250.50');
+    expect(fmtMoney(-250.5)).toBe('−250,50'); // uz: decimal comma
   });
   it('compacts large values', () => {
-    expect(fmtMoney(2500000, undefined, true)).toBe('2.5 mln');
+    expect(fmtMoney(2500000, undefined, true)).toBe('2,5 mln');
   });
 });
 

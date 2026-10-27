@@ -39,7 +39,13 @@ export interface Snapshot {
 
 export interface CurrencyTotals { currency: string; income: number; expense: number; netFlow: number; borrowed: number; lent: number; debtRepaid: number; debtCollected: number }
 export interface DebtPosition { currency: string; iOwe: number; owedToMe: number }
-export interface Summary { totals: CurrencyTotals[]; debts: DebtPosition[] }
+export interface TopExpense { id: string; occurredAt: string; amount: number; currency: string; category?: string | null; memo?: string | null }
+export interface Summary { totals: CurrencyTotals[]; debts: DebtPosition[]; topExpenses?: TopExpense[] }
+/** Wallet balance history from ledger lines (GET /api/analytics/balance). */
+export interface BalancePoint { period: string; start: string; balance: number }
+export interface BalanceCurrency { currency: string; opening: number; closing: number; points: BalancePoint[] }
+export interface BalanceHistory { granularity: string; from: string; to: string; currencies: BalanceCurrency[] }
+export interface WalletPeriod { walletId: string; name: string; currency: string; isArchived: boolean; opening: number; closing: number }
 export interface BreakdownRow { id: string | null; name: string; currency: string; total: number; percent: number; count: number }
 export interface SeriesPoint { period: string; start: string; currency: string; income: number; expense: number }
 export interface BudgetStatus { categoryId: string; name: string; currency: string; limit: number; spent: number; remaining: number; percent: number; exceeded: boolean }

@@ -10,7 +10,7 @@ import { elevation, iconSize, radii, space, type } from '@/design/tokens';
 const ITEMS = [
   { name: 'index', icon: 'wallet', key: 'home' },
   { name: 'history', icon: 'history', key: 'history' },
-  { name: 'analytics', icon: 'chart', key: 'analytics' },
+  { name: 'analytics', icon: 'chart', key: 'reports' },
   { name: 'projects', icon: 'project', key: 'projects' },
   { name: 'debts', icon: 'handshake', key: 'debts' },
 ] as const;

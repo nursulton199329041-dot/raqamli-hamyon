@@ -8,6 +8,7 @@ import { GlassCard, Tap } from '@/design/Glass';
 import { CircleBadge, Glyph } from '@/design/Icon';
 import { Sheet } from '@/design/Sheet';
 import { useScreenLayout } from '@/design/layout';
+import { TX_TYPE_LABEL, flowSign, txColor } from '@/lib/txMeta';
 import { Ink, usePalette, useT } from '@/design/theme';
 import { dayKey, fmtDateTime, fmtMoney } from '@/lib/money';
 import { addMonths, longDay, monthName, monthRange } from '@/lib/dates';
@@ -17,25 +18,6 @@ import { api } from '@/state/runtime';
 import { useSession } from '@/state/session';
 import { useSettings } from '@/state/settings';
 import { useUi } from '@/state/ui';
-
-function txColor(t: TxTypeValue): string {
-  switch (t) {
-    case TxType.Income: case TxType.Opening: case TxType.Adjustment: return Ink.income;
-    case TxType.Expense: return Ink.expense;
-    case TxType.Transfer: return Ink.transfer;
-    case TxType.Reversal: return '#94A3B8';
-    default: return Ink.debt;
-  }
-}
-
-/** +1 inflow, -1 outflow, 0 neutral (transfers move money between own wallets). */
-function flowSign(ty: TxTypeValue): number {
-  switch (ty) {
-    case TxType.Income: case TxType.DebtBorrow: case TxType.DebtCollection: case TxType.Opening: return 1;
-    case TxType.Expense: case TxType.DebtLend: case TxType.DebtRepayment: return -1;
-    default: return 0;
-  }
-}
 
 const isLive = (tx: Tx) => !tx.reversedById && tx.type !== TxType.Reversal;
 
@@ -60,12 +42,7 @@ export function History() {
   const list = useTransactions({ q: applied || undefined, type, walletId, from: range.from, to: range.to });
   const summary = useSummaryRange(range.from, range.to);
 
-  const label = (ty: TxTypeValue) => ({
-    [TxType.Income]: t('income'), [TxType.Expense]: t('expense'), [TxType.Transfer]: t('transfer'),
-    [TxType.DebtBorrow]: t('borrowed'), [TxType.DebtLend]: t('lent'), [TxType.DebtRepayment]: t('repay'),
-    [TxType.DebtCollection]: t('repay'), [TxType.Opening]: t('initial_balance'), [TxType.Adjustment]: t('adjust'),
-    [TxType.Reversal]: t('reversed'),
-  } as Record<number, string>)[ty] ?? '';
+  const label = (ty: TxTypeValue) => t(TX_TYPE_LABEL[ty]);
 
   const rows = useMemo(() => {
     const out: ({ kind: 'h'; key: string; iso: string; total: string } | { kind: 't'; key: string; tx: Tx })[] = [];

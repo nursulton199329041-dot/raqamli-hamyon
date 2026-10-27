@@ -21,7 +21,7 @@ describe('BalanceSummary', () => {
     const onPeriod = jest.fn();
     await render(<BalanceSummary wallets={[wallet('a', 'UZS', 5_000_000)]} summary={summary} loading={false} periodLabel="01 OKT. – 31 OKT." onPeriod={onPeriod} />);
     expect(screen.getByTestId('summary-balance')).toHaveTextContent('5 000 000 UZS');
-    expect(screen.getByTestId('summary-income')).toHaveTextContent('1.2 mln UZS'); // compacted: KPI cells are narrow
+    expect(screen.getByTestId('summary-income')).toHaveTextContent('1,2 mln UZS'); // compacted: KPI cells are narrow
     expect(screen.getByTestId('summary-expense')).toHaveTextContent('450 000 UZS');
     expect(screen.getByTestId('summary-net')).toHaveTextContent('+750 000 UZS');
     await fireEvent.press(screen.getByTestId('period-button'));

@@ -117,11 +117,26 @@ export class ApiClient {
   put = <T>(path: string, body: unknown) => this.request<T>('PUT', path, { body });
   del = <T>(path: string) => this.request<T>('DELETE', path);
 
-  /** Authenticated binary download (exports). */
-  async download(path: string, q?: Query): Promise<ArrayBuffer> {
+  /** Authenticated binary download (exports). `name` is the server's file name from Content-Disposition, if sent. */
+  async download(path: string, q?: Query): Promise<{ bytes: ArrayBuffer; name: string | null }> {
     const res = await this.raw('GET', path, undefined, q);
     if (res.status === 401 && (await this.refresh())) return this.download(path, q);
-    if (!res.ok) throw new ApiError(res.status, 'download', 'Yuklab bo‘lmadi');
-    return res.arrayBuffer();
+    if (!res.ok) throw new ApiError(res.status, 'download', 'download failed');
+    return { bytes: await res.arrayBuffer(), name: fileNameOf(res.headers.get('content-disposition')) };
   }
+}
+
+/** File name from a Content-Disposition header; RFC 5987 `filename*=UTF-8''…` (non-ASCII names) wins over `filename=`. */
+export function fileNameOf(header: string | null): string | null {
+  if (!header) return null;
+  const star = /filename\*\s*=\s*(?:UTF-8|utf-8)''([^;]+)/.exec(header);
+  if (star?.[1]) {
+    try {
+      return decodeURIComponent(star[1].trim());
+    } catch {
+      /* fall through to the plain name */
+    }
+  }
+  const plain = /filename\s*=\s*"?([^";]+)"?/.exec(header);
+  return plain?.[1]?.trim() ?? null;
 }

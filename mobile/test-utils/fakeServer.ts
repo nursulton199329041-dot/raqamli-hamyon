@@ -77,10 +77,13 @@ export class FakeServer {
   }
 
   /** daily income/expense buckets from the same ledger rows the summary uses */
-  private timeseries() {
+  private timeseries(q: Record<string, unknown> = {}) {
     const by = new Map<string, { currency: string; day: string; income: number; expense: number }>();
     for (const t of this.txs) {
       if (!this.live(t) || (t.type !== 1 && t.type !== 2)) continue;
+      if (q.from && t.occurredAt < String(q.from)) continue;
+      if (q.to && t.occurredAt > String(q.to)) continue;
+      if (q.walletId && t.walletId !== q.walletId) continue;
       const day = t.occurredAt.slice(0, 10);
       const k = `${t.currency}|${day}`;
       const row = by.get(k) ?? { currency: t.currency, day, income: 0, expense: 0 };
@@ -92,22 +95,82 @@ export class FakeServer {
       .map((r) => ({ period: r.day, start: `${r.day}T00:00:00Z`, currency: r.currency, income: r.income, expense: r.expense }));
   }
 
-  private summary(from?: string, to?: string) {
-    const by = new Map<string, { income: number; expense: number }>();
+  private summary(from?: string, to?: string, q: Record<string, unknown> = {}) {
+    const by = new Map<string, { income: number; expense: number; d: number[] }>();
     for (const t of this.txs) {
       if (!this.live(t)) continue;
       if (from && t.occurredAt < from) continue;
       if (to && t.occurredAt > to) continue;
-      const row = by.get(t.currency) ?? { income: 0, expense: 0 };
+      if (q.walletId && t.walletId !== q.walletId && t.toWalletId !== q.walletId) continue;
+      if (q.currency && t.currency !== q.currency) continue;
+      if (t.type === 0 || t.type === 3 || t.type === 8) continue; // openings, transfers, adjustments are not activity
+      const row = by.get(t.currency) ?? { income: 0, expense: 0, d: [0, 0, 0, 0] };
       if (t.type === 1) row.income += t.amount;
       if (t.type === 2) row.expense += t.amount;
+      if (t.type >= 4 && t.type <= 7) row.d[t.type - 4]! += t.amount;
       by.set(t.currency, row);
     }
     return {
       totals: [...by].map(([currency, r]) => ({
-        currency, income: r.income, expense: r.expense, netFlow: r.income - r.expense, borrowed: 0, lent: 0, debtRepaid: 0, debtCollected: 0,
+        currency, income: r.income, expense: r.expense, netFlow: r.income - r.expense,
+        borrowed: r.d[0]!, lent: r.d[1]!, debtRepaid: r.d[2]!, debtCollected: r.d[3]!,
       })),
-      debts: [],
+      debts: this.debtPositions,
+    };
+  }
+
+  /** open debt positions returned by the summary (tests set them directly) */
+  debtPositions: { currency: string; iOwe: number; owedToMe: number }[] = [];
+
+  /** signed effect of one operation on one wallet (the ledger lines the real server would post) */
+  private delta(t: Tx, walletId: string): number {
+    if (!this.live(t)) return 0;
+    const out = t.walletId === walletId;
+    const inn = t.toWalletId === walletId;
+    switch (t.type) {
+      case 0: case 1: case 4: case 7: return out ? t.amount : 0;
+      case 2: case 5: case 6: return out ? -t.amount : 0;
+      case 3: return (out ? -t.amount : 0) + (inn ? (t.toAmount ?? t.amount) : 0);
+      default: return 0;
+    }
+  }
+
+  /** balance of a wallet at instant `at` = current balance minus everything that happened after it */
+  private balanceAt(walletId: string, at: string): number {
+    const w = this.w(walletId);
+    if (!w) return 0;
+    return this.txs.filter((t) => t.occurredAt > at).reduce((b, t) => b - this.delta(t, walletId), w.balance);
+  }
+
+  private walletPeriods(q: Record<string, unknown>) {
+    const to = String(q.to ?? new Date().toISOString());
+    return this.wallets
+      .filter((w) => (!q.walletId || w.id === q.walletId) && (!q.currency || w.currency === q.currency))
+      .map((w) => ({
+        walletId: w.id, name: w.name, currency: w.currency, isArchived: w.isArchived,
+        opening: q.from ? this.balanceAt(w.id, new Date(new Date(String(q.from)).getTime() - 1).toISOString()) : 0,
+        closing: this.balanceAt(w.id, to),
+      }));
+  }
+
+  /** daily balance history per currency (local calendar days between from and to) */
+  private balanceHistory(q: Record<string, unknown>) {
+    const from = new Date(String(q.from ?? new Date(Date.now() - 30 * 86_400_000).toISOString()));
+    const to = new Date(String(q.to ?? new Date().toISOString()));
+    const ws = this.wallets.filter((w) => (!q.walletId || w.id === q.walletId) && (!q.currency || w.currency === q.currency));
+    const currencies = [...new Set(ws.map((w) => w.currency))].sort();
+    const sumAt = (cur: string, at: Date) => ws.filter((w) => w.currency === cur).reduce((s, w) => s + this.balanceAt(w.id, at.toISOString()), 0);
+    return {
+      granularity: 'day', from: from.toISOString(), to: to.toISOString(),
+      currencies: currencies.map((cur) => {
+        const points = [];
+        for (let d = new Date(from.getFullYear(), from.getMonth(), from.getDate()); d <= to; d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)) {
+          const end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+          const period = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          points.push({ period, start: d.toISOString(), balance: sumAt(cur, end < to ? end : to) });
+        }
+        return { currency: cur, opening: sumAt(cur, new Date(from.getTime() - 1)), closing: sumAt(cur, to), points };
+      }),
     };
   }
 
@@ -195,6 +258,8 @@ export class FakeServer {
     if (q.to) items = items.filter((t) => t.occurredAt <= String(q.to));
     if (q.type !== undefined) items = items.filter((t) => t.type === Number(q.type));
     if (q.walletId) items = items.filter((t) => t.walletId === q.walletId || t.toWalletId === q.walletId);
+    if (q.currency) items = items.filter((t) => t.currency === q.currency || t.toCurrency === q.currency);
+    if (q.categoryId) items = items.filter((t) => t.categoryId === q.categoryId || this.categories.some((c) => c.id === t.categoryId && c.parentId === q.categoryId));
     if (q.q) items = items.filter((t) => (t.memo ?? '').toLowerCase().includes(String(q.q).toLowerCase()));
     items = [...items].sort((a, b) => b.occurredAt.localeCompare(a.occurredAt) || b.createdAt.localeCompare(a.createdAt));
     return { items, total: items.length, page: 1, pageSize: 100 };
@@ -214,8 +279,10 @@ export class FakeServer {
       if (path === '/api/sync/pull') return this.snapshot();
       if (path === '/api/analytics/breakdown') return this.breakdown(String(q?.by), Number(q?.type ?? 2));
       if (path === '/api/analytics/budgets') return [];
-      if (path === '/api/analytics/timeseries') return this.timeseries();
-      if (path === '/api/analytics/summary') return this.summary(q?.from as string | undefined, q?.to as string | undefined);
+      if (path === '/api/analytics/timeseries') return this.timeseries(q ?? {});
+      if (path === '/api/analytics/summary') return this.summary(q?.from as string | undefined, q?.to as string | undefined, q ?? {});
+      if (path === '/api/analytics/balance') return this.balanceHistory(q ?? {});
+      if (path === '/api/analytics/wallets') return this.walletPeriods(q ?? {});
       if (path === '/api/transactions') return this.list(q ?? {});
       throw new ApiError(404, 'not_found', `GET ${path}`);
     }) as never);

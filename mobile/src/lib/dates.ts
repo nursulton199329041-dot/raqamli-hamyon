@@ -17,7 +17,12 @@ const WEEKDAYS: Record<Lang, string[]> = {
   en: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
 };
 
-export const monthName = (lang: Lang, m: number) => MONTHS[lang][m] ?? '';
+/** Russian month names in the nominative case ("октябрь 2026"); MONTHS.ru is genitive ("27 октября"). */
+const MONTHS_RU_NOMINATIVE = ['январь', 'февраль', 'март', 'апрель', 'май', 'июнь', 'июль', 'август', 'сентябрь', 'октябрь', 'ноябрь', 'декабрь'];
+
+/** `standalone` = the month on its own ("oktabr 2026"), as opposed to inside a date ("27 октября"). */
+export const monthName = (lang: Lang, m: number, standalone = false) =>
+  (standalone && lang === 'ru' ? MONTHS_RU_NOMINATIVE[m] : MONTHS[lang][m]) ?? '';
 export const monthShort = (lang: Lang, m: number) => MONTHS_SHORT[lang][m] ?? '';
 export const weekdayName = (lang: Lang, d: number) => WEEKDAYS[lang][d] ?? '';
 
