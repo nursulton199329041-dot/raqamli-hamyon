@@ -265,3 +265,8 @@ Commit 83bcd0f, `eas update --channel preview` (runtime 1.0.0, android fingerpri
 **Drag & drop gorizontal qatorlarda:** engine bir nechta scroller'ni biladi (sahifa vertikal + har qator `axis:'x'`). Zonalar qator offsetini drag boshida o'lchaydi, jonli pozitsiya arifmetik hisoblanadi (Fabric `measureInWindow` kechikishi muammosi qatorda ham qaytmaydi — test 60 px kechikish bilan; qator siljishi olib tashlansa test yiqiladi). Qator chetida (48 px) gorizontal auto-scroll. Drag paytida qatorlar native scroll qilmaydi (`scrollEnabled=false`) — swipe va long-press to'qnashmaydi. Kirim→Hamyon, Hamyon→Hamyon, Hamyon→Xarajat testlangan.
 **Tekshirildi:** tsc, eslint toza; jest **180/180** (16 suite; yangi `home.test.tsx` 10 test); `expo export --platform android` OK. Brauzer 390×844, lokal API real ma'lumot: 3 qator, gorizontal overflow 0, matn kesilishi 0, 4 tab; UZ/EN, dark/light, Colorful+squircle+L ko'rinishi ko'rildi.
 **Bajarilmagan:** real Android telefonda sinalmadi (drag'ni barmoq bilan, haqiqiy Reduce Motion, past quvvatli qurilma unumdorligi). OTA yuborilmadi, push/merge qilinmadi. Backend va PostgreSQL'ga tegilmadi.
+
+### OTA → preview (V4) — 2026-10-28
+- Tekshiruv: native fayllar 83bcd0f'dan beri o'zgarmagan; Android fingerprint `8874963d…` = preview APK; EAS'da faqat `preview` kanali (production yo'q, tegilmadi).
+- `eas update --channel preview --environment preview` -> update group `490391b6-b9ad-4a59-9f58-7d891a54aa46`; Android `01a17f16-6a72-7cde-ad4f-2ca3f05d43ac`, iOS `01a17f16-6a72-7616-a8f6-ac3803ba9aa3`; runtime 1.0.0; commit `e6e35e6` (`*` = faqat untracked yordamchi papkalar).
+- Telefonda hali tasdiqlanmagan. Push/merge qilinmagan; backend va bazaga tegilmagan.
