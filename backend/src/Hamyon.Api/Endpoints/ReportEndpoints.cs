@@ -29,23 +29,29 @@ public static class ReportEndpoints
         a.MapGet("/budgets", async (HttpContext ctx, AnalyticsService svc, CancellationToken ct) =>
             Results.Ok(await svc.BudgetsAsync(ctx.User.UserId(), DateTimeOffset.UtcNow, ct)));
 
-        app.MapGet("/api/reports/export", async (HttpContext ctx, ExportService export, [AsParameters] TransactionQuery q,
-            string? format, string? lang, CancellationToken ct) =>
+        a.MapGet("/balance", async (HttpContext ctx, AnalyticsService svc, [AsParameters] TransactionQuery q,
+            string? granularity, CancellationToken ct) =>
         {
-            var table = await export.BuildAsync(ctx.User.UserId(), q, lang ?? "uz", ct);
-            var stamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmm");
-            switch ((format ?? "csv").ToLowerInvariant())
+            var g = granularity is "day" or "week" or "month" or "year" ? granularity : "day";
+            return Results.Ok(await svc.BalanceAsync(ctx.User.UserId(), q, g, ct));
+        });
+
+        a.MapGet("/wallets", async (HttpContext ctx, AnalyticsService svc, [AsParameters] TransactionQuery q, CancellationToken ct) =>
+            Results.Ok(await svc.WalletPeriodsAsync(ctx.User.UserId(), q, ct)));
+
+        app.MapGet("/api/reports/export", async (HttpContext ctx, ExportService export, [AsParameters] TransactionQuery q,
+            string? format, string? lang, string? granularity, CancellationToken ct) =>
+        {
+            var fmt = (format ?? "csv").ToLowerInvariant();
+            if (fmt is not ("xlsx" or "pdf" or "csv")) throw new DomainException("export.format", "Format must be csv, xlsx or pdf.");
+            var table = await export.BuildAsync(ctx.User.UserId(), q, lang ?? "uz", granularity, ct);
+            var name = $"{table.FileStem}.{fmt}";
+            return fmt switch
             {
-                case "xlsx":
-                    return Results.File(ExportService.ToXlsx(table),
-                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"hamyon-{stamp}.xlsx");
-                case "pdf":
-                    return Results.File(PdfReport.Build(table), "application/pdf", $"hamyon-{stamp}.pdf");
-                case "csv":
-                    return Results.File(ExportService.ToCsv(table), "text/csv; charset=utf-8", $"hamyon-{stamp}.csv");
-                default:
-                    throw new DomainException("export.format", "Format must be csv, xlsx or pdf.");
-            }
+                "xlsx" => Results.File(ExportService.ToXlsx(table), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", name),
+                "pdf" => Results.File(PdfReport.Build(table), "application/pdf", name),
+                _ => Results.File(ExportService.ToCsv(table), "text/csv; charset=utf-8", name),
+            };
         }).WithTags("Reports").RequireAuthorization();
     }
 }

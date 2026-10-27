@@ -79,7 +79,8 @@ builder.Services.AddRateLimiter(o =>
 builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
 {
     var origins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? [];
-    if (origins.Length > 0) p.WithOrigins(origins).AllowAnyHeader().AllowAnyMethod();
+    // Content-Disposition carries the export file name (period + filters); browsers hide it from JS unless exposed.
+    if (origins.Length > 0) p.WithOrigins(origins).AllowAnyHeader().AllowAnyMethod().WithExposedHeaders("Content-Disposition");
 }));
 
 var app = builder.Build();

@@ -6,10 +6,16 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Hamyon.Api.Endpoints;
 
+/// <param name="Tz">Client UTC offset in minutes (Tashkent = 300). Day/week/month buckets and report dates use the
+/// client's calendar, not UTC; null = UTC.</param>
 public sealed record TransactionQuery(
     DateTimeOffset? From, DateTimeOffset? To, Guid? WalletId, Guid? CategoryId, Guid? ProjectId, Guid? SourceId,
     Guid? PersonId, TransactionType? Type, string? Currency, decimal? MinAmount, decimal? MaxAmount, string? Q,
-    bool? IncludeReversed, int? Page, int? PageSize);
+    bool? IncludeReversed, int? Page, int? PageSize, int? Tz = null)
+{
+    /// <summary>Offset clamped to the real-world range (-12h..+14h).</summary>
+    public TimeSpan Offset => TimeSpan.FromMinutes(Math.Clamp(Tz ?? 0, -720, 840));
+}
 
 public static class OperationEndpoints
 {
@@ -164,10 +170,13 @@ public static class TransactionFilter
     {
         var e = db.JournalEntries.AsNoTracking().Where(x => x.UserId == uid);
         if (q.IncludeReversed != true) e = e.Where(x => x.ReversedById == null && x.ReversalOfId == null);
-        if (q.From is not null) e = e.Where(x => x.OccurredAt >= q.From);
-        if (q.To is not null) e = e.Where(x => x.OccurredAt <= q.To);
+        // Npgsql only writes UTC timestamptz parameters; clients may send local offsets (2026-10-01T00:00:00+05:00)
+        if (q.From is { } from) { var f = from.ToUniversalTime(); e = e.Where(x => x.OccurredAt >= f); }
+        if (q.To is { } to) { var t = to.ToUniversalTime(); e = e.Where(x => x.OccurredAt <= t); }
         if (q.WalletId is not null) e = e.Where(x => x.WalletId == q.WalletId || x.ToWalletId == q.WalletId);
-        if (q.CategoryId is not null) e = e.Where(x => x.CategoryId == q.CategoryId);
+        // a parent category also matches its sub-categories (a sub-category matches only itself)
+        if (q.CategoryId is not null)
+            e = e.Where(x => x.CategoryId == q.CategoryId || db.Categories.Any(c => c.Id == x.CategoryId && c.ParentId == q.CategoryId));
         if (q.ProjectId is not null) e = e.Where(x => x.ProjectId == q.ProjectId);
         if (q.SourceId is not null) e = e.Where(x => x.IncomeSourceId == q.SourceId);
         if (q.PersonId is not null) e = e.Where(x => x.PersonId == q.PersonId);
