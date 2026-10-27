@@ -3,7 +3,7 @@ import { Text, View, type DimensionValue, type StyleProp, type ViewStyle } from 
 import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { Button } from './Controls';
 import { Glyph } from './Icon';
-import { Ink, usePalette } from './theme';
+import { Ink, usePalette, useT } from './theme';
 import { radii, space, type, useReducedMotion } from './tokens';
 
 /** Empty list / section: glyph, one line of explanation, optional primary action. */
@@ -56,8 +56,9 @@ export function Skeleton({ width = '100%', height = 14, radius = radii.sm, style
 
 /** Skeleton of a tile grid while the first snapshot loads. */
 export function LoadingState({ rows = 2, columns = 3, testID }: { rows?: number; columns?: number; testID?: string }) {
+  const t = useT();
   return (
-    <View testID={testID} accessibilityLabel="loading" style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: space.md }}>
+    <View testID={testID} accessibilityLabel={t('loading')} style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: space.md }}>
       {Array.from({ length: rows * columns }, (_, i) => (
         <View key={i} style={{ width: `${100 / columns}%`, alignItems: 'center', gap: space.xs }}>
           <Skeleton width="60%" height={10} />

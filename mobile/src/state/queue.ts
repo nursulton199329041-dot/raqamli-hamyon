@@ -1,3 +1,4 @@
+import { errorText } from '@/api/errors';
 import { create } from 'zustand';
 import { ApiError } from '@/api/client';
 import type { PendingOp } from '@/api/types';
@@ -62,7 +63,7 @@ export const useQueue = create<QueueState>((set, get) => ({
         operations: [{ clientOperationId: id, kind, payload, targetId: targetId ?? null }],
       });
       const r = res.results[0];
-      if (r && r.status === 'rejected') return { ok: false, message: r.message ?? r.errorCode ?? 'rejected' };
+      if (r && r.status === 'rejected') return { ok: false, message: errorText(r.errorCode, r.message ?? r.errorCode ?? '') };
       set({ online: true });
       void queryClient.invalidateQueries();
       return { ok: true, queued: false };
@@ -92,7 +93,7 @@ export const useQueue = create<QueueState>((set, get) => ({
       for (const o of get().pending) {
         const r = byId.get(o.clientOperationId);
         if (!r) remaining.push(o);
-        else if (r.status === 'rejected') remaining.push({ ...o, error: r.message ?? r.errorCode ?? 'rejected' });
+        else if (r.status === 'rejected') remaining.push({ ...o, error: errorText(r.errorCode, r.message ?? r.errorCode ?? '') });
         // applied / duplicate => done, drop from queue
       }
       set({ pending: remaining, online: true });

@@ -49,7 +49,7 @@ export function Auth() {
     return (
       <SafeAreaView style={{ flex: 1 }}>
         <View style={{ paddingHorizontal: 16, paddingTop: 8, alignItems: 'flex-start' }}>
-          <Tap testID="diag-close" label="close" onPress={() => setDiag(false)}><Glyph name="close" color={p.text} size={26} /></Tap>
+          <Tap testID="diag-close" label={t('close')} onPress={() => setDiag(false)}><Glyph name="close" color={p.text} size={26} /></Tap>
         </View>
         <Text style={{ color: p.textSecondary, paddingHorizontal: 16 }}>{t('dnd_no_server')}</Text>
         <DndDiagnostics />

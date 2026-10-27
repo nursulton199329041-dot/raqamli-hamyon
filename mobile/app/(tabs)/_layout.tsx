@@ -61,7 +61,8 @@ function Sidebar({ state, navigation }: BarProps) {
           <View style={{ width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: `${p.accent}2E` }}>
             <Glyph name="wallet" color={p.accent} size={iconSize.md} />
           </View>
-          <Text numberOfLines={1} style={[type.headline, { color: p.text, flexShrink: 1 }]}>{t('app')}</Text>
+          {/* "Цифровой кошелёк" is longer than "Raqamli Hamyon": two lines, never cut */}
+          <Text numberOfLines={2} style={[type.headline, { color: p.text, flexShrink: 1 }]}>{t('app')}</Text>
         </View>
         <View accessibilityRole="tablist" style={{ gap: space.xs, marginTop: space.sm }}>
           {ITEMS.map((it, i) => {

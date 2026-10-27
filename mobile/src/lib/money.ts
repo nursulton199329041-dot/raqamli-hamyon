@@ -68,9 +68,13 @@ export function parseAmount(input: string): number | null {
   return Number.isFinite(v) && v > 0 ? v : null;
 }
 
+const EN_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** Short date in the app language: 26.11.2026 (uz, ru) · Nov 26, 2026 (en). */
 export function fmtDate(iso: string | Date): string {
   const d = typeof iso === 'string' ? new Date(iso) : iso;
   const p = (n: number) => String(n).padStart(2, '0');
+  if (style === STYLES.en) return `${EN_MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
   return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()}`;
 }
 

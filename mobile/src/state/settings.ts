@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { Lang } from '@/i18n';
+import { setErrorLang } from '@/api/errors';
 import { setNumberLang } from '@/lib/money';
 import { getStorage } from '@/offline/storage';
 import { api, DEFAULT_API_URL } from './runtime';
@@ -53,8 +54,12 @@ export const useSettings = create<SettingsState>((set, get) => ({
   },
 }));
 
-// Number / money formatting follows the app language (also when tests or restore set the store directly).
+// Number / money formatting and error texts follow the app language (also when tests or restore set the store directly).
 setNumberLang(useSettings.getState().lang);
+setErrorLang(useSettings.getState().lang);
 useSettings.subscribe((s, prev) => {
-  if (s.lang !== prev.lang) setNumberLang(s.lang);
+  if (s.lang !== prev.lang) {
+    setNumberLang(s.lang);
+    setErrorLang(s.lang);
+  }
 });

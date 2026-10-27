@@ -122,7 +122,7 @@ export function History() {
           <View>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 14 }}>
               <Tap testID="prev-period" label="‹" onPress={() => setAnchor((a) => addMonths(a, -1))} style={{ padding: 8 }}><Glyph name="chevronLeft" color={p.accent} size={22} /></Tap>
-              <Text testID="period-label" style={{ color: p.text, fontSize: 16, fontWeight: '600' }}>{monthName(lang, anchor.getMonth())} {anchor.getFullYear()}</Text>
+              <Text testID="period-label" style={{ color: p.text, fontSize: 16, fontWeight: '600' }}>{monthName(lang, anchor.getMonth(), true)} {anchor.getFullYear()}</Text>
               <Tap testID="next-period" label="›" onPress={() => setAnchor((a) => addMonths(a, 1))} style={{ padding: 8 }}><Glyph name="chevronRight" color={p.accent} size={22} /></Tap>
             </View>
             <View style={{ alignItems: 'center', paddingVertical: 10 }}>

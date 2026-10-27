@@ -19,9 +19,10 @@ const CURRENCIES = ['UZS', 'USD', 'EUR', 'RUB', 'KZT'];
 export function IconColorPicker({ icon, color, onIcon, onColor }: {
   icon: string; color: string; onIcon(k: string): void; onColor(c: string): void;
 }) {
+  const t = useT();
   return (
     <View>
-      <Label>Icon</Label>
+      <Label>{t('icon')}</Label>
       <Wrap gap={8}>
         {ICON_KEYS.map((k) => (
           <Tap key={k} label={k} onPress={() => onIcon(k)} style={{
@@ -31,7 +32,7 @@ export function IconColorPicker({ icon, color, onIcon, onColor }: {
           </Tap>
         ))}
       </Wrap>
-      <Label>Color</Label>
+      <Label>{t('color')}</Label>
       <Wrap gap={10}>
         {COLORS.map((c) => (
           <Tap key={c} label={c} onPress={() => onColor(c)} style={{

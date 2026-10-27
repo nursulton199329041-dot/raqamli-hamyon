@@ -1,3 +1,4 @@
+import { errorText } from './errors';
 import type { AuthResponse } from './types';
 
 export class ApiError extends Error {
@@ -54,7 +55,7 @@ export class ApiClient {
         signal: ctrl.signal,
       });
     } catch {
-      throw new ApiError(0, 'network', 'Server bilan aloqa yo‘q');
+      throw new ApiError(0, 'network', errorText('network', ''));
     } finally {
       clearTimeout(timer);
     }
@@ -100,7 +101,7 @@ export class ApiClient {
       return (text ? JSON.parse(text) : undefined) as T;
     }
     let code = 'error';
-    let message = `Xatolik (${res.status})`;
+    let message = '';
     try {
       const j = (await res.json()) as { code?: string; message?: string };
       code = j.code ?? code;
@@ -108,7 +109,8 @@ export class ApiClient {
     } catch {
       /* non-JSON error body */
     }
-    throw new ApiError(res.status, code, message);
+    // shown to the user as is: translated for known codes, the server's own words otherwise
+    throw new ApiError(res.status, code, errorText(code, message, res.status));
   }
 
   get = <T>(path: string, q?: Query) => this.request<T>('GET', path, { q });
@@ -121,7 +123,7 @@ export class ApiClient {
   async download(path: string, q?: Query): Promise<{ bytes: ArrayBuffer; name: string | null }> {
     const res = await this.raw('GET', path, undefined, q);
     if (res.status === 401 && (await this.refresh())) return this.download(path, q);
-    if (!res.ok) throw new ApiError(res.status, 'download', 'download failed');
+    if (!res.ok) throw new ApiError(res.status, 'download', errorText('download', '', res.status));
     return { bytes: await res.arrayBuffer(), name: fileNameOf(res.headers.get('content-disposition')) };
   }
 }

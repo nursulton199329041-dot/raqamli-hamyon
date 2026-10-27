@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { KeyboardAvoidingView, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GlassCard } from './Glass';
-import { usePalette } from './theme';
+import { usePalette, useT } from './theme';
 
 /**
  * iOS-style bottom sheet used by every form; identical look on iOS, Android and Web.
@@ -18,11 +18,12 @@ export function Sheet({ visible, onClose, children, full, footer }: {
   visible: boolean; onClose(): void; children: ReactNode; full?: boolean; footer?: ReactNode;
 }) {
   const p = usePalette();
+  const t = useT();
   const insets = useSafeAreaInsets();
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
       <KeyboardAvoidingView testID="sheet-kav" behavior="padding" style={{ flex: 1, justifyContent: 'flex-end' }}>
-        <Pressable accessibilityLabel="close" style={[StyleSheet.absoluteFill, { backgroundColor: p.overlay }]} onPress={onClose} />
+        <Pressable accessibilityLabel={t('close')} style={[StyleSheet.absoluteFill, { backgroundColor: p.overlay }]} onPress={onClose} />
         <View style={{ maxHeight: full ? '94%' : '88%', paddingHorizontal: 8, paddingBottom: Math.max(insets.bottom, 8) }}>
           <GlassCard
             radius={30}
