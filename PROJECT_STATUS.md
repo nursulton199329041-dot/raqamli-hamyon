@@ -247,3 +247,8 @@ Commit 83bcd0f, `eas update --channel preview` (runtime 1.0.0, android fingerpri
 - **PC LAN manzili yana o'zgargan: `192.168.1.8`** (telefonda server manzili `http://192.168.1.8:5080`). Router'da DHCP reservation hali qilinmagan.
 - Orqaga qaytarish (kerak bo'lsa): task'ni to'xtatish -> `api-prechange-20261028-0008\` ni `api\` ga nusxalash -> task'ni ishga tushirish. Baza o'zgarmagani uchun dump'ni tiklash shart emas.
 - Mobil Hisobot versiyasi hali OTA bilan yuborilmagan.
+
+### OTA → preview (Hisobot + responsive + UZ/RU/EN) — 2026-10-28
+- Tekshiruv: native fayllar 83bcd0f'dan beri o'zgarmagan; Android fingerprint `8874963d…` = preview APK; EAS'da faqat `preview` kanali (production yo'q, tegilmadi).
+- `eas update --channel preview --environment preview` -> update group `31922e40-9de5-4ae1-95c7-9ff2999224d1`; Android `01a17eca-e720-7546-9225-b5e5bb3796d0`, iOS `01a17eca-e720-7860-a4cf-d33261d2b5aa`; runtime 1.0.0; commit `b42f38f` (`*` = faqat untracked yordamchi papkalar).
+- Backend allaqachon lokal serverda (b42f38f bilan mos). Telefonda server manzili: `http://192.168.1.8:5080`. Telefonda hali tasdiqlanmagan.
