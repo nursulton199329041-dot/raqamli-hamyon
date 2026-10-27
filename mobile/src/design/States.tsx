@@ -4,7 +4,8 @@ import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } fr
 import { Button } from './Controls';
 import { Glyph } from './Icon';
 import { Ink, usePalette, useT } from './theme';
-import { radii, space, type, useReducedMotion } from './tokens';
+import { useMotionOff } from './look';
+import { radii, space, type } from './tokens';
 
 /** Empty list / section: glyph, one line of explanation, optional primary action. */
 export function EmptyState({ icon, title, hint, action, onAction, testID }: {
@@ -45,7 +46,7 @@ export function Skeleton({ width = '100%', height = 14, radius = radii.sm, style
   width?: DimensionValue; height?: number; radius?: number; style?: StyleProp<ViewStyle>;
 }) {
   const p = usePalette();
-  const reduced = useReducedMotion();
+  const reduced = useMotionOff();
   const o = useSharedValue(0.55);
   useEffect(() => {
     if (!reduced) o.set(withRepeat(withTiming(1, { duration: 750 }), -1, true));

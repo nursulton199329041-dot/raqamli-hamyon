@@ -1,6 +1,6 @@
 import { useColorScheme } from 'react-native';
 import { translate, type I18nKey } from '@/i18n';
-import { useSettings } from '@/state/settings';
+import { useSettings, type UiStyle } from '@/state/settings';
 
 export interface Palette {
   dark: boolean;
@@ -37,11 +37,28 @@ export const Ink = {
   debt: '#F5A524',
 } as const;
 
+/** Surface adjustments per Appearance style (accent override is applied on top). */
+function styled(base: Palette, style: UiStyle, accent: string | null): Palette {
+  const p = { ...base, accent: accent ?? base.accent };
+  switch (style) {
+    case 'super': // denser, brighter glass
+      return { ...p, glassFill: base.dark ? 'rgba(255,255,255,0.11)' : 'rgba(255,255,255,0.80)', glassBorder: base.dark ? 'rgba(255,255,255,0.24)' : 'rgba(15,23,42,0.10)' };
+    case 'office': // solid, clearly bordered panels
+      return { ...p, glassFill: base.dark ? '#141B33' : '#FFFFFF', glassFillStrong: base.dark ? '#1B2442' : '#F1F4FA', glassBorder: base.dark ? 'rgba(255,255,255,0.16)' : 'rgba(15,23,42,0.16)' };
+    case 'minimal': // almost no surfaces: content on the background
+      return { ...p, glassFill: base.dark ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.45)', glassBorder: base.dark ? 'rgba(255,255,255,0.08)' : 'rgba(15,23,42,0.06)' };
+    default:
+      return p;
+  }
+}
+
 export function usePalette(): Palette {
   const mode = useSettings((s) => s.themeMode);
+  const style = useSettings((s) => s.appearance.uiStyle);
+  const accent = useSettings((s) => s.appearance.accent);
   const system = useColorScheme();
   const dark = mode === 'dark' || (mode === 'system' && system !== 'light');
-  return dark ? darkPalette : lightPalette;
+  return styled(dark ? darkPalette : lightPalette, style, accent);
 }
 
 export function useT() {

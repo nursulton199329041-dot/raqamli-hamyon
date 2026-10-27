@@ -61,17 +61,19 @@ describe('dashboard: three sections, always-visible balances', () => {
     expect(screen.queryByText('Svet')).toBeNull(); // sub-category is chosen inside the operation form
   });
 
-  it('grid: wallets are 2 per row, expense categories 3 per row, income sources 4 per row', async () => {
+  it('each section is ONE horizontally scrolling row with a "+" at its end (no wallet grid, no balance card)', async () => {
     useLayout(BOXES);
     await ready();
-    const cellWidth = (id: string) => {
-      let n = screen.getByTestId(id).parent;
-      while (n && !(n.props?.style && !Array.isArray(n.props.style) && n.props.style.width)) n = n.parent;
-      return n?.props.style.width;
-    };
-    expect(cellWidth('drop:wallet:w1')).toBe('50%');
-    expect(cellWidth('drop:cat:c1')).toBe('33.3333%');
-    expect(cellWidth('drag:source:s1')).toBe('25%');
+    for (const [row, tile, add] of [
+      ['income', 'drag:source:s1', 'Yangi manba'], ['wallets', 'drop:wallet:w1', 'Yangi hamyon'], ['expense', 'drop:cat:c1', 'Yangi toifa'],
+    ] as const) {
+      const scroll = screen.getByTestId(`row-scroll-${row}`);
+      expect(scroll.props.horizontal).toBe(true);
+      expect(within(scroll).getByTestId(tile)).toBeTruthy();
+      expect(within(scroll).getByLabelText(add)).toBeTruthy();
+    }
+    expect(within(screen.getByTestId('row-scroll-wallets')).getByTestId('drop:wallet:w2')).toBeTruthy(); // both wallets, same row
+    expect(screen.queryByTestId('balance-summary')).toBeNull();
   });
 
   it('collapsing a section hides its tiles without touching data', async () => {

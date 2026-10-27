@@ -2,8 +2,10 @@ import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, Platform, ScrollView, Text, View } from 'react-native';
 import { ApiError } from '@/api/client';
-import { Button, Chip, Field, Label, Segmented, Wrap } from '@/design/Controls';
-import { GlassCard } from '@/design/Glass';
+import { Button, Field, Label, Segmented } from '@/design/Controls';
+import { GlassCard, Tap } from '@/design/Glass';
+import { Glyph } from '@/design/Icon';
+import { useScreenLayout } from '@/design/layout';
 import { Ink, usePalette, useT } from '@/design/theme';
 import { LANGS } from '@/i18n';
 import { getStorage, type UpdateLogEntry } from '@/offline/storage';
@@ -12,11 +14,13 @@ import { api, queryClient } from '@/state/runtime';
 import { useSession } from '@/state/session';
 import { useSettings, type ThemeMode } from '@/state/settings';
 import { runtimeInfo, useUpdates } from '@/updates/updates';
+import { AppearanceCard } from './AppearanceCard';
 import { ConnectionCard } from './ConnectionCard';
 
 export function Settings() {
   const t = useT();
   const p = usePalette();
+  const L = useScreenLayout();
   const router = useRouter();
   const s = useSettings();
   const user = useSession((x) => x.user);
@@ -41,8 +45,8 @@ export function Settings() {
   };
 
   return (
-    <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 60, gap: 12 }}>
-      <Text style={{ color: p.text, fontSize: 24, fontWeight: '800' }}>{t('settings')}</Text>
+    <ScrollView testID="settings-scroll" contentContainerStyle={{ padding: 16, paddingBottom: L.bottomSpace + 16, gap: 12 }}>
+      <Text accessibilityRole="header" style={{ color: p.text, fontSize: 24, fontWeight: '800' }}>{t('settings')}</Text>
 
       <GlassCard>
         <Text style={{ color: p.text, fontWeight: '800', fontSize: 17 }}>{user?.displayName}</Text>
@@ -56,10 +60,22 @@ export function Settings() {
         <Label>{t('theme')}</Label>
         <Segmented<ThemeMode> value={s.themeMode} onChange={(v) => void s.update({ themeMode: v })}
           options={[{ value: 'dark', label: t('dark') }, { value: 'light', label: t('light') }, { value: 'system', label: t('system') }]} />
-        <Label>{t('reduce_effects')}</Label>
-        <Wrap>
-          <Chip label={s.reduceEffects ? 'ON' : 'OFF'} selected={s.reduceEffects} onPress={() => void s.update({ reduceEffects: !s.reduceEffects })} />
-        </Wrap>
+      </GlassCard>
+
+      <AppearanceCard />
+
+      {/* projects and debts left the main navigation; their data, screens and APIs are unchanged */}
+      <GlassCard>
+        <Label>{t('more_sections')}</Label>
+        {([['projects', 'project'], ['debts', 'handshake']] as const).map(([route, icon]) => (
+          <Tap key={route} testID={`open-${route}`} label={t(route)} onPress={() => router.push(`/${route}`)}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 48 }}>
+              <Glyph name={icon} color={p.accent} size={22} />
+              <Text style={{ flex: 1, color: p.text, fontWeight: '700', fontSize: 15 }}>{t(route)}</Text>
+              <Glyph name="chevronRight" color={p.textSecondary} size={18} />
+            </View>
+          </Tap>
+        ))}
       </GlassCard>
 
       <ConnectionCard />

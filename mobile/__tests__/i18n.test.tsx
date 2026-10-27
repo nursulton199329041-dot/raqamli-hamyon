@@ -73,9 +73,9 @@ describe('the whole app switches language; user-entered names are never translat
   afterEach(() => restore());
 
   it.each([
-    ['uz', ['Kirim manbalari', 'Hamyonlar', 'Xarajat toifalari', 'Umumiy balans'], '1 000 000 UZS'],
-    ['ru', ['Источники дохода', 'Кошельки', 'Категории расходов', 'Общий баланс'], '1 000 000 UZS'],
-    ['en', ['Income sources', 'Wallets', 'Expense categories', 'Total balance'], '1,000,000 UZS'],
+    ['uz', ['Kirim manbalari', 'Hamyonlar', 'Xarajat toifalari'], '1 000 000 UZS'],
+    ['ru', ['Источники дохода', 'Кошельки', 'Категории расходов'], '1 000 000 UZS'],
+    ['en', ['Income sources', 'Wallets', 'Expense categories'], '1,000,000 UZS'],
   ] as const)('%s', async (lang, labels, amount) => {
     useSettings.setState({ lang, reduceEffects: true });
     await renderApp(<Dashboard />);

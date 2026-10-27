@@ -4,21 +4,20 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GlassCard, Tap } from '@/design/Glass';
 import { Glyph } from '@/design/Icon';
 import { SIDEBAR_W, useScreenLayout } from '@/design/layout';
+import { MAIN_TABS, SECONDARY_ROUTES } from '@/design/navItems';
 import { usePalette, useT } from '@/design/theme';
 import { elevation, iconSize, radii, space, type } from '@/design/tokens';
 
-const ITEMS = [
-  { name: 'index', icon: 'wallet', key: 'home' },
-  { name: 'history', icon: 'history', key: 'history' },
-  { name: 'analytics', icon: 'chart', key: 'reports' },
-  { name: 'projects', icon: 'project', key: 'projects' },
-  { name: 'debts', icon: 'handshake', key: 'debts' },
-] as const;
+const ITEMS = MAIN_TABS;
+const SECONDARY = SECONDARY_ROUTES;
 
 interface BarProps {
-  state: { index: number };
+  state: { index: number; routes: { name: string }[] };
   navigation: { navigate(name: string): void };
 }
+
+/** Route of the visible screen (indexes include hidden routes, so match by name). */
+const activeName = (s: BarProps['state']) => s.routes[s.index]?.name;
 
 /** Mobile / tablet: floating glass tab bar over the content (capped and centred on tablets). */
 function FloatingBar({ state, navigation }: BarProps) {
@@ -29,10 +28,10 @@ function FloatingBar({ state, navigation }: BarProps) {
     <View pointerEvents="box-none" style={{ position: 'absolute', left: space.md, right: space.md, bottom: Math.max(insets.bottom, space.sm), alignItems: 'center' }}>
       <GlassCard radius={radii.xl} padding={space.xs} style={[elevation.float, { width: '100%', maxWidth: 560 }]}>
         <View accessibilityRole="tablist" style={{ flexDirection: 'row', alignItems: 'center' }}>
-          {ITEMS.map((it, i) => {
-            const on = state.index === i;
+          {ITEMS.map((it) => {
+            const on = activeName(state) === it.name;
             return (
-              <Tap key={it.name} label={t(it.key)} containerStyle={{ flex: 1 }} onPress={() => { if (!on) navigation.navigate(it.name); }}>
+              <Tap key={it.name} testID={`tab-${it.name}`} label={t(it.key)} containerStyle={{ flex: 1 }} onPress={() => { if (!on) navigation.navigate(it.name); }}>
                 <View accessibilityState={{ selected: on }} style={{
                   alignItems: 'center', justifyContent: 'center', minHeight: 54, paddingVertical: space.xs, paddingHorizontal: space.xxs, borderRadius: radii.lg,
                   backgroundColor: on ? `${p.accent}2E` : 'transparent',
@@ -65,8 +64,8 @@ function Sidebar({ state, navigation }: BarProps) {
           <Text numberOfLines={2} style={[type.headline, { color: p.text, flexShrink: 1 }]}>{t('app')}</Text>
         </View>
         <View accessibilityRole="tablist" style={{ gap: space.xs, marginTop: space.sm }}>
-          {ITEMS.map((it, i) => {
-            const on = state.index === i;
+          {ITEMS.map((it) => {
+            const on = activeName(state) === it.name;
             return (
               <Tap key={it.name} label={t(it.key)} onPress={() => { if (!on) navigation.navigate(it.name); }}>
                 <View accessibilityState={{ selected: on }} style={{
@@ -93,6 +92,7 @@ export default function TabsLayout() {
       screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: 'transparent' }, tabBarPosition: sidebar ? 'left' : 'bottom' }}
     >
       {ITEMS.map((it) => <Tabs.Screen key={it.name} name={it.name} />)}
+      {SECONDARY.map((name) => <Tabs.Screen key={name} name={name} options={{ href: null }} />)}
     </Tabs>
   );
 }

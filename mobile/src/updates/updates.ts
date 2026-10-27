@@ -160,7 +160,8 @@ export function runtimeInfo() {
     embeddedLaunch: Updates.isEmbeddedLaunch,
     otaEnabled: Updates.isEnabled,
     checkAutomatically: Updates.checkAutomatically ?? '-',
-    updateCreatedAt: Updates.createdAt ? Updates.createdAt.toISOString() : '-',
+    // an invalid date (no update metadata, tests, web) must not crash the Settings screen
+    updateCreatedAt: Updates.createdAt && !Number.isNaN(Updates.createdAt.getTime()) ? Updates.createdAt.toISOString() : '-',
     updatesUrl: (Constants.expoConfig?.updates as { url?: string } | undefined)?.url ?? '-',
   };
 }

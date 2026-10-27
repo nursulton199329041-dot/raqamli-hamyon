@@ -3,7 +3,8 @@ import { Dimensions, Pressable, StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming, type SharedValue } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
-import { elevation, haptic, motion, useReducedMotion } from '@/design/tokens';
+import { useMotionOff } from '@/design/look';
+import { elevation, haptic, motion } from '@/design/tokens';
 
 /**
  * Smart drag & drop. A drop NEVER moves money: it only reports (payload, zone) so the caller can open a
@@ -34,17 +35,30 @@ interface Zone {
   onDrop(p: DragPayload): void;
   ref: RefObject<View | null>;
   rect?: Rect;
-  /** scroller offset the rect was measured at; undefined = the zone does not move with a scroller */
+  /** page (vertical) scroller offset the rect was measured at; undefined = the zone does not move with the page */
   scrollAt?: number;
+  /** id of the horizontal row the zone lives in (see `DragRow`), and that row's offset at measurement */
+  row?: string;
+  rowAt?: number;
 }
 
-/** A vertically scrolling container that the drag may auto-scroll when the finger nears its top/bottom edge. */
+/**
+ * A scrolling container the drag may auto-scroll when the finger nears its edge. The page is vertical (`axis` 'y',
+ * one per screen); horizontal rows (`axis` 'x', `id` required) scroll sideways under a finger resting at their left/right end.
+ */
 export interface Scroller {
   ref: RefObject<View | null>;
   getOffset(): number;
   getMax(): number;
-  scrollTo(y: number): void;
+  scrollTo(offset: number): void;
+  axis?: 'x' | 'y';
+  id?: string;
 }
+
+/** Drop zones rendered inside a horizontal row read the row id from here, so their x position follows the row's scroll. */
+export const DragRow = createContext<string | undefined>(undefined);
+
+interface RowState { s: Scroller; rect?: Rect; pageAt?: number }
 
 /** Where the finger grabbed the dragged tile (tile-local px) and the tile size; used to draw the ghost. */
 export interface Grab { x: number; y: number; w: number }
@@ -69,6 +83,8 @@ export function setDragTrace(fn: Trace | null) {
 }
 
 const EDGE = 84;
+/** band at the left/right end of a horizontal row in which a resting finger scrolls the row */
+const EDGE_X = 48;
 /** A finger that lands this close (px) to a zone still counts: tiles are separated by gaps a thumb easily hits. */
 const NEAR = 14;
 const MEASURE_TIMEOUT_MS = 120;
@@ -96,6 +112,8 @@ interface DragCtx {
   end(x: number, y: number, home?: { x: number; y: number }): void;
   cancel(): void;
   finger: Finger;
+  /** last successful drop (zone id + counter) for success feedback on the target */
+  lastDrop: { id: string; n: number } | null;
 }
 
 const Ctx = createContext<DragCtx | null>(null);
@@ -115,7 +133,8 @@ export function DragProvider({ children }: { children: ReactNode }) {
   const [hoverId, setHoverId] = useState<string | null>(null);
   const [rejectedId, setRejectedId] = useState<string | null>(null);
   const [validIds, setValidIds] = useState<ReadonlySet<string>>(new Set());
-  const reduced = useReducedMotion();
+  const [lastDrop, setLastDrop] = useState<{ id: string; n: number } | null>(null);
+  const reduced = useMotionOff();
   const fx = useSharedValue(0);
   const fy = useSharedValue(0);
   const originX = useSharedValue(0);
@@ -132,6 +151,7 @@ export function DragProvider({ children }: { children: ReactNode }) {
   const lift = useSharedValue(0);
   const payloadRef = useRef<DragPayload | null>(null);
   const scroller = useRef<Scroller | null>(null);
+  const rows = useRef(new Map<string, RowState>());
   const scrollRect = useRef<Rect | undefined>(undefined);
   const pointer = useRef({ x: 0, y: 0 });
   const overlay = useRef<View>(null);
@@ -140,6 +160,13 @@ export function DragProvider({ children }: { children: ReactNode }) {
   const lastAutoScroll = useRef(0);
 
   const registerScroller = useCallback((s: Scroller) => {
+    if (s.axis === 'x' && s.id) {
+      const id = s.id;
+      rows.current.set(id, { s });
+      return () => {
+        if (rows.current.get(id)?.s === s) rows.current.delete(id);
+      };
+    }
     scroller.current = s;
     return () => {
       if (scroller.current === s) scroller.current = null;
@@ -151,8 +178,12 @@ export function DragProvider({ children }: { children: ReactNode }) {
     const r = z.rect;
     if (!r || r.w <= 0 || r.h <= 0) return undefined;
     const s = scroller.current;
-    if (z.scrollAt === undefined || !s) return r;
-    return { ...r, y: r.y - (s.getOffset() - z.scrollAt) };
+    const row = z.row ? rows.current.get(z.row) : undefined;
+    return {
+      ...r,
+      y: z.scrollAt === undefined || !s ? r.y : r.y - (s.getOffset() - z.scrollAt),
+      x: z.rowAt === undefined || !row ? r.x : r.x - (row.s.getOffset() - z.rowAt),
+    };
   }, []);
 
   /** The zone under the finger; otherwise the nearest zone that ACCEPTS the payload within NEAR px (thumb tolerance). */
@@ -205,10 +236,12 @@ export function DragProvider({ children }: { children: ReactNode }) {
           if (!node) continue;
           const s = scroller.current;
           const at = s ? s.getOffset() : undefined;
+          const rowAt = z.row ? rows.current.get(z.row)?.s.getOffset() : undefined;
           pending += 1;
           node.measureInWindow((mx, my, w, h) => {
             z.rect = { x: mx, y: my, w, h };
             z.scrollAt = at;
+            z.rowAt = rowAt;
             pending -= 1;
             if (pending === 0) settle();
           });
@@ -277,6 +310,15 @@ export function DragProvider({ children }: { children: ReactNode }) {
     scroller.current?.ref.current?.measureInWindow((mx, my, w, h) => {
       scrollRect.current = { x: mx, y: my, w, h };
     });
+    // horizontal rows: visible window of each row (follows the page's vertical scroll like a zone)
+    rows.current.forEach((r) => {
+      r.rect = undefined;
+      const pageAt = scroller.current?.getOffset();
+      r.s.ref.current?.measureInWindow((mx, my, w, h) => {
+        r.rect = { x: mx, y: my, w, h };
+        r.pageAt = pageAt;
+      });
+    });
     if (grab) {
       f.grabX.set(grab.x);
       f.grabY.set(grab.y);
@@ -337,6 +379,7 @@ export function DragProvider({ children }: { children: ReactNode }) {
         if (ok && found) {
           finish();
           haptic.success();
+          setLastDrop((d) => ({ id: found[0], n: (d?.n ?? 0) + 1 }));
           found[1].onDrop(p);
           return;
         }
@@ -363,21 +406,39 @@ export function DragProvider({ children }: { children: ReactNode }) {
   // (see `live`), so the hover state is simply recomputed from the same finger position.
   useEffect(() => {
     if (!dragging) return;
+    /** step towards an edge: 0 outside the band, up to MAX_STEP right at the edge */
+    const step = (p: number, lo: number, hi: number, edge: number) =>
+      p < lo + edge ? -MAX_STEP * Math.min(1, (lo + edge - p) / edge)
+        : p > hi - edge ? MAX_STEP * Math.min(1, (p - (hi - edge)) / edge) : 0;
+    const scrollBy = (s: Scroller, d: number) => {
+      const cur = s.getOffset();
+      const next = Math.max(0, Math.min(s.getMax(), cur + d));
+      if (Math.abs(next - cur) < 0.5) return false;
+      s.scrollTo(next);
+      return true;
+    };
     const id = setInterval(() => {
+      const { x: px, y: py } = pointer.current;
+      let moved = false;
+      // page (vertical)
       const s = scroller.current;
       const r = scrollRect.current;
-      if (!s || !r) return;
-      const py = pointer.current.y;
-      let dy = 0;
-      if (py < r.y + EDGE) dy = -MAX_STEP * Math.min(1, (r.y + EDGE - py) / EDGE);
-      else if (py > r.y + r.h - EDGE) dy = MAX_STEP * Math.min(1, (py - (r.y + r.h - EDGE)) / EDGE);
-      if (dy === 0) return;
-      const cur = s.getOffset();
-      const next = Math.max(0, Math.min(s.getMax(), cur + dy));
-      if (Math.abs(next - cur) < 0.5) return;
-      s.scrollTo(next);
+      if (s && r) {
+        const dy = step(py, r.y, r.y + r.h, EDGE);
+        if (dy !== 0) moved = scrollBy(s, dy) || moved;
+      }
+      // the horizontal row under the finger (its window moves with the page like a zone does)
+      rows.current.forEach((row) => {
+        const rr = row.rect;
+        if (!rr || rr.w <= 0) return;
+        const y = row.pageAt === undefined || !s ? rr.y : rr.y - (s.getOffset() - row.pageAt);
+        if (py < y || py > y + rr.h) return;
+        const dx = step(px, rr.x, rr.x + rr.w, EDGE_X);
+        if (dx !== 0) moved = scrollBy(row.s, dx) || moved;
+      });
+      if (!moved) return;
       lastAutoScroll.current = Date.now();
-      move(pointer.current.x, pointer.current.y);
+      move(px, py);
     }, 16);
     return () => clearInterval(id);
   }, [dragging, move]);
@@ -409,9 +470,9 @@ export function DragProvider({ children }: { children: ReactNode }) {
   const value = useMemo<DragCtx>(
     () => ({
       dragging, hoverId, validIds, rejectedId, registerZone, zoneMoved, registerScroller, begin, move, end, cancel: finish,
-      finger,
+      finger, lastDrop,
     }),
-    [dragging, hoverId, validIds, rejectedId, registerZone, zoneMoved, registerScroller, begin, move, end, finish, finger],
+    [dragging, hoverId, validIds, rejectedId, registerZone, zoneMoved, registerScroller, begin, move, end, finish, finger, lastDrop],
   );
 
   return (
@@ -581,9 +642,11 @@ export function Draggable({ payload, ghost, children, onTap }: {
 /** Wraps content so it can receive drops. Highlights when a valid payload hovers; flags invalid hovers. */
 export function DropZone({ id, accepts, onDrop, children }: {
   id: string; accepts(p: DragPayload): boolean; onDrop(p: DragPayload): void;
-  children: (s: { active: boolean; rejected: boolean; valid: boolean }) => ReactNode;
+  /** `dropped` changes (a new number) every time a drop lands on this zone: drive a one-shot success animation with it */
+  children: (s: { active: boolean; rejected: boolean; valid: boolean; dropped: number }) => ReactNode;
 }) {
   const d = useDrag();
+  const row = useContext(DragRow);
   const ref = useRef<View>(null);
   const latest = useRef({ accepts, onDrop });
   const { registerZone, zoneMoved } = d;
@@ -593,13 +656,16 @@ export function DropZone({ id, accepts, onDrop, children }: {
   });
 
   useEffect(
-    () => registerZone(id, { accepts: (p) => latest.current.accepts(p), onDrop: (p) => latest.current.onDrop(p), ref }),
-    [id, registerZone],
+    () => registerZone(id, { accepts: (p) => latest.current.accepts(p), onDrop: (p) => latest.current.onDrop(p), ref, row }),
+    [id, registerZone, row],
   );
 
   return (
     <View ref={ref} testID={`drop:${id}`} collapsable={false} onLayout={() => zoneMoved(id)}>
-      {children({ active: d.hoverId === id, rejected: d.rejectedId === id, valid: d.validIds.has(id) })}
+      {children({
+        active: d.hoverId === id, rejected: d.rejectedId === id, valid: d.validIds.has(id),
+        dropped: d.lastDrop?.id === id ? d.lastDrop.n : 0,
+      })}
     </View>
   );
 }

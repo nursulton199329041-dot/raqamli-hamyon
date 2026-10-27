@@ -1,6 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { Platform, View } from 'react-native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
+import { useLook } from './look';
 
 /**
  * Own icon vocabulary: 24x24 stroke glyphs drawn with react-native-svg, rendered identically on iOS/Android/Web.
@@ -87,24 +88,58 @@ export function Glyph({ name, color = '#fff', size = 24 }: { name: string; color
  * The coloured glow sits on an outer, unclipped view (an `overflow: hidden` view cannot cast a shadow on iOS);
  * Android gets no elevation here — dozens of elevated tiles cost overdraw and draw grey, not coloured, shadows.
  */
-export function CircleBadge({ name, color = '#6EA8FF', size = 52, ring }: { name: string; color?: string; size?: number; ring?: string }) {
+export function CircleBadge({ name, color = '#6EA8FF', size = 52, ring, depth }: {
+  name: string; color?: string; size?: number; ring?: string;
+  /** wallets: a soft bottom shade + stronger drop shadow so the coin reads as a physical object */
+  depth?: boolean;
+}) {
+  const look = useLook();
+  const r = look.iconShape === 'squircle' ? size * 0.3 : size / 2;
+  const fill: [string, string] = look.badge === 'flat' ? [color, color]
+    : look.badge === 'vivid' ? [lighten(color, 0.28), shade(color, 0.12)]
+      : [lighten(color, 0.16), color];
   return (
     <View
       style={{
-        width: size, height: size, borderRadius: size / 2,
-        shadowColor: color, shadowOpacity: 0.45, shadowRadius: 10, shadowOffset: { width: 0, height: 4 },
+        width: size, height: size, borderRadius: r,
+        shadowColor: color, shadowOpacity: look.badge === 'flat' ? 0 : depth ? 0.55 : 0.4,
+        shadowRadius: depth ? 12 : 9, shadowOffset: { width: 0, height: depth ? 6 : 4 },
       }}
     >
-      <View style={{ flex: 1, borderRadius: size / 2, overflow: 'hidden', borderWidth: ring ? 2 : 1, borderColor: ring ?? 'rgba(255,255,255,0.32)' }}>
-        <LinearGradient colors={[color, `${color}B3`]} start={{ x: 0.2, y: 0 }} end={{ x: 0.8, y: 1 }} style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <Glyph name={name} size={size * 0.5} />
+      <View style={{ flex: 1, borderRadius: r, overflow: 'hidden', borderWidth: ring ? 2 : 1, borderColor: ring ?? 'rgba(255,255,255,0.32)' }}>
+        <LinearGradient colors={fill} start={{ x: 0.15, y: 0 }} end={{ x: 0.85, y: 1 }} style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <Glyph name={name} size={size * 0.48} />
         </LinearGradient>
-        {/* specular highlight: the "liquid" top edge */}
-        <LinearGradient pointerEvents="none" colors={['rgba(255,255,255,0.38)', 'rgba(255,255,255,0)']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.55 }}
-          style={{ position: 'absolute', left: 0, right: 0, top: 0, height: size * 0.55 }} />
+        {look.badge !== 'flat' ? (
+          // specular highlight: the "liquid" top edge
+          <LinearGradient pointerEvents="none" colors={['rgba(255,255,255,0.40)', 'rgba(255,255,255,0)']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.55 }}
+            style={{ position: 'absolute', left: 0, right: 0, top: 0, height: size * 0.55 }} />
+        ) : null}
+        {depth ? (
+          <LinearGradient pointerEvents="none" colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.22)']} start={{ x: 0.5, y: 0.5 }} end={{ x: 0.5, y: 1 }}
+            style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: size * 0.5 }} />
+        ) : null}
       </View>
     </View>
   );
+}
+
+/** Mix a #RRGGBB colour towards white (amount 0..1). */
+function lighten(hex: string, amount: number) {
+  return mix(hex, 255, amount);
+}
+
+/** Mix a #RRGGBB colour towards black (amount 0..1). */
+function shade(hex: string, amount: number) {
+  return mix(hex, 0, amount);
+}
+
+function mix(hex: string, to: number, amount: number) {
+  const m = /^#([0-9a-f]{6})/i.exec(hex);
+  if (!m) return hex;
+  const n = parseInt(m[1]!, 16);
+  const ch = (shift: number) => Math.round(((n >> shift) & 255) + (to - ((n >> shift) & 255)) * amount);
+  return `#${[16, 8, 0].map((s) => ch(s).toString(16).padStart(2, '0')).join('')}`;
 }
 
 /** Unified icon badge: tinted squircle with soft gradient and inner highlight. */

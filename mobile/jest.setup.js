@@ -21,6 +21,7 @@ jest.mock('react-native-reanimated', () => {
     withSpring: (v) => v,
     withTiming: (v) => v,
     withRepeat: (v) => v,
+    withSequence: (...v) => v[v.length - 1],
     useReducedMotion: () => false,
   };
 });

@@ -10,7 +10,8 @@ import { useScreenLayout } from '@/design/layout';
 import { Sheet } from '@/design/Sheet';
 import { Skeleton } from '@/design/States';
 import { usePalette, useT } from '@/design/theme';
-import { motion, radii, space, type, useReducedMotion } from '@/design/tokens';
+import { useMotionOff } from '@/design/look';
+import { motion, radii, space, type } from '@/design/tokens';
 import type { I18nKey } from '@/i18n';
 import { longDay } from '@/lib/dates';
 import { fmtMoney } from '@/lib/money';
@@ -32,7 +33,7 @@ export const KIND_LABEL: Record<ReportKind, I18nKey> = {
 export function KindTabs({ value, onChange }: { value: ReportKind; onChange(k: ReportKind): void }) {
   const p = usePalette();
   const t = useT();
-  const reduced = useReducedMotion();
+  const reduced = useMotionOff();
   const layouts = useRef(new Map<ReportKind, { x: number; w: number }>());
   const scroll = useRef<ScrollView>(null);
   const x = useSharedValue(0);
