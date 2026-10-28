@@ -40,9 +40,9 @@ API: barcha moliyaviy endpointlar `X-Profile-Id` sarlavhasini oladi; server prof
 |---|---|---|---|
 | 1 | Xarajat grid (AUTO/1/2/3), scrollsiz, vertikal auto-scroll | yo'q | **bajarildi** |
 | 2 | Tarix UI tuzatish (sarlavha/summa ustma-ust) | yo'q | **bajarildi** |
-| 3 | Backend: Profiles + ProfileId migratsiya + izolatsiya testlari | — | ruxsat kerak (bazaga migratsiya) |
+| 3 | Backend: Profiles + ProfileId migratsiya + izolatsiya testlari | — | **bajarildi, lokal serverga o'rnatildi** |
 | 4 | Profile Switcher UI + profil bo'yicha kesh/navbat | yo'q | 3 dan keyin |
-| 5 | Cross-currency xarajat (FX clearing, kurs sanasi/manbasi, qo'lda kurs) | yo'q | 3 bilan birga migratsiya |
+| 5 | Cross-currency xarajat (FX clearing, kurs sanasi/manbasi, qo'lda kurs) | yo'q | **backend bajarildi**; mobil forma qoldi |
 | 6 | Qarz ↔ kirim manbasi UI, qarz balansi ko'rinishi | yo'q | |
 | 7 | Tarix to'liq audit maydonlari | yo'q | 5 dan keyin |
 | 8 | Onboarding (8 bosqich, demo, profil bo'yicha holat) | yo'q | |

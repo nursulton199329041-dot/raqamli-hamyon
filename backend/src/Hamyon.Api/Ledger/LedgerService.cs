@@ -25,6 +25,8 @@ public sealed class PostingRequest
     public decimal? ToAmount { get; init; }
     public string? ToCurrency { get; init; }
     public decimal? FxRate { get; init; }
+    public DateOnly? RateDate { get; init; }
+    public string? RateSource { get; init; }
     public Guid? CategoryId { get; init; }
     public Guid? IncomeSourceId { get; init; }
     public Guid? PersonId { get; init; }
@@ -43,6 +45,9 @@ public sealed class PostingRequest
           .Append(WalletId).Append('|').Append(ToWalletId).Append('|').Append(ToAmount).Append('|').Append(FxRate).Append('|')
           .Append(CategoryId).Append('|').Append(IncomeSourceId).Append('|').Append(PersonId).Append('|')
           .Append(ProjectId).Append('|').Append(DebtId).Append('|').Append(ReversalOfId);
+        // cross-currency fields are appended only when present, so fingerprints of older requests stay unchanged
+        if (ToCurrency is not null && ToWalletId is null) sb.Append('|').Append(ToCurrency);
+        if (RateDate is not null || RateSource is not null) sb.Append('|').Append(RateDate?.ToString("yyyy-MM-dd")).Append('|').Append(RateSource);
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(sb.ToString()))).ToLowerInvariant();
     }
 }
@@ -94,7 +99,7 @@ public sealed class LedgerService(AppDbContext db) : ILedgerService
         {
             UserId = r.UserId, Type = r.Type, OccurredAt = r.OccurredAt.ToUniversalTime(),
             Amount = r.Amount, Currency = r.Currency, WalletId = r.WalletId, ToWalletId = r.ToWalletId,
-            ToAmount = r.ToAmount, ToCurrency = r.ToCurrency, FxRate = r.FxRate,
+            ToAmount = r.ToAmount, ToCurrency = r.ToCurrency, FxRate = r.FxRate, RateDate = r.RateDate, RateSource = r.RateSource,
             CategoryId = r.CategoryId, IncomeSourceId = r.IncomeSourceId, PersonId = r.PersonId,
             ProjectId = r.ProjectId, DebtId = r.DebtId, Reason = r.Reason, Memo = r.Memo,
             IdempotencyKey = r.IdempotencyKey, RequestFingerprint = fingerprint,

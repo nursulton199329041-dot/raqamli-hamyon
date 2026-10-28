@@ -42,11 +42,16 @@ public sealed record BudgetStatus(Guid CategoryId, string Name, string Currency,
 /// </summary>
 public sealed class AnalyticsService(AppDbContext db)
 {
+    // An expense paid from a wallet in another currency counts in the currency it was spent in (ToCurrency/ToAmount);
+    // every other flow, and every same-currency expense, keeps the wallet side.
+    private static string ExpCur(JournalEntry e) => e.Type == TransactionType.Expense && e.ToCurrency != null ? e.ToCurrency : e.Currency;
+    private static decimal ExpAmt(JournalEntry e) => e.Type == TransactionType.Expense && e.ToAmount != null ? e.ToAmount.Value : e.Amount;
+
     public async Task<SummaryResult> SummaryAsync(Guid uid, TransactionQuery q, CancellationToken ct)
     {
         var rows = await TransactionFilter.Apply(db, uid, q).Select(e => new
         {
-            e.Id, e.Type, e.Currency, e.Amount, e.OccurredAt, e.CategoryId, e.Memo,
+            e.Id, e.Type, Currency = ExpCur(e), Amount = ExpAmt(e), e.OccurredAt, e.CategoryId, e.Memo,
         }).ToListAsync(ct);
 
         decimal Sum(IEnumerable<(TransactionType Type, string Cur, decimal Amt)> src, TransactionType t, string cur) =>
@@ -96,7 +101,7 @@ public sealed class AnalyticsService(AppDbContext db)
         var off = q.Offset;
         var rows = await TransactionFilter.Apply(db, uid, q)
             .Where(e => e.Type == TransactionType.Income || e.Type == TransactionType.Expense)
-            .Select(e => new { e.Type, e.Currency, e.Amount, e.OccurredAt }).ToListAsync(ct);
+            .Select(e => new { e.Type, Currency = ExpCur(e), Amount = ExpAmt(e), e.OccurredAt }).ToListAsync(ct);
 
         var grouped = rows.GroupBy(r => (Start: BucketStart(r.OccurredAt, granularity, off), r.Currency))
             .ToDictionary(g => g.Key, g => (
@@ -222,7 +227,7 @@ public sealed class AnalyticsService(AppDbContext db)
         // Breakdown is about operating flow: expenses by default, income when asked via type=Income.
         var type = q.Type ?? TransactionType.Expense;
         var rows = await TransactionFilter.Apply(db, uid, q with { Type = type })
-            .Select(e => new FlowRow(e.Currency, e.Amount, e.CategoryId, e.WalletId, e.ProjectId, e.PersonId, e.IncomeSourceId))
+            .Select(e => new FlowRow(ExpCur(e), ExpAmt(e), e.CategoryId, e.WalletId, e.ProjectId, e.PersonId, e.IncomeSourceId))
             .ToListAsync(ct);
 
         Func<FlowRow, Guid?> key = by switch
@@ -259,6 +264,7 @@ public sealed class AnalyticsService(AppDbContext db)
         var spent = await db.JournalEntries.AsNoTracking()
             .Where(e => e.UserId == uid && e.Type == TransactionType.Expense && e.ReversedById == null
                         && e.OccurredAt >= monthStart && e.CategoryId != null)
+            .Select(e => new { e.CategoryId, Currency = e.ToCurrency ?? e.Currency, Amount = e.ToAmount ?? e.Amount })
             .GroupBy(e => new { e.CategoryId, e.Currency })
             .Select(g => new { g.Key.CategoryId, g.Key.Currency, Total = g.Sum(x => x.Amount) }).ToListAsync(ct);
 

@@ -118,16 +118,48 @@ public sealed class FinanceService(AppDbContext db, ILedgerService ledger)
         if (r.PersonId is not null) await EnsureOwnedAsync(db.People, userId, r.PersonId.Value, "Person", ct);
         if (r.ProjectId is not null) await EnsureOwnedAsync(db.Projects, userId, r.ProjectId.Value, "Project", ct);
 
-        var catAccount = await GetOrCreateAccountAsync(userId, LedgerAccountKind.ExpenseCategory,
-            r.CategoryId, wallet.Currency, "Expense", true, ct);
-        var res = await ledger.PostAsync(new PostingRequest
+        var occurred = r.OccurredAt ?? DateTimeOffset.UtcNow;
+        var target = r.ToCurrency is null ? wallet.Currency : Currencies.Normalize(r.ToCurrency);
+        if (target == wallet.Currency)
         {
-            UserId = userId, Type = TransactionType.Expense, OccurredAt = r.OccurredAt ?? DateTimeOffset.UtcNow,
+            if ((r.ToAmount is not null && r.ToAmount != r.Amount) || r.FxRate is not null)
+                throw new DomainException("expense.fx_same_currency", "Same-currency expense cannot carry a conversion.");
+            var catAccount = await GetOrCreateAccountAsync(userId, LedgerAccountKind.ExpenseCategory,
+                r.CategoryId, wallet.Currency, "Expense", true, ct);
+            var res = await ledger.PostAsync(new PostingRequest
+            {
+                UserId = userId, Type = TransactionType.Expense, OccurredAt = occurred,
+                IdempotencyKey = Key(r.ClientKey), Amount = r.Amount, Currency = wallet.Currency, WalletId = wallet.Id,
+                CategoryId = r.CategoryId, PersonId = r.PersonId, ProjectId = r.ProjectId, Memo = r.Memo, ReplacesId = replaces,
+                Lines = [new PostingLine(wallet.LedgerAccountId, -r.Amount, r.ProjectId), new PostingLine(catAccount.Id, r.Amount)],
+            }, ct);
+            return ToResult(res);
+        }
+
+        // Paid from a wallet in another currency (e.g. 12 USD -> 144 000 UZS): the wallet loses its own currency, the
+        // category is charged in the expense currency, each leg balances against its FX clearing account (never mixed).
+        if (!Currencies.IsSupported(target)) throw new DomainException("currency.unsupported", $"Unsupported currency '{target}'.");
+        var (toAmount, rate) = Fx(r.Amount, r.ToAmount, r.FxRate, target);
+        var source = CleanRateSource(r.RateSource);
+        var fxCat = await GetOrCreateAccountAsync(userId, LedgerAccountKind.ExpenseCategory, r.CategoryId, target, "Expense", true, ct);
+        var clearFrom = await GetOrCreateAccountAsync(userId, LedgerAccountKind.FxClearing, NoRef, wallet.Currency, "FX clearing", true, ct);
+        var clearTo = await GetOrCreateAccountAsync(userId, LedgerAccountKind.FxClearing, NoRef, target, "FX clearing", true, ct);
+        var fx = await ledger.PostAsync(new PostingRequest
+        {
+            UserId = userId, Type = TransactionType.Expense, OccurredAt = occurred,
             IdempotencyKey = Key(r.ClientKey), Amount = r.Amount, Currency = wallet.Currency, WalletId = wallet.Id,
+            ToAmount = toAmount, ToCurrency = target, FxRate = rate,
+            RateDate = r.RateDate ?? DateOnly.FromDateTime(occurred.UtcDateTime), RateSource = source,
             CategoryId = r.CategoryId, PersonId = r.PersonId, ProjectId = r.ProjectId, Memo = r.Memo, ReplacesId = replaces,
-            Lines = [new PostingLine(wallet.LedgerAccountId, -r.Amount, r.ProjectId), new PostingLine(catAccount.Id, r.Amount)],
+            Lines =
+            [
+                new PostingLine(wallet.LedgerAccountId, -r.Amount, r.ProjectId),
+                new PostingLine(clearFrom.Id, r.Amount),
+                new PostingLine(clearTo.Id, -toAmount),
+                new PostingLine(fxCat.Id, toAmount),
+            ],
         }, ct);
-        return ToResult(res);
+        return ToResult(fx);
     }
 
     public async Task<OperationResult> TransferAsync(Guid userId, TransferRequest r, CancellationToken ct, Guid? replaces = null)
@@ -321,7 +353,8 @@ public sealed class FinanceService(AppDbContext db, ILedgerService ledger)
                 UserId = userId, Type = TransactionType.Reversal, OccurredAt = DateTimeOffset.UtcNow, IdempotencyKey = key,
                 Amount = original.Amount, Currency = original.Currency, WalletId = original.WalletId,
                 ToWalletId = original.ToWalletId, ToAmount = original.ToAmount, ToCurrency = original.ToCurrency,
-                FxRate = original.FxRate, CategoryId = original.CategoryId, IncomeSourceId = original.IncomeSourceId,
+                FxRate = original.FxRate, RateDate = original.RateDate, RateSource = original.RateSource,
+                CategoryId = original.CategoryId, IncomeSourceId = original.IncomeSourceId,
                 PersonId = original.PersonId, ProjectId = original.ProjectId, DebtId = original.DebtId,
                 Reason = original.Reason, Memo = memo ?? $"Reversal of {original.Id}", ReversalOfId = original.Id,
                 Lines = original.Lines.Select(l => new PostingLine(l.LedgerAccountId, -l.Amount, l.ProjectId)).ToList(),
@@ -453,6 +486,28 @@ public sealed class FinanceService(AppDbContext db, ILedgerService ledger)
         return acc;
     }
 
+    /// <summary>
+    /// Converted amount and rate from either the user's converted amount (rate derived, 8 places) or the rate (amount
+    /// rounded half away from zero to the target currency) – the same rules transfers use.
+    /// </summary>
+    private static (decimal ToAmount, decimal Rate) Fx(decimal amount, decimal? toAmount, decimal? rate, string target)
+    {
+        if (toAmount is not null)
+        {
+            Currencies.ValidateAmount(toAmount.Value, target, "toAmount");
+            return (toAmount.Value, Math.Round(toAmount.Value / amount, Currencies.RateScale, MidpointRounding.AwayFromZero));
+        }
+        if (rate is not null) return (Currencies.Convert(amount, rate.Value, target), rate.Value);
+        throw new DomainException("fx.rate_required", "Different currencies: provide toAmount or fxRate.");
+    }
+
+    private static string CleanRateSource(string? s)
+    {
+        var v = string.IsNullOrWhiteSpace(s) ? "manual" : s.Trim();
+        if (v.Length > 40) throw new DomainException("fx.source_invalid", "Rate source is too long.");
+        return v;
+    }
+
     private static string Key(string? clientKey) =>
         string.IsNullOrWhiteSpace(clientKey) ? $"srv:{Guid.NewGuid():N}" : clientKey.Trim();
 
@@ -460,7 +515,7 @@ public sealed class FinanceService(AppDbContext db, ILedgerService ledger)
 
     public static TransactionDto Map(JournalEntry e) => new(e.Id, e.Type, e.OccurredAt, e.Amount, e.Currency, e.WalletId,
         e.ToWalletId, e.ToAmount, e.ToCurrency, e.FxRate, e.CategoryId, e.IncomeSourceId, e.PersonId, e.ProjectId, e.DebtId,
-        e.Reason, e.Memo, e.ReversalOfId, e.ReversedById, e.ReplacesId, e.CreatedAt);
+        e.Reason, e.Memo, e.ReversalOfId, e.ReversedById, e.ReplacesId, e.CreatedAt, e.RateDate, e.RateSource, e.ProfileId);
 
     public static DebtDto Map(Debt d) => new(d.Id, d.PersonId, d.Direction, d.Currency, d.Principal, d.Outstanding,
         d.DueDate, d.Status, d.ProjectId, d.Reason, d.Note, d.CreatedAt);

@@ -58,16 +58,18 @@ public static class AuthEndpoints
         {
             var id = ctx.User.UserId();
             await using var tx = await db.Database.BeginTransactionAsync(ct);
-            await db.Attachments.Where(a => a.UserId == id).ExecuteDeleteAsync(ct);
-            await db.LedgerLines.Where(l => l.UserId == id).ExecuteDeleteAsync(ct);
-            await db.JournalEntries.Where(e => e.UserId == id).ExecuteDeleteAsync(ct);
-            await db.Debts.Where(d => d.UserId == id).ExecuteDeleteAsync(ct);
-            await db.Wallets.Where(w => w.UserId == id).ExecuteDeleteAsync(ct);
-            await db.LedgerAccounts.Where(a => a.UserId == id).ExecuteDeleteAsync(ct);
-            await db.Categories.Where(c => c.UserId == id).ExecuteDeleteAsync(ct);
-            await db.IncomeSources.Where(c => c.UserId == id).ExecuteDeleteAsync(ct);
-            await db.People.Where(c => c.UserId == id).ExecuteDeleteAsync(ct);
-            await db.Projects.Where(c => c.UserId == id).ExecuteDeleteAsync(ct);
+            // every profile of the account, not just the one this request is scoped to
+            await db.Attachments.IgnoreQueryFilters().Where(a => a.UserId == id).ExecuteDeleteAsync(ct);
+            await db.LedgerLines.IgnoreQueryFilters().Where(l => l.UserId == id).ExecuteDeleteAsync(ct);
+            await db.JournalEntries.IgnoreQueryFilters().Where(e => e.UserId == id).ExecuteDeleteAsync(ct);
+            await db.Debts.IgnoreQueryFilters().Where(d => d.UserId == id).ExecuteDeleteAsync(ct);
+            await db.Wallets.IgnoreQueryFilters().Where(w => w.UserId == id).ExecuteDeleteAsync(ct);
+            await db.LedgerAccounts.IgnoreQueryFilters().Where(a => a.UserId == id).ExecuteDeleteAsync(ct);
+            await db.Categories.IgnoreQueryFilters().Where(c => c.UserId == id).ExecuteDeleteAsync(ct);
+            await db.IncomeSources.IgnoreQueryFilters().Where(c => c.UserId == id).ExecuteDeleteAsync(ct);
+            await db.People.IgnoreQueryFilters().Where(c => c.UserId == id).ExecuteDeleteAsync(ct);
+            await db.Projects.IgnoreQueryFilters().Where(c => c.UserId == id).ExecuteDeleteAsync(ct);
+            await db.Profiles.Where(p => p.UserId == id).ExecuteDeleteAsync(ct);
             await db.RefreshTokens.Where(t => t.UserId == id).ExecuteDeleteAsync(ct);
             await db.Users.Where(u => u.Id == id).ExecuteDeleteAsync(ct);
             db.AuditLogs.Add(new AuditLog { Action = "user.delete", EntityType = "User", EntityId = id });

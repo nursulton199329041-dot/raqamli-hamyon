@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Data\Migrations\0001_initial.sql" />
+    <EmbeddedResource Include="Data\Migrations\0002_profiles.sql" />
   </ItemGroup>
 
   <ItemGroup>

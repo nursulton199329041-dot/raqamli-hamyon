@@ -19,6 +19,31 @@ public class User
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
+/// <summary>Rows that belong to one financial profile. Every query is scoped to the request's profile.</summary>
+public interface IProfileOwned
+{
+    Guid ProfileId { get; set; }
+}
+
+/// <summary>
+/// A separate set of books under one login account (e.g. "Shaxsiy", "Oila", "Biznes"). Wallets, categories,
+/// operations and reports of one profile never mix with another's.
+/// </summary>
+public class Profile
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid UserId { get; set; }
+    public string Name { get; set; } = "";
+    public string Color { get; set; } = "#4D8DFF";
+    public string Icon { get; set; } = "person";
+    public string BaseCurrency { get; set; } = "UZS";
+    public int SortOrder { get; set; }
+    public bool IsArchived { get; set; }
+    /// <summary>Bumped on every change; clients send it back to detect concurrent edits.</summary>
+    public int Revision { get; set; } = 1;
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
 public class RefreshToken
 {
     public Guid Id { get; set; } = Guid.NewGuid();
@@ -31,10 +56,11 @@ public class RefreshToken
     public DateTimeOffset? RevokedAt { get; set; }
 }
 
-public class Wallet
+public class Wallet : IProfileOwned
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid UserId { get; set; }
+    public Guid ProfileId { get; set; }
     public string Name { get; set; } = "";
     public WalletType Type { get; set; }
     public string Icon { get; set; } = "wallet";
@@ -51,10 +77,11 @@ public class Wallet
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
-public class LedgerAccount
+public class LedgerAccount : IProfileOwned
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid UserId { get; set; }
+    public Guid ProfileId { get; set; }
     public LedgerAccountKind Kind { get; set; }
     public string Currency { get; set; } = "UZS";
     public string Name { get; set; } = "";
@@ -66,10 +93,11 @@ public class LedgerAccount
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
-public class JournalEntry
+public class JournalEntry : IProfileOwned
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid UserId { get; set; }
+    public Guid ProfileId { get; set; }
     public TransactionType Type { get; set; }
     public DateTimeOffset OccurredAt { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
@@ -82,6 +110,9 @@ public class JournalEntry
     public decimal? ToAmount { get; set; }
     public string? ToCurrency { get; set; }
     public decimal? FxRate { get; set; }
+    /// <summary>Date the rate applies to and where it came from ("manual", a provider name). Stored once, never re-priced.</summary>
+    public DateOnly? RateDate { get; set; }
+    public string? RateSource { get; set; }
     public Guid? CategoryId { get; set; }
     public Guid? IncomeSourceId { get; set; }
     public Guid? PersonId { get; set; }
@@ -101,12 +132,13 @@ public class JournalEntry
     public List<LedgerLine> Lines { get; set; } = new();
 }
 
-public class LedgerLine
+public class LedgerLine : IProfileOwned
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid JournalEntryId { get; set; }
     public Guid LedgerAccountId { get; set; }
     public Guid UserId { get; set; }
+    public Guid ProfileId { get; set; }
     /// <summary>Signed: positive increases the account balance, negative decreases it. Per entry and currency the lines sum to zero.</summary>
     public decimal Amount { get; set; }
     public string Currency { get; set; } = "UZS";
@@ -114,10 +146,11 @@ public class LedgerLine
     public Guid? ProjectId { get; set; }
 }
 
-public class Category
+public class Category : IProfileOwned
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid UserId { get; set; }
+    public Guid ProfileId { get; set; }
     public Guid? ParentId { get; set; }
     public string Name { get; set; } = "";
     public string Icon { get; set; } = "tag";
@@ -129,10 +162,11 @@ public class Category
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
-public class IncomeSource
+public class IncomeSource : IProfileOwned
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid UserId { get; set; }
+    public Guid ProfileId { get; set; }
     public string Name { get; set; } = "";
     public string Icon { get; set; } = "briefcase";
     public string Color { get; set; } = "#22C55E";
@@ -141,20 +175,22 @@ public class IncomeSource
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
-public class Person
+public class Person : IProfileOwned
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid UserId { get; set; }
+    public Guid ProfileId { get; set; }
     public string Name { get; set; } = "";
     public string? Phone { get; set; }
     public string? Note { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
-public class Project
+public class Project : IProfileOwned
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid UserId { get; set; }
+    public Guid ProfileId { get; set; }
     public string Name { get; set; } = "";
     public string Icon { get; set; } = "folder";
     public string Color { get; set; } = "#8B5CF6";
@@ -164,10 +200,11 @@ public class Project
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
-public class Debt
+public class Debt : IProfileOwned
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid UserId { get; set; }
+    public Guid ProfileId { get; set; }
     public Guid PersonId { get; set; }
     public DebtDirection Direction { get; set; }
     public string Currency { get; set; } = "UZS";
@@ -182,10 +219,11 @@ public class Debt
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
-public class Attachment
+public class Attachment : IProfileOwned
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid UserId { get; set; }
+    public Guid ProfileId { get; set; }
     public Guid JournalEntryId { get; set; }
     public string FileName { get; set; } = "";
     public string ContentType { get; set; } = "";

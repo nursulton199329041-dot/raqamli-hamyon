@@ -34,8 +34,9 @@ public static class DemoSeeder
             DisplayName = "Demo foydalanuvchi", Locale = "uz", IsDemo = true,
         };
         db.Users.Add(user);
-        UserDefaults.Seed(db, user.Id);
+        var profile = UserDefaults.AddProfile(db, user.Id, UserDefaults.MainProfileName);
         await db.SaveChangesAsync(ct);
+        scope.ServiceProvider.GetRequiredService<ProfileScope>().Use(profile.Id);
         var uid = user.Id;
 
         async Task<Wallet> W(string name, WalletType type, decimal initial, string cur = "UZS", string icon = "wallet",

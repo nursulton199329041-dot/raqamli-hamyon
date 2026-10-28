@@ -63,7 +63,7 @@ public sealed class AuthService(AppDbContext db, PasswordHasher hasher, IOptions
             DisplayName = r.DisplayName.Trim(), Locale = r.Locale is "uz" or "ru" or "en" ? r.Locale : "uz",
         };
         db.Users.Add(user);
-        UserDefaults.Seed(db, user.Id);
+        UserDefaults.AddProfile(db, user.Id, UserDefaults.MainProfileName);
         db.AuditLogs.Add(new AuditLog { UserId = user.Id, Action = "user.register", EntityType = "User", EntityId = user.Id });
         await db.SaveChangesAsync(ct);
         return await IssueAsync(user, Guid.NewGuid(), ct);

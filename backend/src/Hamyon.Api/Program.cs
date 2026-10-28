@@ -40,6 +40,7 @@ builder.Services.AddDbContext<AppDbContext>((sp, o) => o
     .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning)));
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<PasswordHasher>();
+builder.Services.AddScoped<ProfileScope>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<ILedgerService, LedgerService>();
 builder.Services.AddScoped<FinanceService>();
@@ -134,6 +135,7 @@ app.UseCors();
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseProfileScope();
 
 if (app.Environment.IsDevelopment())
 {
@@ -143,6 +145,7 @@ if (app.Environment.IsDevelopment())
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
 app.MapAuth();
+app.MapProfiles();
 app.MapCatalogs();
 app.MapOperations();
 app.MapReports();

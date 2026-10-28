@@ -35,8 +35,14 @@ public sealed record ProjectDto(Guid Id, string Name, string Icon, string Color,
 // ---- operations ----
 public sealed record IncomeRequest(Guid WalletId, decimal Amount, Guid? IncomeSourceId, Guid? PersonId, string? Reason,
     Guid? ProjectId, DateTimeOffset? OccurredAt, string? Memo, string? ClientKey);
+/// <summary>
+/// Expense paid from <see cref="WalletId"/> (Amount is in the wallet's currency). When the expense is in another currency
+/// (<see cref="ToCurrency"/>), give either the converted <see cref="ToAmount"/> or the <see cref="FxRate"/> (ToCurrency per
+/// wallet unit); <see cref="RateDate"/> / <see cref="RateSource"/> record where the rate came from.
+/// </summary>
 public sealed record ExpenseRequest(Guid WalletId, decimal Amount, Guid CategoryId, Guid? PersonId, Guid? ProjectId,
-    DateTimeOffset? OccurredAt, string? Memo, string? ClientKey);
+    DateTimeOffset? OccurredAt, string? Memo, string? ClientKey, string? ToCurrency = null, decimal? ToAmount = null,
+    decimal? FxRate = null, DateOnly? RateDate = null, string? RateSource = null);
 public sealed record TransferRequest(Guid FromWalletId, Guid ToWalletId, decimal Amount, decimal? ToAmount, decimal? FxRate,
     Guid? ProjectId, DateTimeOffset? OccurredAt, string? Memo, string? ClientKey);
 public sealed record DebtRequest(DebtDirection Direction, Guid? PersonId, string? PersonName, Guid WalletId, decimal Amount,
@@ -46,7 +52,8 @@ public sealed record RepayRequest(Guid WalletId, decimal Amount, DateTimeOffset?
 public sealed record TransactionDto(Guid Id, TransactionType Type, DateTimeOffset OccurredAt, decimal Amount, string Currency,
     Guid? WalletId, Guid? ToWalletId, decimal? ToAmount, string? ToCurrency, decimal? FxRate, Guid? CategoryId,
     Guid? IncomeSourceId, Guid? PersonId, Guid? ProjectId, Guid? DebtId, string? Reason, string? Memo,
-    Guid? ReversalOfId, Guid? ReversedById, Guid? ReplacesId, DateTimeOffset CreatedAt);
+    Guid? ReversalOfId, Guid? ReversedById, Guid? ReplacesId, DateTimeOffset CreatedAt, DateOnly? RateDate = null,
+    string? RateSource = null, Guid? ProfileId = null);
 
 public sealed record OperationResult(TransactionDto Transaction, bool Replayed, DebtDto? Debt = null);
 

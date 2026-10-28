@@ -28,13 +28,30 @@ public static class UserDefaults
         ("Boshqa kirim", "other", "#84CC16"),
     ];
 
-    public static void Seed(AppDbContext db, Guid userId)
+    /// <summary>Name of the profile every account starts with (existing data was migrated into it as well).</summary>
+    public const string MainProfileName = "Asosiy";
+
+    /// <summary>Adds a profile with the default categories and income sources (saved by the caller).</summary>
+    public static Profile AddProfile(AppDbContext db, Guid userId, string name, string baseCurrency = "UZS", int sortOrder = 0,
+        string? color = null, string? icon = null)
+    {
+        var profile = new Profile
+        {
+            UserId = userId, Name = name, BaseCurrency = baseCurrency, SortOrder = sortOrder,
+            Color = color ?? "#4D8DFF", Icon = icon ?? "person",
+        };
+        db.Profiles.Add(profile);
+        Seed(db, userId, profile.Id);
+        return profile;
+    }
+
+    public static void Seed(AppDbContext db, Guid userId, Guid profileId)
     {
         var i = 0;
         foreach (var (name, icon, color) in Categories)
-            db.Categories.Add(new Category { UserId = userId, Name = name, Icon = icon, Color = color, SortOrder = i++ });
+            db.Categories.Add(new Category { UserId = userId, ProfileId = profileId, Name = name, Icon = icon, Color = color, SortOrder = i++ });
         i = 0;
         foreach (var (name, icon, color) in Sources)
-            db.IncomeSources.Add(new IncomeSource { UserId = userId, Name = name, Icon = icon, Color = color, SortOrder = i++ });
+            db.IncomeSources.Add(new IncomeSource { UserId = userId, ProfileId = profileId, Name = name, Icon = icon, Color = color, SortOrder = i++ });
     }
 }
