@@ -3,6 +3,7 @@ import { ScrollView } from 'react-native';
 import { MAIN_TABS, SECONDARY_ROUTES } from '@/design/navItems';
 import { lookOf } from '@/design/look';
 import { Dashboard } from '@/features/Dashboard';
+import { expenseGrid } from '@/features/expenseGrid';
 import { OperationSheet } from '@/features/OperationSheet';
 import { Settings } from '@/features/Settings';
 import { DEFAULT_APPEARANCE, sanitizeAppearance, useSettings } from '@/state/settings';
@@ -55,10 +56,10 @@ describe('home: income -> wallets -> expenses, nothing else', () => {
 
   it('a tap on an icon opens the right operation; the "+" at a row end opens the create form', async () => {
     await home();
-    await fireEvent.press(within(screen.getByTestId('row-scroll-expense')).getByLabelText('Transport'));
+    await fireEvent.press(within(screen.getByTestId('grid-expense')).getByLabelText('Transport'));
     expect(useUi.getState().op).toEqual({ kind: 'expense', categoryId: 'c2' });
     useUi.setState({ op: null });
-    await fireEvent.press(within(screen.getByTestId('row-scroll-expense')).getByLabelText('Yangi toifa'));
+    await fireEvent.press(within(screen.getByTestId('grid-expense')).getByLabelText('Yangi toifa'));
     expect(useUi.getState().form).toBe('category');
   });
 });
@@ -104,14 +105,38 @@ describe('appearance', () => {
   });
 });
 
+describe('expense categories grid (no sideways scrolling)', () => {
+  it('AUTO fits as many normal tiles per row as the width allows; rows grow with the categories', () => {
+    expect(expenseGrid(12, 360, 'auto', 52, 4)).toMatchObject({ cols: 4, rows: 3 });
+    expect(expenseGrid(3, 360, 'auto', 52, 4)).toMatchObject({ cols: 4, rows: 1 });
+  });
+
+  it('1 / 2 / 3 rows spread the tiles; when they cannot fit, extra rows are added instead of a scroller', () => {
+    expect(expenseGrid(8, 360, 2, 52, 4)).toMatchObject({ cols: 4, rows: 2 });
+    expect(expenseGrid(9, 360, 3, 52, 4)).toMatchObject({ cols: 3, rows: 3 });
+    const tight = expenseGrid(20, 360, 1, 52, 4); // 20 tiles cannot sit in one row of a phone
+    expect(tight.cols).toBe(5);
+    expect(tight.rows).toBe(4);
+    expect(tight.tileW * tight.cols + 4 * (tight.cols - 1)).toBeLessThanOrEqual(360);
+    expect(tight.iconPx).toBeLessThanOrEqual(52);
+  });
+
+  it('the rows setting is saved (default AUTO; unknown values fall back)', () => {
+    expect(DEFAULT_APPEARANCE.expenseRows).toBe('auto');
+    expect(sanitizeAppearance({ expenseRows: 2 }).expenseRows).toBe(2);
+    expect(sanitizeAppearance({ expenseRows: 7 as never }).expenseRows).toBe('auto');
+  });
+});
+
 describe('drag & drop inside horizontal rows', () => {
   /**
-   * The expense row (window x 0..400 at y 500) was scrolled 100px by the user before the drag. The wallet is dragged to the
-   * row's right end: the row auto-scrolls and Transport (content x 700) slides under the finger. Measurements of the row's
+   * The wallets row (window x 0..400 at y 300) was scrolled 100px by the user before the drag. Wallet w1 is dragged to the
+   * row's right end: the row auto-scrolls and w3 (content x 700) slides under the finger. Measurements of the row's
    * children lag 60px behind the real offset (Fabric shadow-tree state), as on a device.
    */
-  it('a category that scrolls under the finger sideways receives the drop (lagging measurements cannot misplace it)', async () => {
+  it('a wallet that scrolls under the finger sideways receives the drop (lagging measurements cannot misplace it)', async () => {
     jest.useFakeTimers();
+    server.wallets.push(wallet('w3', 'Jamg‘arma', 0));
     const row = { real: 0, reported: 0 };
     const spy = jest.spyOn(ScrollView.prototype, 'scrollTo').mockImplementation(((o: { x?: number }) => { if (o.x !== undefined) row.real = o.x; }) as never);
     const content = (x: number, y: number): Box => {
@@ -122,33 +147,34 @@ describe('drag & drop inside horizontal rows', () => {
     const boxes: Record<string, Box> = {
       'dash-wrap': { x: 0, y: 0, w: 400, h: 800 },
       'drag:wallet:w1': { x: 20, y: 300, w: 80, h: 90 },
-      'row-expense': { x: 0, y: 500, w: 400, h: 110 },
-      'drop:cat:c1': content(20, 510),
-      'drop:cat:c2': content(700, 510),
+      'row-wallets': { x: 0, y: 300, w: 400, h: 110 },
+      'drop:wallet:w1': content(120, 300),
+      'drop:wallet:w2': content(220, 300),
+      'drop:wallet:w3': content(700, 300),
     };
     try {
       useLayout(boxes);
       await home();
-      await fireEvent(screen.getByTestId('row-expense'), 'layout', { nativeEvent: { layout: { x: 0, y: 500, width: 400, height: 110 } } });
-      await fireEvent(screen.getByTestId('row-scroll-expense'), 'contentSizeChange', 1200, 110);
+      await fireEvent(screen.getByTestId('row-wallets'), 'layout', { nativeEvent: { layout: { x: 0, y: 300, width: 400, height: 110 } } });
+      await fireEvent(screen.getByTestId('row-scroll-wallets'), 'contentSizeChange', 1200, 110);
       // the user swiped the row before dragging
       row.real = 100;
       row.reported = 100;
-      await fireEvent(screen.getByTestId('row-scroll-expense'), 'scroll', { nativeEvent: { contentOffset: { x: 100, y: 0 } } });
+      await fireEvent(screen.getByTestId('row-scroll-wallets'), 'scroll', { nativeEvent: { contentOffset: { x: 100, y: 0 } } });
 
       const rec = gestures.get('drag:wallet:w1')!;
       const ev = (tx: number, ty: number): PanEvent => ({ x: 10 + tx, y: 10 + ty, absoluteX: 30 + tx, absoluteY: 310 + ty, translationX: tx, translationY: ty });
       await act(async () => { rec.onStart?.(ev(0, 0)); });
-      await act(async () => { rec.onUpdate?.(ev(360, 240)); }); // finger at window (390, 550): right end of the expense row
+      await act(async () => { rec.onUpdate?.(ev(360, 30)); }); // finger at window (390, 340): right end of the wallets row
       for (let i = 0; i < 20; i += 1) {
         await act(async () => { jest.advanceTimersByTime(16); });
         row.reported = Math.max(100, row.real - 60);
       }
-      expect(row.real).toBeGreaterThanOrEqual(310); // Transport (700..780) now spans the finger's x = 390
+      expect(row.real).toBeGreaterThanOrEqual(310); // w3 (700..780) now spans the finger's x = 390
       expect(row.real).toBeLessThanOrEqual(390);
-      await act(async () => { rec.onEnd?.(ev(360, 240), true); });
+      await act(async () => { rec.onEnd?.(ev(360, 30), true); });
       await act(async () => { jest.advanceTimersByTime(200); });
-      expect(useUi.getState().op).toEqual({ kind: 'expense', walletId: 'w1', categoryId: 'c2' });
+      expect(useUi.getState().op).toEqual({ kind: 'transfer', walletId: 'w1', toWalletId: 'w3' });
       expect(server.pushes).toHaveLength(0); // nothing moves before confirmation
     } finally {
       spy.mockRestore();
@@ -162,7 +188,7 @@ describe('drag & drop inside horizontal rows', () => {
     expect(screen.getByTestId('row-scroll-wallets').props.scrollEnabled).toBe(true);
     const rec = gestures.get('drag:wallet:w1')!;
     await act(async () => { rec.onStart?.({ x: 10, y: 10, absoluteX: 30, absoluteY: 310, translationX: 0, translationY: 0 }); });
-    for (const r of ['income', 'wallets', 'expense']) expect(screen.getByTestId(`row-scroll-${r}`).props.scrollEnabled).toBe(false);
+    for (const r of ['income', 'wallets']) expect(screen.getByTestId(`row-scroll-${r}`).props.scrollEnabled).toBe(false);
     await act(async () => { rec.onFinalize?.({ x: 10, y: 10, absoluteX: 30, absoluteY: 310, translationX: 0, translationY: 0 }, false); });
     await waitFor(() => expect(screen.getByTestId('row-scroll-wallets').props.scrollEnabled).toBe(true));
   });

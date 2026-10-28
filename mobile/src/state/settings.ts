@@ -26,13 +26,18 @@ export interface Appearance {
   animations: boolean;
   sectionOrder: HomeSection[];
   hiddenSections: HomeSection[];
+  /** expense categories grid: fixed number of rows, or 'auto' (as many columns as fit comfortably) */
+  expenseRows: ExpenseRows;
 }
+
+export type ExpenseRows = 'auto' | 1 | 2 | 3;
+export const EXPENSE_ROWS: ExpenseRows[] = ['auto', 1, 2, 3];
 
 export const HOME_SECTIONS: HomeSection[] = ['income', 'wallets', 'expense'];
 
 export const DEFAULT_APPEARANCE: Appearance = {
   uiStyle: 'liquid', iconShape: 'circle', iconSize: 'm', accent: null, fontScale: 'm', radius: 'm', animations: true,
-  sectionOrder: [...HOME_SECTIONS], hiddenSections: [],
+  sectionOrder: [...HOME_SECTIONS], hiddenSections: [], expenseRows: 'auto',
 };
 
 const STYLES: UiStyle[] = ['liquid', 'super', 'office', 'minimal', 'colorful'];
@@ -53,6 +58,7 @@ export function sanitizeAppearance(a: Partial<Appearance> | undefined): Appearan
     animations: a?.animations !== false,
     sectionOrder: complete,
     hiddenSections: (a?.hiddenSections ?? []).filter((x): x is HomeSection => HOME_SECTIONS.includes(x)),
+    expenseRows: EXPENSE_ROWS.includes(a?.expenseRows as ExpenseRows) ? a!.expenseRows! : d.expenseRows,
   };
 }
 

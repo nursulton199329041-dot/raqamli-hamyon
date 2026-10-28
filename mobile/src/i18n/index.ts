@@ -142,6 +142,8 @@ const T = {
   hidden: ['Yashirin', 'Скрыт', 'Hidden'],
   reset_appearance: ['Standart ko‘rinishga qaytarish', 'Вернуть стандартный вид', 'Reset to default'],
   more_sections: ['Boshqa bo‘limlar', 'Другие разделы', 'More'],
+  expense_rows: ['Xarajat toifalari qatorlari', 'Строки категорий расходов', 'Expense category rows'],
+  rows_auto: ['Avto', 'Авто', 'Auto'],
   // --- server error codes (src/api/errors.ts maps code -> key; unknown codes keep the server text)
   e_validation: ['Ma’lumotlar noto‘g‘ri to‘ldirilgan', 'Данные заполнены неверно', 'Some fields are invalid'],
   e_email_taken: ['Bu email allaqachon ro‘yxatdan o‘tgan', 'Этот email уже зарегистрирован', 'This email is already registered'],

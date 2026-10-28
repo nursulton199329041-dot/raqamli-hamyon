@@ -61,18 +61,21 @@ describe('dashboard: three sections, always-visible balances', () => {
     expect(screen.queryByText('Svet')).toBeNull(); // sub-category is chosen inside the operation form
   });
 
-  it('each section is ONE horizontally scrolling row with a "+" at its end (no wallet grid, no balance card)', async () => {
+  it('income and wallets are horizontal rows, expenses a wrapping grid without its own scroller; "+" ends each', async () => {
     useLayout(BOXES);
     await ready();
-    for (const [row, tile, add] of [
-      ['income', 'drag:source:s1', 'Yangi manba'], ['wallets', 'drop:wallet:w1', 'Yangi hamyon'], ['expense', 'drop:cat:c1', 'Yangi toifa'],
-    ] as const) {
+    for (const [row, tile, add] of [['income', 'drag:source:s1', 'Yangi manba'], ['wallets', 'drop:wallet:w1', 'Yangi hamyon']] as const) {
       const scroll = screen.getByTestId(`row-scroll-${row}`);
       expect(scroll.props.horizontal).toBe(true);
       expect(within(scroll).getByTestId(tile)).toBeTruthy();
       expect(within(scroll).getByLabelText(add)).toBeTruthy();
     }
     expect(within(screen.getByTestId('row-scroll-wallets')).getByTestId('drop:wallet:w2')).toBeTruthy(); // both wallets, same row
+    const grid = screen.getByTestId('grid-expense');
+    expect(grid.props.style).toMatchObject({ flexDirection: 'row', flexWrap: 'wrap' });
+    expect(within(grid).getByTestId('drop:cat:c1')).toBeTruthy();
+    expect(within(grid).getByLabelText('Yangi toifa')).toBeTruthy();
+    expect(screen.queryByTestId('row-scroll-expense')).toBeNull();
     expect(screen.queryByTestId('balance-summary')).toBeNull();
   });
 

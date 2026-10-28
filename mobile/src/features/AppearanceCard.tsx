@@ -6,7 +6,7 @@ import { useLook } from '@/design/look';
 import { Ink, usePalette, useT } from '@/design/theme';
 import { space, type } from '@/design/tokens';
 import type { I18nKey } from '@/i18n';
-import { DEFAULT_APPEARANCE, useSettings, type HomeSection, type IconShape, type Size3, type UiStyle } from '@/state/settings';
+import { DEFAULT_APPEARANCE, EXPENSE_ROWS, useSettings, type ExpenseRows, type HomeSection, type IconShape, type Size3, type UiStyle } from '@/state/settings';
 
 const STYLE_KEY: Record<UiStyle, I18nKey> = {
   liquid: 'st_liquid', super: 'st_super', office: 'st_office', minimal: 'st_minimal', colorful: 'st_colorful',
@@ -112,6 +112,10 @@ export function AppearanceCard() {
           );
         })}
       </View>
+      <Label>{t('expense_rows')}</Label>
+      <Segmented<string> value={String(a.expenseRows)}
+        onChange={(v) => void setA({ expenseRows: v === 'auto' ? 'auto' : (Number(v) as ExpenseRows) })}
+        options={EXPENSE_ROWS.map((r) => ({ value: String(r), label: r === 'auto' ? t('rows_auto') : String(r) }))} />
       <Button testID="appearance-reset" title={t('reset_appearance')} variant="tonal"
         onPress={() => { void setA(DEFAULT_APPEARANCE); void update({ reduceEffects: false }); }} />
     </GlassCard>

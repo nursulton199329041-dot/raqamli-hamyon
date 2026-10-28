@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { ActivityIndicator, RefreshControl, Text, View, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated';
@@ -10,7 +10,7 @@ import type { BreakdownRow, Category, IncomeSource, Wallet } from '@/api/types';
 import { Chip, Wrap } from '@/design/Controls';
 import { GlassCard, Tap } from '@/design/Glass';
 import { CircleBadge, Glyph } from '@/design/Icon';
-import { useScreenLayout } from '@/design/layout';
+import { CONTENT_MAX, SIDEBAR_W, useScreenLayout } from '@/design/layout';
 import { useLook } from '@/design/look';
 import { Sheet } from '@/design/Sheet';
 import { EmptyState, ErrorState, LoadingState } from '@/design/States';
@@ -26,6 +26,7 @@ import { api } from '@/state/runtime';
 import { useSession } from '@/state/session';
 import { useSettings, type HomeSection } from '@/state/settings';
 import { useUi, type OpKind } from '@/state/ui';
+import { expenseGrid } from './expenseGrid';
 import { UpdateBanner } from './UpdateBanner';
 
 type Amounts = { currency: string; total: number }[];
@@ -75,8 +76,9 @@ const headerButton = (p: Palette) => ({
 const SECTION_COLOR: Record<HomeSection, string> = { income: Ink.income, wallets: Ink.transfer, expense: Ink.expense };
 
 /**
- * Home: exactly three horizontal rows — income sources -> wallets -> expenses — of round, coloured, animated icons.
- * Order and visibility come from Appearance; drag & drop works across rows (rows auto-scroll sideways at their ends).
+ * Home: exactly three sections — income sources and wallets as horizontal rows, expense categories as a wrapping grid —
+ * of round, coloured, animated icons. Order, visibility and grid rows come from Appearance; drag & drop works across
+ * them (rows auto-scroll sideways at their ends, the page scrolls vertically at the screen edges).
  */
 export function Dashboard() {
   const t = useT();
@@ -194,13 +196,13 @@ export function Dashboard() {
       <Section key="expense" kind="expense" title={t('expense_categories')} total={fmtAmounts(expenseTotals)} totalColor={Ink.expense}
         collapsed={!!collapsed.expense} onToggle={() => toggle('expense')} testID="section-expense">
         {loading ? <LoadingState rows={1} columns={4} /> : (
-          <HRow id="expense">
+          <ExpenseGrid count={cat.topCategories.length + 1}>
             {cat.topCategories.map((c) => (
               <CategoryTile key={c.id} category={c}
                 amounts={sumAmounts(expenseBy.get(c.id), ...cat.childrenOf(c.id).map((ch) => expenseBy.get(ch.id)))} />
             ))}
             <AddTile label={t('new_category')} onPress={() => openForm('category')} />
-          </HRow>
+          </ExpenseGrid>
         )}
       </Section>
     ),
@@ -361,6 +363,31 @@ function HRow({ id, children }: { id: string; children: ReactNode }) {
   );
 }
 
+/** Tile width / icon size forced by the expense grid; rows use the Appearance sizes. */
+const TileSize = createContext<{ w: number; icon: number } | null>(null);
+
+/**
+ * Expense categories: a wrapping grid inside the page, never a sideways scroller. Its zones live in the page's
+ * vertical scroller only, so dragging a wallet to the screen's bottom edge scrolls the page to reach lower rows.
+ */
+function ExpenseGrid({ count, children }: { count: number; children: ReactNode }) {
+  const look = useLook();
+  const L = useScreenLayout();
+  const rows = useSettings((s) => s.appearance.expenseRows);
+  const [width, setWidth] = useState(0);
+  // until the grid is measured: page width minus gutters and the card's padding (sidebar / content cap on wide screens)
+  const estimate = Math.min(L.width - (L.sidebar ? SIDEBAR_W : 0), CONTENT_MAX[L.bp]) - 2 * L.gutter - 2 * space.md;
+  const g = expenseGrid(count, width || estimate, rows, look.iconPx, space.xs);
+  return (
+    <TileSize.Provider value={{ w: g.tileW, icon: g.iconPx }}>
+      <View testID="grid-expense" onLayout={(e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width)}
+        style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: space.xs, rowGap: space.sm }}>
+        {children}
+      </View>
+    </TileSize.Provider>
+  );
+}
+
 /**
  * Round icon that reacts to the user only: grows and glows while a valid drag hovers it, pulses once when a drop lands
  * on it (`dropped` changes). Never loops; with animations off it only changes its ring colour.
@@ -381,11 +408,12 @@ function LiveBadge({ name, color, active, rejected, valid, dropped, depth }: {
   }, [dropped, look.motionOff, scale]);
   const anim = useAnimatedStyle(() => ({ transform: [{ scale: scale.get() }] }));
   const ring = active ? p.accent : rejected ? Ink.expense : valid ? `${p.accent}99` : undefined;
+  const size = useContext(TileSize)?.icon ?? look.iconPx;
   return (
     <Animated.View style={[anim, active && !look.motionOff ? {
-      shadowColor: p.accent, shadowOpacity: 0.7, shadowRadius: 14, shadowOffset: { width: 0, height: 0 }, elevation: 8, borderRadius: look.iconPx,
+      shadowColor: p.accent, shadowOpacity: 0.7, shadowRadius: 14, shadowOffset: { width: 0, height: 0 }, elevation: 8, borderRadius: size,
     } : null]}>
-      <CircleBadge name={name} color={color} size={look.iconPx} ring={ring} depth={depth} />
+      <CircleBadge name={name} color={color} size={size} ring={ring} depth={depth} />
     </Animated.View>
   );
 }
@@ -393,8 +421,9 @@ function LiveBadge({ name, color, active, rejected, valid, dropped, depth }: {
 /** Tile layout shared by the three rows: icon, name (2 lines max) and the amount under it. */
 function Tile({ icon, children, testID }: { icon: ReactNode; children: ReactNode; testID?: string }) {
   const look = useLook();
+  const forced = useContext(TileSize);
   return (
-    <View testID={testID} style={{ width: Math.max(80, look.iconPx + 30), alignItems: 'center', gap: space.xs, paddingVertical: space.xs }}>
+    <View testID={testID} style={{ width: forced?.w ?? Math.max(80, look.iconPx + 30), alignItems: 'center', gap: space.xs, paddingVertical: space.xs }}>
       {icon}
       {children}
     </View>
@@ -424,12 +453,13 @@ function TileText({ name, amounts, amountColor }: { name: string; amounts?: Amou
 function AddTile({ label, onPress }: { label: string; onPress(): void }) {
   const p = usePalette();
   const look = useLook();
-  const r = look.iconShape === 'squircle' ? look.iconPx * 0.3 : look.iconPx / 2;
+  const px = useContext(TileSize)?.icon ?? look.iconPx;
+  const r = look.iconShape === 'squircle' ? px * 0.3 : px / 2;
   return (
     <Tap label={label} onPress={onPress}>
       <Tile icon={(
-        <View style={{ width: look.iconPx, height: look.iconPx, borderRadius: r, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderStyle: 'dashed', borderColor: `${p.accent}88` }}>
-          <Glyph name="plus" color={p.accent} size={look.iconPx * 0.42} />
+        <View style={{ width: px, height: px, borderRadius: r, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderStyle: 'dashed', borderColor: `${p.accent}88` }}>
+          <Glyph name="plus" color={p.accent} size={px * 0.42} />
         </View>
       )}>
         <Text numberOfLines={2} style={[type.caption, { color: p.textSecondary, textAlign: 'center', minHeight: 30 * look.fontScale, fontSize: 11.5 * look.fontScale }]}>{label}</Text>
