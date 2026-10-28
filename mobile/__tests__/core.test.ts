@@ -49,8 +49,8 @@ describe('semver / store policy', () => {
 describe('sqlite migrations', () => {
   it('are additive only (never drop or rewrite user data)', () => {
     for (const step of MIGRATIONS) for (const sql of step) {
-      expect(sql).not.toMatch(/DROP\s+TABLE|DELETE\s+FROM|TRUNCATE/i);
-      expect(sql).toMatch(/CREATE TABLE IF NOT EXISTS|ALTER TABLE .* ADD COLUMN/i);
+      expect(sql).not.toMatch(/\bDROP\s+|DELETE\s+FROM|TRUNCATE|\bUPDATE\s+\w+\s+SET/i);
+      expect(sql).toMatch(/^\s*(CREATE TABLE IF NOT EXISTS|CREATE (UNIQUE )?INDEX IF NOT EXISTS|CREATE VIEW IF NOT EXISTS|ALTER TABLE .* ADD COLUMN)/i);
     }
   });
 });

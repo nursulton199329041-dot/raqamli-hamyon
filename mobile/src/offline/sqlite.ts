@@ -1,18 +1,41 @@
 import * as SQLite from 'expo-sqlite';
-import { MIGRATIONS } from './migrations';
+import type { LocalDb } from '@/local/db';
+import { expoDb } from '@/local/expoDb';
+import { migrate } from '@/local/migrate';
 import type { Storage, UpdateLogEntry } from './storage';
 
-async function migrate(db: SQLite.SQLiteDatabase): Promise<void> {
-  const row = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
-  let v = row?.user_version ?? 0;
-  while (v < MIGRATIONS.length) {
-    const steps = MIGRATIONS[v] ?? [];
-    await db.withTransactionAsync(async () => {
-      for (const sql of steps) await db.execAsync(sql);
-    });
-    v += 1;
-    await db.execAsync(`PRAGMA user_version = ${v}`);
-  }
+let opened: Promise<{ raw: SQLite.SQLiteDatabase; db: LocalDb; failed: unknown }> | null = null;
+
+/**
+ * One connection to hamyon.db (snapshot cache, queue and the local ledger), migrated before first use. A failed
+ * migration rolls back to the previous version: the queue and cache keep working, only the local ledger stays closed.
+ */
+function open() {
+  opened ??= (async () => {
+    const raw = await SQLite.openDatabaseAsync('hamyon.db');
+    await raw.execAsync('PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL;');
+    const db = expoDb(raw);
+    let failed: unknown = null;
+    try {
+      await migrate(db);
+    } catch (e) {
+      failed = e;
+      try {
+        await raw.runAsync('INSERT INTO update_log (at, kind, detail) VALUES (?, ?, ?)', new Date().toISOString(), 'db-migration-failed',
+          e instanceof Error ? e.message.slice(0, 500) : String(e));
+      } catch {
+        /* the log table itself may be missing on a very old file */
+      }
+    }
+    return { raw, db, failed };
+  })();
+  return opened;
+}
+
+export async function openLocalDb(): Promise<LocalDb> {
+  const o = await open();
+  if (o.failed) throw o.failed;
+  return o.db;
 }
 
 class SqliteStorage implements Storage {
@@ -56,7 +79,5 @@ class SqliteStorage implements Storage {
 
 
 export async function openSqliteStorage(): Promise<Storage> {
-  const db = await SQLite.openDatabaseAsync('hamyon.db');
-  await migrate(db);
-  return new SqliteStorage(db);
+  return new SqliteStorage((await open()).raw);
 }
