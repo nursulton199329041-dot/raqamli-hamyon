@@ -30,6 +30,7 @@ export interface Tx {
   walletId?: string | null; toWalletId?: string | null; toAmount?: number | null; toCurrency?: string | null; fxRate?: number | null;
   categoryId?: string | null; incomeSourceId?: string | null; personId?: string | null; projectId?: string | null; debtId?: string | null;
   reason?: string | null; memo?: string | null; reversalOfId?: string | null; reversedById?: string | null; replacesId?: string | null; createdAt: string;
+  rateDate?: string | null; rateSource?: string | null; profileId?: string | null;
 }
 
 export interface Snapshot {
@@ -60,7 +61,7 @@ export interface ClientPolicy { minVersion: string; latestVersion: string; apiVe
 
 /** Operation waiting in the offline queue; `clientOperationId` doubles as the server idempotency key. */
 export interface PendingOp {
-  clientOperationId: string; kind: 'income' | 'expense' | 'transfer' | 'debt' | 'repay';
+  clientOperationId: string; kind: 'income' | 'expense' | 'transfer' | 'debt' | 'repay' | 'reverse';
   payload: Record<string, unknown>; targetId?: string | null; createdAt: string; error?: string | null;
 }
 

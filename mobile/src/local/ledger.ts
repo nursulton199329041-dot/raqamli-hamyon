@@ -24,7 +24,11 @@ export interface TxRow {
   fx_rate: string | null; rate_date: string | null; rate_source: string | null; category_id: string | null;
   income_source_id: string | null; person_id: string | null; debt_id: string | null; reason: string | null; memo: string | null;
   reversal_of_id: string | null; reversed_by_id: string | null; idempotency_key: string; created_at: string;
+  project_id: string | null;
 }
+
+/** Details the device stores and forwards as they are (the server checks ownership of person and project). */
+export interface Extra { personId?: string | null; reason?: string | null; projectId?: string | null }
 
 export interface WalletRow {
   id: string; profile_id: string; name: string; type: number; currency: string; icon: string; color: string;
@@ -41,7 +45,7 @@ interface Posting {
   walletId?: string | null; toWalletId?: string | null; toAmount?: number | null; toCurrency?: string | null;
   fxRate?: string | null; rateDate?: string | null; rateSource?: string | null; categoryId?: string | null;
   sourceId?: string | null; personId?: string | null; debtId?: string | null; reason?: string | null; memo?: string | null;
-  reversalOf?: string | null;
+  reversalOf?: string | null; projectId?: string | null;
   /** what the server must receive to replay this operation (null: nothing to sync, e.g. part of a catalog create) */
   outbox: { kind: string; payload: Record<string, unknown>; targetId?: string | null } | null;
 }
@@ -84,6 +88,33 @@ export class LocalLedger {
       if (!acc) await this.db.run('INSERT INTO accounts (id, kind, display_name, created_at) VALUES (?, ?, ?, ?)', accountId, 'local', displayName, this.now());
       const profileId = await this.insertProfile(accountId, 'Asosiy', 'UZS', 0);
       return { accountId, profileId };
+    });
+  }
+
+  /**
+   * Signed-in user: the local book mirrors the server account. Profiles keep the server ids (no default catalog here:
+   * it arrives with the first pull). A device that already holds a guest book or another user's book is not merged
+   * silently — that is the identity step (Phase 4).
+   */
+  async adoptCloudAccount(user: { id: string; email?: string | null; displayName?: string | null },
+    profiles: { id: string; name: string; baseCurrency: string; color?: string; icon?: string; sortOrder?: number; isArchived?: boolean }[]): Promise<string> {
+    return this.db.tx(async () => {
+      const acc = await this.db.first<{ id: string; kind: string; server_user_id: string | null }>('SELECT id, kind, server_user_id FROM accounts ORDER BY created_at LIMIT 1');
+      if (acc && acc.kind !== 'cloud') throw new LedgerError('identity.merge_required', 'This device holds a guest book; link it first.');
+      if (acc && acc.server_user_id !== user.id) throw new LedgerError('identity.other_user', "This device holds another user's book.");
+      const accountId = acc?.id ?? uuid();
+      const at = this.now();
+      if (!acc) await this.db.run('INSERT INTO accounts (id, kind, server_user_id, email, display_name, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+        accountId, 'cloud', user.id, user.email ?? null, user.displayName ?? '', at);
+      for (const p of profiles)
+        await this.db.run(
+          `INSERT INTO profiles (id, account_id, name, color, icon, base_currency, sort_order, is_archived, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           ON CONFLICT(id) DO UPDATE SET name = excluded.name, color = excluded.color, icon = excluded.icon,
+             base_currency = excluded.base_currency, sort_order = excluded.sort_order, is_archived = excluded.is_archived, updated_at = excluded.updated_at`,
+          p.id, accountId, p.name, p.color ?? '#4D8DFF', p.icon ?? 'person', normalizeCurrency(p.baseCurrency), p.sortOrder ?? 0,
+          p.isArchived ? 1 : 0, at, at);
+      return accountId;
     });
   }
 
@@ -138,18 +169,19 @@ export class LocalLedger {
         `INSERT INTO wallets (id, profile_id, name, type, currency, icon, color, allow_overdraft, sort_order, ledger_account_id, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         id, profileId, name, w.type ?? 0, currency, w.icon ?? 'wallet', w.color ?? '#3B82F6', w.allowOverdraft ? 1 : 0, order?.n ?? 0, acc, at, at);
-      await this.outbox(profileId, `wallet:${id}`, 'wallet.create', {
-        id, name, type: w.type ?? 0, currency, initialBalance: Number(minorToDecimal(initial, currency)), icon: w.icon ?? 'wallet',
-        color: w.color ?? '#3B82F6', allowOverdraft: !!w.allowOverdraft,
-      });
+      let openingId: string | null = null;
       if (initial !== 0) {
         const equity = await this.counter(profileId, AccountKind.Equity, NO_REF, currency);
-        await this.post({
+        openingId = (await this.post({
           profileId, type: TxKind.Opening, key: `open:${id}`, occurredAt: at, amount: Math.abs(initial), currency, walletId: id,
           memo: 'Opening balance', lines: [{ account: acc, amount: initial }, { account: equity, amount: -initial }],
-          outbox: null, // the opening balance travels with wallet.create
-        });
+          outbox: null, // the opening balance travels with wallet.create (same entry id on the server)
+        })).id;
       }
+      await this.outbox(profileId, `wallet:${id}`, 'wallet.create', {
+        id, openingId, name, type: w.type ?? 0, currency, initialBalance: Number(minorToDecimal(initial, currency)), icon: w.icon ?? 'wallet',
+        color: w.color ?? '#3B82F6', allowOverdraft: !!w.allowOverdraft,
+      });
     });
     return (await this.wallet(profileId, id))!;
   }
@@ -196,13 +228,13 @@ export class LocalLedger {
         patch.name?.trim() || null, patch.icon ?? null, patch.color ?? null,
         patch.isArchived === undefined ? null : patch.isArchived ? 1 : 0, this.now(), id, profileId, revision);
       if (r.changes === 0) throw new LedgerError('conflict.stale', 'Wallet was changed elsewhere; reload and retry.');
-      await this.outbox(profileId, `wallet:${id}:r${revision + 1}`, 'wallet.update', { id, revision, ...patch });
+      await this.outbox(profileId, `wallet:${id}:r${revision + 1}`, 'wallet.update', { revision, ...patch }, id);
     });
   }
 
   // ------------------------------------------------------------------ money operations
 
-  async income(profileId: string, r: { walletId: string; amountMinor: number; sourceId?: string | null; occurredAt?: string; memo?: string | null; opId?: string }): Promise<OpResult> {
+  async income(profileId: string, r: { walletId: string; amountMinor: number; sourceId?: string | null; occurredAt?: string; memo?: string | null; opId?: string } & Extra): Promise<OpResult> {
     return this.op(r.opId, async (key) => {
       const w = await this.walletOrThrow(profileId, r.walletId);
       checkMinor(r.amountMinor, w.currency);
@@ -210,9 +242,12 @@ export class LocalLedger {
       const src = await this.counter(profileId, AccountKind.IncomeSource, r.sourceId ?? NO_REF, w.currency);
       return this.post({
         profileId, type: TxKind.Income, key, occurredAt: r.occurredAt ?? this.now(), amount: r.amountMinor, currency: w.currency,
-        walletId: w.id, sourceId: r.sourceId ?? null, memo: r.memo ?? null,
+        walletId: w.id, sourceId: r.sourceId ?? null, memo: r.memo ?? null, ...extra(r),
         lines: [{ account: w.ledger_account_id, amount: r.amountMinor }, { account: src, amount: -r.amountMinor }],
-        outbox: { kind: 'income', payload: { walletId: w.id, amount: dec(r.amountMinor, w.currency), incomeSourceId: r.sourceId ?? null, occurredAt: r.occurredAt ?? null, memo: r.memo ?? null } },
+        outbox: { kind: 'income', payload: {
+          walletId: w.id, amount: dec(r.amountMinor, w.currency), incomeSourceId: r.sourceId ?? null, occurredAt: r.occurredAt ?? null, memo: r.memo ?? null,
+          ...extra(r),
+        } },
       });
     });
   }
@@ -221,21 +256,21 @@ export class LocalLedger {
   async expense(profileId: string, r: {
     walletId: string; amountMinor: number; categoryId: string; occurredAt?: string; memo?: string | null; opId?: string;
     toCurrency?: string | null; toAmountMinor?: number | null; rate?: string | null; rateDate?: string | null; rateSource?: string | null;
-  }): Promise<OpResult> {
+  } & Extra): Promise<OpResult> {
     return this.op(r.opId, async (key) => {
       const w = await this.walletOrThrow(profileId, r.walletId);
       checkMinor(r.amountMinor, w.currency);
       await this.owned('categories', profileId, r.categoryId, 'Category');
       const occurredAt = r.occurredAt ?? this.now();
       const target = r.toCurrency ? normalizeCurrency(r.toCurrency) : w.currency;
-      const base = { walletId: w.id, amount: dec(r.amountMinor, w.currency), categoryId: r.categoryId, occurredAt: r.occurredAt ?? null, memo: r.memo ?? null };
+      const base = { walletId: w.id, amount: dec(r.amountMinor, w.currency), categoryId: r.categoryId, occurredAt: r.occurredAt ?? null, memo: r.memo ?? null, ...extra(r) };
       if (target === w.currency) {
         if ((r.toAmountMinor != null && r.toAmountMinor !== r.amountMinor) || r.rate != null)
           throw new LedgerError('expense.fx_same_currency', 'Same-currency expense cannot carry a conversion.');
         const cat = await this.counter(profileId, AccountKind.ExpenseCategory, r.categoryId, w.currency);
         return this.post({
           profileId, type: TxKind.Expense, key, occurredAt, amount: r.amountMinor, currency: w.currency, walletId: w.id,
-          categoryId: r.categoryId, memo: r.memo ?? null,
+          categoryId: r.categoryId, memo: r.memo ?? null, ...extra(r),
           lines: [{ account: w.ledger_account_id, amount: -r.amountMinor }, { account: cat, amount: r.amountMinor }],
           outbox: { kind: 'expense', payload: base },
         });
@@ -248,7 +283,7 @@ export class LocalLedger {
       const clearTo = await this.counter(profileId, AccountKind.FxClearing, NO_REF, target);
       return this.post({
         profileId, type: TxKind.Expense, key, occurredAt, amount: r.amountMinor, currency: w.currency, walletId: w.id,
-        toAmount: fx.toMinor, toCurrency: target, fxRate: fx.rate, rateDate, rateSource: source, categoryId: r.categoryId, memo: r.memo ?? null,
+        toAmount: fx.toMinor, toCurrency: target, fxRate: fx.rate, rateDate, rateSource: source, categoryId: r.categoryId, memo: r.memo ?? null, ...extra(r),
         lines: [
           { account: w.ledger_account_id, amount: -r.amountMinor }, { account: clearFrom, amount: r.amountMinor },
           { account: clearTo, amount: -fx.toMinor }, { account: cat, amount: fx.toMinor },
@@ -260,7 +295,7 @@ export class LocalLedger {
 
   async transfer(profileId: string, r: {
     fromWalletId: string; toWalletId: string; amountMinor: number; toAmountMinor?: number | null; rate?: string | null;
-    occurredAt?: string; memo?: string | null; opId?: string;
+    occurredAt?: string; memo?: string | null; opId?: string; projectId?: string | null;
   }): Promise<OpResult> {
     return this.op(r.opId, async (key) => {
       if (r.fromWalletId === r.toWalletId) throw new LedgerError('transfer.same_wallet', 'Cannot transfer to the same wallet.');
@@ -270,13 +305,14 @@ export class LocalLedger {
       const occurredAt = r.occurredAt ?? this.now();
       const payload: Record<string, unknown> = {
         fromWalletId: from.id, toWalletId: to.id, amount: dec(r.amountMinor, from.currency), occurredAt: r.occurredAt ?? null, memo: r.memo ?? null,
+        projectId: r.projectId ?? null,
       };
       if (from.currency === to.currency) {
         if (r.toAmountMinor != null && r.toAmountMinor !== r.amountMinor)
           throw new LedgerError('transfer.amount_mismatch', 'Same-currency transfer cannot change the amount.');
         return this.post({
           profileId, type: TxKind.Transfer, key, occurredAt, amount: r.amountMinor, currency: from.currency, walletId: from.id,
-          toWalletId: to.id, toAmount: r.amountMinor, toCurrency: to.currency, memo: r.memo ?? null,
+          toWalletId: to.id, toAmount: r.amountMinor, toCurrency: to.currency, memo: r.memo ?? null, projectId: r.projectId ?? null,
           lines: [{ account: from.ledger_account_id, amount: -r.amountMinor }, { account: to.ledger_account_id, amount: r.amountMinor }],
           outbox: { kind: 'transfer', payload },
         });
@@ -286,7 +322,7 @@ export class LocalLedger {
       const clearTo = await this.counter(profileId, AccountKind.FxClearing, NO_REF, to.currency);
       return this.post({
         profileId, type: TxKind.Transfer, key, occurredAt, amount: r.amountMinor, currency: from.currency, walletId: from.id,
-        toWalletId: to.id, toAmount: fx.toMinor, toCurrency: to.currency, fxRate: fx.rate, memo: r.memo ?? null,
+        toWalletId: to.id, toAmount: fx.toMinor, toCurrency: to.currency, fxRate: fx.rate, memo: r.memo ?? null, projectId: r.projectId ?? null,
         lines: [
           { account: from.ledger_account_id, amount: -r.amountMinor }, { account: clearFrom, amount: r.amountMinor },
           { account: clearTo, amount: -fx.toMinor }, { account: to.ledger_account_id, amount: fx.toMinor },
@@ -299,17 +335,19 @@ export class LocalLedger {
   /** Borrow (wallet up, NOT income) or lend (wallet down, NOT expense). Creates the debt and its own ledger account. */
   async debt(profileId: string, r: {
     direction: number; walletId: string; amountMinor: number; personId?: string | null; personName?: string | null;
-    dueDate?: string | null; reason?: string | null; occurredAt?: string; memo?: string | null; opId?: string;
+    dueDate?: string | null; reason?: string | null; occurredAt?: string; memo?: string | null; opId?: string; projectId?: string | null;
   }): Promise<OpResult & { debtId: string }> {
     let debtId = '';
     const res = await this.op(r.opId, async (key) => {
       const w = await this.walletOrThrow(profileId, r.walletId);
       checkMinor(r.amountMinor, w.currency);
       let personId = r.personId ?? null;
+      let newPerson: string | null = null;
       const at = this.now();
       if (personId) await this.owned('people', profileId, personId, 'Person');
       else if (r.personName?.trim()) {
         personId = uuid();
+        newPerson = r.personName.trim();
         await this.db.run('INSERT INTO people (id, profile_id, name, created_at) VALUES (?, ?, ?, ?)', personId, profileId, r.personName.trim(), at);
       } else throw new LedgerError('debt.person_required', 'Person is required.');
       debtId = uuid();
@@ -325,11 +363,11 @@ export class LocalLedger {
       const borrow = r.direction === DebtDirection.Borrowed;
       return this.post({
         profileId, type: borrow ? TxKind.DebtBorrow : TxKind.DebtLend, key, occurredAt: r.occurredAt ?? at, amount: r.amountMinor,
-        currency: w.currency, walletId: w.id, personId, debtId, reason: r.reason ?? null, memo: r.memo ?? null,
+        currency: w.currency, walletId: w.id, personId, debtId, reason: r.reason ?? null, memo: r.memo ?? null, projectId: r.projectId ?? null,
         lines: [{ account: w.ledger_account_id, amount: borrow ? r.amountMinor : -r.amountMinor }, { account: acc, amount: borrow ? -r.amountMinor : r.amountMinor }],
         outbox: { kind: 'debt', payload: {
-          id: debtId, direction: r.direction, personId, personName: r.personName ?? null, walletId: w.id, amount: dec(r.amountMinor, w.currency),
-          dueDate: r.dueDate ?? null, reason: r.reason ?? null, occurredAt: r.occurredAt ?? null, memo: r.memo ?? null,
+          debtId, direction: r.direction, personId, personName: newPerson, walletId: w.id, amount: dec(r.amountMinor, w.currency),
+          dueDate: r.dueDate ?? null, reason: r.reason ?? null, occurredAt: r.occurredAt ?? null, memo: r.memo ?? null, projectId: r.projectId ?? null,
         } },
       });
     });
@@ -363,7 +401,7 @@ export class LocalLedger {
   }
 
   /** Append-only correction: a mirror entry; the original is only linked, never edited or deleted. */
-  async reverse(profileId: string, txId: string, memo?: string): Promise<OpResult> {
+  async reverse(profileId: string, txId: string, memo?: string, localOnly = false): Promise<OpResult> {
     return this.op(`rev:${txId}`, async (key) => {
       const t = await this.db.first<TxRow>('SELECT * FROM transactions WHERE id = ? AND profile_id = ?', txId, profileId);
       if (!t) throw new LedgerError('not_found', 'Transaction not found.');
@@ -376,14 +414,28 @@ export class LocalLedger {
         profileId, type: TxKind.Reversal, key, occurredAt: this.now(), amount: t.amount_minor, currency: t.currency, walletId: t.wallet_id,
         toWalletId: t.to_wallet_id, toAmount: t.to_amount_minor, toCurrency: t.to_currency, fxRate: t.fx_rate, rateDate: t.rate_date,
         rateSource: t.rate_source, categoryId: t.category_id, sourceId: t.income_source_id, personId: t.person_id, debtId: t.debt_id,
-        reason: t.reason, memo: memo ?? `Reversal of ${t.id}`, reversalOf: t.id,
+        reason: t.reason, memo: memo ?? `Reversal of ${t.id}`, reversalOf: t.id, projectId: t.project_id,
         lines: lines.map((l) => ({ account: l.ledger_account_id, amount: -l.amount_minor })),
-        outbox: { kind: 'reverse', targetId: t.id, payload: { memo: memo ?? null } },
+        outbox: localOnly ? null : { kind: 'reverse', targetId: t.id, payload: { memo: memo ?? null } },
       });
       const linked = await this.db.run('UPDATE transactions SET reversed_by_id = ?, updated_at = ? WHERE id = ? AND reversed_by_id IS NULL', res.id, this.now(), t.id);
       if (linked.changes === 0) throw new LedgerError('reverse.already', 'Transaction was already reversed.');
       return res;
     });
+  }
+
+  /**
+   * The server refused an operation (e.g. the money was already spent on another device): the device undoes it with a
+   * local reversal so its balances match the server again. The refused outbox row is kept (status done, reason kept).
+   */
+  async discardRejected(profileId: string, opId: string): Promise<OpResult | null> {
+    const op = await this.db.first<{ status: string; last_error: string | null }>(
+      'SELECT status, last_error FROM sync_outbox WHERE op_id = ? AND profile_id = ?', opId, profileId);
+    if (!op || op.status !== 'rejected') throw new LedgerError('sync.not_rejected', 'Only a refused operation can be discarded.');
+    const tx = await this.db.first<TxRow>('SELECT * FROM transactions WHERE idempotency_key = ? AND profile_id = ?', opId, profileId);
+    const res = tx && !tx.reversed_by_id ? await this.reverse(profileId, tx.id, 'Rejected by server', true) : null;
+    await this.db.run("UPDATE sync_outbox SET status = 'done', last_error = ? WHERE op_id = ?", `discarded: ${op.last_error ?? ''}`, opId);
+    return res;
   }
 
   private async undoDebt(t: TxRow) {
@@ -463,7 +515,7 @@ export class LocalLedger {
       ['to_amount_minor', p.toAmount ?? null], ['to_currency', p.toCurrency ?? null], ['fx_rate', p.fxRate ?? null],
       ['rate_date', p.rateDate ?? null], ['rate_source', p.rateSource ?? null], ['category_id', p.categoryId ?? null],
       ['income_source_id', p.sourceId ?? null], ['person_id', p.personId ?? null], ['debt_id', p.debtId ?? null],
-      ['reason', p.reason ?? null], ['memo', p.memo ?? null], ['reversal_of_id', p.reversalOf ?? null],
+      ['reason', p.reason ?? null], ['memo', p.memo ?? null], ['reversal_of_id', p.reversalOf ?? null], ['project_id', p.projectId ?? null],
       ['idempotency_key', p.key], ['created_at', at], ['updated_at', at],
     ];
     await this.db.run(`INSERT INTO transactions (${cols.map((c) => c[0]).join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`, ...cols.map((c) => c[1]));
@@ -480,7 +532,7 @@ export class LocalLedger {
         delta, acc, delta, delta);
       if (r.changes === 0) throw new LedgerError('wallet.insufficient_funds', `Insufficient funds in '${accounts.get(acc)!.name}'.`);
     }
-    if (p.outbox) await this.outbox(p.profileId, p.key, p.outbox.kind, p.outbox.payload, p.outbox.targetId ?? null);
+    if (p.outbox) await this.outbox(p.profileId, p.key, p.outbox.kind, { ...p.outbox.payload, id }, p.outbox.targetId ?? null);
     return (await this.db.first<TxRow>('SELECT * FROM transactions WHERE id = ?', id))!;
   }
 
@@ -517,6 +569,9 @@ export class LocalLedger {
     if (!p) throw new LedgerError('profile.not_found', 'Profile not found.');
   }
 }
+
+/** Same names in the journal row (Posting) and in the server payload. */
+const extra = (r: Extra) => ({ personId: r.personId ?? null, reason: r.reason ?? null, projectId: r.projectId ?? null });
 
 /** Exact decimal for the server payload (JSON number with at most 15 significant digits: amounts < 1e13 with 2 places). */
 const dec = (minor: number, currency: string) => Number(minorToDecimal(minor, currency));

@@ -86,4 +86,8 @@ export const MIGRATIONS: string[][] = [
     'CREATE INDEX IF NOT EXISTS ix_sources_profile ON income_sources (profile_id)',
     'CREATE INDEX IF NOT EXISTS ix_outbox_pending ON sync_outbox (status, seq)',
   ],
+  // v4: operations keep their project (synced with the server, shown in history)
+  [
+    'ALTER TABLE transactions ADD COLUMN project_id TEXT',
+  ],
 ];

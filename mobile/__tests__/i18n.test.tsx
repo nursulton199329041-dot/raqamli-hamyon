@@ -80,8 +80,8 @@ describe('the whole app switches language; user-entered names are never translat
     useSettings.setState({ lang, reduceEffects: true });
     await renderApp(<Dashboard />);
     for (const l of labels) expect(await screen.findByText(new RegExp(l, 'i'))).toBeTruthy();
-    // user data stays exactly as typed
-    expect(screen.getAllByText('Bank kartasi').length).toBeGreaterThan(0);
+    // user data stays exactly as typed (labels render before the data arrives, so wait for it)
+    expect((await screen.findAllByText('Bank kartasi')).length).toBeGreaterThan(0);
     expect(screen.getAllByText('Kommunal').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Maosh').length).toBeGreaterThan(0);
     expect(screen.getAllByText(amount.replace(/ /g, ' ')).length).toBeGreaterThan(0);

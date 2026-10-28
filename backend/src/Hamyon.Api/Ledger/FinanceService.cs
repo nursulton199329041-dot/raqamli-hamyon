@@ -25,6 +25,13 @@ public sealed class FinanceService(AppDbContext db, ILedgerService ledger)
             var abs = Math.Abs(r.InitialBalance);
             Currencies.ValidateAmount(abs, currency, "initialBalance");
         }
+        if (r.Id == Guid.Empty || r.OpeningId == Guid.Empty) throw new DomainException("sync.id_invalid", "Id cannot be empty.");
+        if (r.Id is not null)
+        {
+            // an offline client re-sending its wallet: the first create wins, the repeat is a no-op
+            var existing = await db.Wallets.AsNoTracking().FirstOrDefaultAsync(w => w.Id == r.Id && w.UserId == userId, ct);
+            if (existing is not null) return existing;
+        }
 
         return await InTransactionAsync(async () =>
         {
@@ -35,7 +42,7 @@ public sealed class FinanceService(AppDbContext db, ILedgerService ledger)
             };
             var wallet = new Wallet
             {
-                UserId = userId, Name = r.Name.Trim(), Type = r.Type, Currency = currency,
+                Id = r.Id ?? Guid.NewGuid(), UserId = userId, Name = r.Name.Trim(), Type = r.Type, Currency = currency,
                 Icon = r.Icon ?? "wallet", Color = r.Color ?? "#3B82F6", BankName = r.BankName,
                 MaskedNumber = r.MaskedNumber, Note = r.Note, AllowOverdraft = r.AllowOverdraft,
                 LedgerAccountId = account.Id,
@@ -53,7 +60,7 @@ public sealed class FinanceService(AppDbContext db, ILedgerService ledger)
                 {
                     UserId = userId, Type = TransactionType.Opening, OccurredAt = DateTimeOffset.UtcNow,
                     IdempotencyKey = $"open:{wallet.Id}", Amount = Math.Abs(r.InitialBalance), Currency = currency,
-                    WalletId = wallet.Id, Memo = "Opening balance",
+                    WalletId = wallet.Id, Memo = "Opening balance", EntryId = r.OpeningId,
                     Lines =
                     [
                         new PostingLine(account.Id, r.InitialBalance),
@@ -104,7 +111,7 @@ public sealed class FinanceService(AppDbContext db, ILedgerService ledger)
             UserId = userId, Type = TransactionType.Income, OccurredAt = r.OccurredAt ?? DateTimeOffset.UtcNow,
             IdempotencyKey = Key(r.ClientKey), Amount = r.Amount, Currency = wallet.Currency, WalletId = wallet.Id,
             IncomeSourceId = r.IncomeSourceId, PersonId = r.PersonId, ProjectId = r.ProjectId, Reason = r.Reason,
-            Memo = r.Memo, ReplacesId = replaces,
+            Memo = r.Memo, ReplacesId = replaces, EntryId = r.Id,
             Lines = [new PostingLine(wallet.LedgerAccountId, r.Amount, r.ProjectId), new PostingLine(sourceAccount.Id, -r.Amount)],
         }, ct);
         return ToResult(res);
@@ -131,6 +138,7 @@ public sealed class FinanceService(AppDbContext db, ILedgerService ledger)
                 UserId = userId, Type = TransactionType.Expense, OccurredAt = occurred,
                 IdempotencyKey = Key(r.ClientKey), Amount = r.Amount, Currency = wallet.Currency, WalletId = wallet.Id,
                 CategoryId = r.CategoryId, PersonId = r.PersonId, ProjectId = r.ProjectId, Memo = r.Memo, ReplacesId = replaces,
+                EntryId = r.Id,
                 Lines = [new PostingLine(wallet.LedgerAccountId, -r.Amount, r.ProjectId), new PostingLine(catAccount.Id, r.Amount)],
             }, ct);
             return ToResult(res);
@@ -151,6 +159,7 @@ public sealed class FinanceService(AppDbContext db, ILedgerService ledger)
             ToAmount = toAmount, ToCurrency = target, FxRate = rate,
             RateDate = r.RateDate ?? DateOnly.FromDateTime(occurred.UtcDateTime), RateSource = source,
             CategoryId = r.CategoryId, PersonId = r.PersonId, ProjectId = r.ProjectId, Memo = r.Memo, ReplacesId = replaces,
+            EntryId = r.Id,
             Lines =
             [
                 new PostingLine(wallet.LedgerAccountId, -r.Amount, r.ProjectId),
@@ -211,7 +220,7 @@ public sealed class FinanceService(AppDbContext db, ILedgerService ledger)
             UserId = userId, Type = TransactionType.Transfer, OccurredAt = r.OccurredAt ?? DateTimeOffset.UtcNow,
             IdempotencyKey = Key(r.ClientKey), Amount = r.Amount, Currency = from.Currency, WalletId = from.Id,
             ToWalletId = to.Id, ToAmount = toAmount, ToCurrency = to.Currency, FxRate = rate,
-            ProjectId = r.ProjectId, Memo = r.Memo, ReplacesId = replaces, Lines = lines,
+            ProjectId = r.ProjectId, Memo = r.Memo, ReplacesId = replaces, EntryId = r.Id, Lines = lines,
         }, ct);
         return ToResult(res);
     }
@@ -236,14 +245,21 @@ public sealed class FinanceService(AppDbContext db, ILedgerService ledger)
         return await InTransactionAsync(async () =>
         {
             Guid personId;
-            if (r.PersonId is not null)
+            var known = r.PersonId is not null
+                && await db.People.AsNoTracking().AnyAsync(p => p.Id == r.PersonId && p.UserId == userId, ct);
+            if (known)
             {
-                await EnsureOwnedAsync(db.People, userId, r.PersonId.Value, "Person", ct);
-                personId = r.PersonId.Value;
+                personId = r.PersonId!.Value;
+            }
+            else if (r.PersonId is not null && string.IsNullOrWhiteSpace(r.PersonName))
+            {
+                throw new NotFoundException("Person");
             }
             else if (!string.IsNullOrWhiteSpace(r.PersonName))
             {
-                var p = new Person { UserId = userId, Name = r.PersonName.Trim() };
+                // an offline client names the new person and may also choose its id
+                if (r.PersonId == Guid.Empty) throw new DomainException("sync.id_invalid", "Id cannot be empty.");
+                var p = new Person { Id = r.PersonId ?? Guid.NewGuid(), UserId = userId, Name = r.PersonName.Trim() };
                 db.People.Add(p);
                 await db.SaveChangesAsync(ct);
                 personId = p.Id;
@@ -254,9 +270,10 @@ public sealed class FinanceService(AppDbContext db, ILedgerService ledger)
             {
                 UserId = userId, Kind = LedgerAccountKind.Debt, Currency = wallet.Currency, Name = "Debt", AllowNegative = true,
             };
+            if (r.DebtId == Guid.Empty) throw new DomainException("sync.id_invalid", "Id cannot be empty.");
             var debt = new Debt
             {
-                UserId = userId, PersonId = personId, Direction = r.Direction, Currency = wallet.Currency,
+                Id = r.DebtId ?? Guid.NewGuid(), UserId = userId, PersonId = personId, Direction = r.Direction, Currency = wallet.Currency,
                 Principal = r.Amount, Outstanding = r.Amount, DueDate = r.DueDate, Status = DebtStatus.Open,
                 ProjectId = r.ProjectId, Reason = r.Reason, Note = r.Memo, LedgerAccountId = account.Id,
             };
@@ -271,7 +288,7 @@ public sealed class FinanceService(AppDbContext db, ILedgerService ledger)
                 UserId = userId, Type = borrow ? TransactionType.DebtBorrow : TransactionType.DebtLend,
                 OccurredAt = r.OccurredAt ?? DateTimeOffset.UtcNow, IdempotencyKey = key,
                 Amount = r.Amount, Currency = wallet.Currency, WalletId = wallet.Id, PersonId = personId,
-                ProjectId = r.ProjectId, DebtId = debt.Id, Reason = r.Reason, Memo = r.Memo,
+                ProjectId = r.ProjectId, DebtId = debt.Id, Reason = r.Reason, Memo = r.Memo, EntryId = r.Id,
                 Lines =
                 [
                     new PostingLine(wallet.LedgerAccountId, borrow ? r.Amount : -r.Amount, r.ProjectId),
@@ -315,7 +332,7 @@ public sealed class FinanceService(AppDbContext db, ILedgerService ledger)
                 UserId = userId, Type = borrowed ? TransactionType.DebtRepayment : TransactionType.DebtCollection,
                 OccurredAt = r.OccurredAt ?? DateTimeOffset.UtcNow, IdempotencyKey = key,
                 Amount = amount, Currency = debt.Currency, WalletId = wallet.Id, PersonId = debt.PersonId,
-                ProjectId = debt.ProjectId, DebtId = debt.Id, Memo = r.Memo,
+                ProjectId = debt.ProjectId, DebtId = debt.Id, Memo = r.Memo, EntryId = r.Id,
                 Lines =
                 [
                     new PostingLine(wallet.LedgerAccountId, borrowed ? -amount : amount, debt.ProjectId),
@@ -330,7 +347,8 @@ public sealed class FinanceService(AppDbContext db, ILedgerService ledger)
     // ------------------------------------------------------------------ reversal / correction
 
     /// <summary>Posts a mirror entry. Original is never modified except for the ReversedById link.</summary>
-    public async Task<OperationResult> ReverseAsync(Guid userId, Guid entryId, string? memo, CancellationToken ct)
+    public async Task<OperationResult> ReverseAsync(Guid userId, Guid entryId, string? memo, CancellationToken ct,
+        Guid? reversalId = null)
     {
         var original = await db.JournalEntries.AsNoTracking().Include(e => e.Lines)
             .FirstOrDefaultAsync(e => e.Id == entryId && e.UserId == userId, ct) ?? throw new NotFoundException("Transaction");
@@ -357,6 +375,7 @@ public sealed class FinanceService(AppDbContext db, ILedgerService ledger)
                 CategoryId = original.CategoryId, IncomeSourceId = original.IncomeSourceId,
                 PersonId = original.PersonId, ProjectId = original.ProjectId, DebtId = original.DebtId,
                 Reason = original.Reason, Memo = memo ?? $"Reversal of {original.Id}", ReversalOfId = original.Id,
+                EntryId = reversalId,
                 Lines = original.Lines.Select(l => new PostingLine(l.LedgerAccountId, -l.Amount, l.ProjectId)).ToList(),
             }, ct);
 

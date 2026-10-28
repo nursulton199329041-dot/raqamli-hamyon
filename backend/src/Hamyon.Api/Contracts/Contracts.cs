@@ -12,18 +12,19 @@ public sealed record UpdateProfileRequest(string? DisplayName, string? Locale, s
 
 // ---- catalogs ----
 public sealed record WalletRequest(string Name, WalletType Type, string Currency, decimal InitialBalance, string? Icon,
-    string? Color, string? BankName, string? MaskedNumber, string? Note, bool AllowOverdraft, string? ClientKey);
+    string? Color, string? BankName, string? MaskedNumber, string? Note, bool AllowOverdraft, string? ClientKey,
+    Guid? Id = null, Guid? OpeningId = null);
 public sealed record WalletUpdateRequest(string? Name, string? Icon, string? Color, string? BankName, string? MaskedNumber,
     string? Note, bool? AllowOverdraft, bool? IsArchived, int? SortOrder);
 public sealed record WalletDto(Guid Id, string Name, WalletType Type, string Currency, decimal Balance, string Icon,
     string Color, string? BankName, string? MaskedNumber, string? Note, bool AllowOverdraft, bool IsArchived, int SortOrder);
 
 public sealed record CategoryRequest(string Name, string? Icon, string? Color, Guid? ParentId, decimal? MonthlyLimit,
-    string? LimitCurrency, int? SortOrder);
+    string? LimitCurrency, int? SortOrder, Guid? Id = null);
 public sealed record CategoryDto(Guid Id, string Name, string Icon, string Color, Guid? ParentId, decimal? MonthlyLimit,
     string? LimitCurrency, bool IsArchived, int SortOrder);
 
-public sealed record IncomeSourceRequest(string Name, string? Icon, string? Color, int? SortOrder);
+public sealed record IncomeSourceRequest(string Name, string? Icon, string? Color, int? SortOrder, Guid? Id = null);
 public sealed record IncomeSourceDto(Guid Id, string Name, string Icon, string Color, bool IsArchived, int SortOrder);
 
 public sealed record PersonRequest(string Name, string? Phone, string? Note);
@@ -34,7 +35,7 @@ public sealed record ProjectDto(Guid Id, string Name, string Icon, string Color,
 
 // ---- operations ----
 public sealed record IncomeRequest(Guid WalletId, decimal Amount, Guid? IncomeSourceId, Guid? PersonId, string? Reason,
-    Guid? ProjectId, DateTimeOffset? OccurredAt, string? Memo, string? ClientKey);
+    Guid? ProjectId, DateTimeOffset? OccurredAt, string? Memo, string? ClientKey, Guid? Id = null);
 /// <summary>
 /// Expense paid from <see cref="WalletId"/> (Amount is in the wallet's currency). When the expense is in another currency
 /// (<see cref="ToCurrency"/>), give either the converted <see cref="ToAmount"/> or the <see cref="FxRate"/> (ToCurrency per
@@ -42,12 +43,14 @@ public sealed record IncomeRequest(Guid WalletId, decimal Amount, Guid? IncomeSo
 /// </summary>
 public sealed record ExpenseRequest(Guid WalletId, decimal Amount, Guid CategoryId, Guid? PersonId, Guid? ProjectId,
     DateTimeOffset? OccurredAt, string? Memo, string? ClientKey, string? ToCurrency = null, decimal? ToAmount = null,
-    decimal? FxRate = null, DateOnly? RateDate = null, string? RateSource = null);
+    decimal? FxRate = null, DateOnly? RateDate = null, string? RateSource = null, Guid? Id = null);
 public sealed record TransferRequest(Guid FromWalletId, Guid ToWalletId, decimal Amount, decimal? ToAmount, decimal? FxRate,
-    Guid? ProjectId, DateTimeOffset? OccurredAt, string? Memo, string? ClientKey);
+    Guid? ProjectId, DateTimeOffset? OccurredAt, string? Memo, string? ClientKey, Guid? Id = null);
 public sealed record DebtRequest(DebtDirection Direction, Guid? PersonId, string? PersonName, Guid WalletId, decimal Amount,
-    DateTimeOffset? DueDate, string? Reason, Guid? ProjectId, DateTimeOffset? OccurredAt, string? Memo, string? ClientKey);
-public sealed record RepayRequest(Guid WalletId, decimal Amount, DateTimeOffset? OccurredAt, string? Memo, string? ClientKey);
+    DateTimeOffset? DueDate, string? Reason, Guid? ProjectId, DateTimeOffset? OccurredAt, string? Memo, string? ClientKey,
+    Guid? Id = null, Guid? DebtId = null);
+public sealed record RepayRequest(Guid WalletId, decimal Amount, DateTimeOffset? OccurredAt, string? Memo, string? ClientKey,
+    Guid? Id = null);
 
 public sealed record TransactionDto(Guid Id, TransactionType Type, DateTimeOffset OccurredAt, decimal Amount, string Currency,
     Guid? WalletId, Guid? ToWalletId, decimal? ToAmount, string? ToCurrency, decimal? FxRate, Guid? CategoryId,

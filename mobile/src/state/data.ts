@@ -6,7 +6,8 @@ import type {
 } from '@/api/types';
 import { getStorage } from '@/offline/storage';
 import { api } from './runtime';
-import { useQueue } from './queue';
+import { localSnapshot } from '@/local/bridge';
+import { currentBook, useQueue } from './queue';
 
 export type Period = 'week' | 'month' | 'year' | 'all';
 
@@ -25,6 +26,13 @@ export function periodFrom(p: Period): string | undefined {
 }
 
 async function loadSnapshot(): Promise<Snapshot> {
+  const opening = currentBook();
+  const book = opening && (await opening);
+  if (book) {
+    // offline-first: the screens read the device's book at once; the sync runs behind and refreshes them
+    void useQueue.getState().syncLocal(book);
+    return localSnapshot(book);
+  }
   const store = await getStorage();
   try {
     await useQueue.getState().flush();

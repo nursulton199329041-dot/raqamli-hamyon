@@ -1,10 +1,24 @@
+import { Platform } from 'react-native';
 import { errorText } from '@/api/errors';
 import { create } from 'zustand';
 import { ApiError } from '@/api/client';
-import type { PendingOp } from '@/api/types';
+import type { PendingOp, Snapshot } from '@/api/types';
+import { applyUiOp, localBook, localSnapshot, type LocalBook } from '@/local/bridge';
 import { newKey } from '@/lib/money';
 import { getStorage } from '@/offline/storage';
 import { api, queryClient } from './runtime';
+import { useSession } from './session';
+import { useSettings } from './settings';
+
+/**
+ * The on-device book when the V6 beta is on (native, signed in). With the switch off this is null synchronously, so
+ * the server path below runs exactly as before (no extra await).
+ */
+export function currentBook(): Promise<LocalBook | null> | null {
+  const user = useSession.getState().user;
+  if (!useSettings.getState().localFirst || !user || Platform.OS === 'web') return null;
+  return localBook(user, true);
+}
 
 interface PushResult {
   clientOperationId: string;
@@ -25,6 +39,8 @@ interface QueueState {
   flush(): Promise<void>;
   dismiss(id: string): Promise<void>;
   setOnline(v: boolean): void;
+  /** one background sync of the local book; refreshes the screens when the book changed */
+  syncLocal(book: LocalBook): Promise<void>;
 }
 
 async function persist(list: PendingOp[]) {
@@ -56,6 +72,20 @@ export const useQueue = create<QueueState>((set, get) => ({
    * can never create a duplicate. Network failure => persisted to the queue (pending); server rejection => error.
    */
   async submit(kind, payload, targetId) {
+    const opening = currentBook();
+    const book = opening && (await opening);
+    if (book) {
+      // offline-first: the operation is saved on the device (one transaction with its outbox row) and synced later
+      try {
+        await applyUiOp(book, kind, payload, targetId);
+      } catch (e) {
+        const err = e as { code?: string; message?: string };
+        return { ok: false, message: errorText(err.code, err.message ?? String(e)) };
+      }
+      void queryClient.invalidateQueries();
+      void get().syncLocal(book);
+      return { ok: true, queued: !get().online };
+    }
     const id = newKey('op');
     const op: PendingOp = { clientOperationId: id, kind, payload, targetId: targetId ?? null, createdAt: new Date().toISOString() };
     try {
@@ -77,6 +107,9 @@ export const useQueue = create<QueueState>((set, get) => ({
   },
 
   async flush() {
+    const opening = currentBook();
+    const book = opening && (await opening);
+    if (book) return get().syncLocal(book);
     const { pending, syncing } = get();
     if (syncing || pending.length === 0) return;
     const batch = pending.filter((o) => !o.error);
@@ -107,8 +140,45 @@ export const useQueue = create<QueueState>((set, get) => ({
   },
 
   async dismiss(id) {
+    const opening = currentBook();
+    const book = opening && (await opening);
+    if (book) {
+      // a refused operation is undone on the device so its balances match the server again
+      await book.ledger.discardRejected(book.profileId, id);
+      await get().syncLocal(book);
+      return;
+    }
     const list = get().pending.filter((o) => o.clientOperationId !== id);
     set({ pending: list });
     await persist(list);
+  },
+
+  async syncLocal(book) {
+    set({ syncing: true });
+    try {
+      const r = await book.engine.run(book.profileId);
+      const offline = !!r.error && r.error !== 'sync.backoff';
+      const rows = await book.db.all<{ op_id: string; kind: string; payload: string; target_id: string | null; created_at: string; status: string; last_error: string | null }>(
+        "SELECT op_id, kind, payload, target_id, created_at, status, last_error FROM sync_outbox WHERE profile_id = ? AND status IN ('pending', 'rejected') ORDER BY seq",
+        book.profileId);
+      set({
+        online: !offline,
+        pending: rows.map((o) => ({
+          clientOperationId: o.op_id, kind: o.kind as PendingOp['kind'], payload: JSON.parse(o.payload) as Record<string, unknown>,
+          targetId: o.target_id, createdAt: o.created_at, error: o.status === 'rejected' ? o.last_error : null,
+        })),
+      });
+      const before = queryClient.getQueryData<Snapshot>(['snapshot']);
+      const after = await localSnapshot(book);
+      const strip = (s?: Snapshot) => (s ? JSON.stringify({ ...s, cursor: '' }) : '');
+      if (strip(before) !== strip(after)) {
+        queryClient.setQueryData(['snapshot'], after);
+        void queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] !== 'snapshot' });
+      }
+    } catch {
+      /* the book stays as it is; the next trigger retries */
+    } finally {
+      set({ syncing: false });
+    }
   },
 }));

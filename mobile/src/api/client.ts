@@ -41,8 +41,8 @@ export class ApiClient {
     return `${this.baseUrl}${p}${qs ? `?${qs}` : ''}`;
   }
 
-  private async raw(method: string, path: string, body?: unknown, q?: Query, idem?: string): Promise<Response> {
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  private async raw(method: string, path: string, body?: unknown, q?: Query, idem?: string, extra?: Record<string, string>): Promise<Response> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json', ...extra };
     if (this.tokens) headers.Authorization = `Bearer ${this.tokens.access}`;
     if (idem) headers['Idempotency-Key'] = idem;
     const ctrl = new AbortController();
@@ -87,8 +87,8 @@ export class ApiClient {
     return this.refreshing;
   }
 
-  async request<T>(method: string, path: string, opts: { body?: unknown; q?: Query; idem?: string } = {}, retry = true): Promise<T> {
-    const res = await this.raw(method, path, opts.body, opts.q, opts.idem);
+  async request<T>(method: string, path: string, opts: { body?: unknown; q?: Query; idem?: string; headers?: Record<string, string> } = {}, retry = true): Promise<T> {
+    const res = await this.raw(method, path, opts.body, opts.q, opts.idem, opts.headers);
     if (res.status === 401 && retry && this.tokens) {
       if (await this.refresh()) return this.request<T>(method, path, opts, false);
       this.tokens = null;

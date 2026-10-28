@@ -36,6 +36,8 @@ public sealed class PostingRequest
     public string? Memo { get; init; }
     public Guid? ReversalOfId { get; init; }
     public Guid? ReplacesId { get; init; }
+    /// <summary>Id chosen by an offline client so the entry keeps one identity on the device and the server.</summary>
+    public Guid? EntryId { get; init; }
 
     /// <summary>Deterministic fingerprint of the business content, used to detect key reuse with a different body.</summary>
     public string Fingerprint()
@@ -75,6 +77,7 @@ public sealed class LedgerService(AppDbContext db) : ILedgerService
         var existing = await FindByKeyAsync(r.UserId, r.IdempotencyKey, ct);
         if (existing is not null) return Replay(existing, fingerprint);
 
+        if (r.EntryId == Guid.Empty) throw new DomainException("sync.id_invalid", "Entry id cannot be empty.");
         if (r.Lines.Count < 2) throw new DomainException("ledger.too_few_lines", "A journal entry needs at least two lines.");
 
         var accountIds = r.Lines.Select(l => l.AccountId).Distinct().ToList();
@@ -97,7 +100,7 @@ public sealed class LedgerService(AppDbContext db) : ILedgerService
 
         var entry = new JournalEntry
         {
-            UserId = r.UserId, Type = r.Type, OccurredAt = r.OccurredAt.ToUniversalTime(),
+            Id = r.EntryId ?? Guid.NewGuid(), UserId = r.UserId, Type = r.Type, OccurredAt = r.OccurredAt.ToUniversalTime(),
             Amount = r.Amount, Currency = r.Currency, WalletId = r.WalletId, ToWalletId = r.ToWalletId,
             ToAmount = r.ToAmount, ToCurrency = r.ToCurrency, FxRate = r.FxRate, RateDate = r.RateDate, RateSource = r.RateSource,
             CategoryId = r.CategoryId, IncomeSourceId = r.IncomeSourceId, PersonId = r.PersonId,

@@ -31,8 +31,8 @@ Sana: 2026-10-28. Branch: `feat/liquid-glass-home` (HEAD `a97f375` audit vaqtida
 |---|---|
 | 0 Audit | **bajarildi** (shu hujjat) |
 | 1 Offline storage (sxema v3, atomik migratsiya runner, minor-units money, UUID) | **bajarildi** (testlar Node SQLite'da) |
-| 2 Lokal operatsiyalar (wallet/manba/toifa, kirim, xarajat+FX, transfer+FX, qarz, qaytarish, reversal; outbox bir tranzaksiyada; lokal summary) | **dvigatel bajarildi, UI hali ulanmagan** |
-| 3 Sync engine (push/pull, backoff, checkpoint; server: mijoz ID'lari, katalog push turlari, revision) | qilinmagan |
+| 2 Lokal operatsiyalar (wallet/manba/toifa, kirim, xarajat+FX, transfer+FX, qarz, qaytarish, reversal; outbox bir tranzaksiyada; lokal summary) | **bajarildi** |
+| 3 Sync engine (push/pull, backoff, checkpoint; server: mijoz ID'lari, katalog push turlari) | **bajarildi**; UI ulandi, lekin "Offline-first (beta)" kaliti orqasida (standart: o'chiq) |
 | 4 Identity (guest → Google bog'lash, merge) | qilinmagan; Google client ID'lar kerak |
 | 5 Free/PRO entitlement | qilinmagan |
 | 6 Billing (Play/App Store sandbox) | qilinmagan; real to'lov — alohida ruxsat |
@@ -48,3 +48,25 @@ Sana: 2026-10-28. Branch: `feat/liquid-glass-home` (HEAD `a97f375` audit vaqtida
 - Testlar (`__tests__/localStore.test.ts`, 16): 100 offline xarajat, takroriy yuborish, mablag' yetmasligi, oxirgi qadamda xato (outbox) → to'liq rollback, USD→UZS, transfer/qarz daromad emas, profil izolatsiyasi, eskirgan tahrir, eski baza (v2) → v3, migratsiya yarmida xato, yangiroq baza, faylni yopib qayta ochish. Mutatsiya: rollback buzilsa 3 test, overdraft tekshiruvi olinsa 1 test yiqiladi.
 - **UI hali lokal dvigatelga ulanmagan** — ilova hozir ham server snapshot + navbat bilan ishlaydi. Ulash Phase 3 (sync) bilan birga qilinadi, chunki server hali mijoz yaratgan hamyon/toifa ID'larini qabul qilmaydi.
 - Expo-sqlite adapteri (`src/local/expoDb.ts`) va WAL/foreign_keys faqat Android bundle yig'ilishi bilan tekshirildi — **real telefonda NOT TESTED**.
+## Phase 3 natijasi (2026-10-28)
+
+**Server (backend)**
+- Barcha operatsiyalar ixtiyoriy mijoz ID'sini qabul qiladi: yozuv (`Id`), hamyon (`Id`, `OpeningId`), toifa, manba, qarz (`DebtId`), yangi shaxs (`PersonId` + ism), reversal. Bir yozuv telefonda ham, serverda ham bitta ID bilan yashaydi.
+- `/api/sync/push` yangi turlar: `wallet.create`, `wallet.update` (targetId), `category.create`, `source.create`, `reverse` (targetId). Takror yuborilgan katalog obyekti → `duplicate`. Boshqa foydalanuvchining ID'si yoki band ID → `rejected` (`sync.conflict`), hech qachon majburan yozilmaydi.
+- `/api/sync/pull` endi har yozuvning qatorlarini (kind, refId, currency, amount) beradi; sahifa to'lsa cursor oxirgi yozuvdan davom etadi.
+- Baza sxemasi o'zgarmadi (migratsiya yo'q). Backend testlari 70/70 (yangi `OfflineSyncTests` 3 ta; mutatsiya: mijoz ID'si olib tashlansa 2 test yiqiladi).
+
+**Telefon**
+- `src/local/sync.ts` — `SyncEngine`: outbox eng eskisidan, 100 talik paketlarda; applied/duplicate → done, rejected → sababi bilan saqlanadi; tarmoq xatosi → butun paket 5 s, 10 s, 20 s … 1 soatgacha kutadi (tartib buzilmaydi). Pull: checkpoint'dan 5 daqiqa ustma-ust, har sahifa checkpoint bilan bitta tranzaksiyada; yangi yozuvlar qatorlaridan qayta quriladi, mavjudlariga faqat reversal bog'lanadi. Navbatdagi lokal hamyon tahriri serverning eski nusxasi bilan ustidan yozilmaydi. Hech narsa kutmayotganda balans serverdan farq qilsa `drift` sifatida ko'rsatiladi.
+- `discardRejected` — server rad etgan amalni telefonda lokal reversal bilan bekor qiladi (serverga hech narsa yuborilmaydi).
+- `adoptCloudAccount` — kirgan foydalanuvchining profillari server ID'lari bilan olinadi; telefonda guest yoki boshqa foydalanuvchi kitobi bo'lsa jim birlashtirilmaydi (Phase 4).
+- Sxema v4: `transactions.project_id` (faqat ADD COLUMN). Shaxs, sabab, loyiha endi lokal amal bilan saqlanadi va serverga yuboriladi.
+- UI: `src/local/bridge.ts` — operatsiya oynasi amallari lokal kitobga yoziladi, ekranlar lokal kitobdan o'qiydi, sync fonda ishlaydi. **Faqat Sozlamalar → "Offline-first (beta)" yoqilganda** (telefon, kirgan foydalanuvchi). O'chiq bo'lsa ilova avvalgidek server orqali ishlaydi (kod yo'li o'zgarmagan).
+- Testlar: `syncEngine.test.ts` 9, `localBridge.test.ts` 3, `syncE2E.test.ts` 1 — ikki "telefon" (Node SQLite) **haqiqiy .NET API** bilan (vaqtinchalik baza): offline ishlar, FX, reversal, qarz, ikki qurilmada bir pulni sarflash (biri rad etiladi va bekor qilinadi), javob yo'qolganda hammasini qayta yuborish → dublikat yo'q. Mutatsiya: dedupe olib tashlansa 2, backoff olib tashlansa 1 test yiqiladi.
+
+**Cheklovlar (hali qilinmagan)**
+- Hisobot/analitika ekranlari (summary, breakdown, budget, tarix filtri) hali serverdan o'qiydi.
+- Loyihalar lokal kitobda yo'q (oxirgi pull nusxasi ko'rsatiladi). Toifa/manba tahriri va arxivi hali faqat online.
+- Katalog tahrirlarida server revision tekshiruvi yo'q (oxirgi yozgan yutadi); pul yozuvlari append-only bo'lgani uchun pul konflikti yo'qolmaydi.
+- Chiqish (sign-out) lokal kitobni o'chirmaydi; boshqa foydalanuvchi kirsa beta o'chadi (server rejimi). Guest ↔ akkaunt birlashtirish — Phase 4.
+- Real telefonda **NOT TESTED**. Beta kalit shu sababli standart o'chiq.

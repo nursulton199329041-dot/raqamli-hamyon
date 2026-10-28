@@ -2,7 +2,7 @@ import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, Platform, ScrollView, Text, View } from 'react-native';
 import { ApiError } from '@/api/client';
-import { Button, Field, Label, Segmented } from '@/design/Controls';
+import { Button, Chip, Field, Label, Segmented } from '@/design/Controls';
 import { GlassCard, Tap } from '@/design/Glass';
 import { Glyph } from '@/design/Icon';
 import { useScreenLayout } from '@/design/layout';
@@ -86,6 +86,16 @@ export function Settings() {
           {queue.online ? t('synced') : t('offline')}{queue.pending.length ? ` · ${t('sync_pending', { n: queue.pending.length })}` : ''}
         </Text>
         <Button title={t('retry')} variant="tonal" onPress={() => void queue.flush().then(() => queryClient.invalidateQueries())} />
+        {Platform.OS !== 'web' && (
+          <>
+            <Label>{t('offline_first')}</Label>
+            <Text style={{ color: p.textSecondary }}>{t('offline_first_hint')}</Text>
+            <View style={{ flexDirection: 'row' }}>
+              <Chip label={s.localFirst ? t('on') : t('off')} selected={s.localFirst}
+                onPress={() => void s.update({ localFirst: !s.localFirst }).then(() => queryClient.invalidateQueries())} />
+            </View>
+          </>
+        )}
         <Field label={t('api_url')} value={url} onChangeText={setUrl} autoCapitalize="none" autoCorrect={false}
           onSubmitEditing={() => void s.update({ apiUrl: url.trim() })} onBlur={() => void s.update({ apiUrl: url.trim() })} />
       </GlassCard>

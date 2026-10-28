@@ -62,7 +62,7 @@ export function sanitizeAppearance(a: Partial<Appearance> | undefined): Appearan
   };
 }
 
-type Persisted = 'lang' | 'themeMode' | 'reduceEffects' | 'apiUrl' | 'appearance';
+type Persisted = 'lang' | 'themeMode' | 'reduceEffects' | 'apiUrl' | 'appearance' | 'localFirst';
 
 interface SettingsState {
   lang: Lang;
@@ -71,6 +71,8 @@ interface SettingsState {
   reduceEffects: boolean;
   apiUrl: string;
   appearance: Appearance;
+  /** V6 beta: the on-device book is the source of truth and syncs in the background (off until tested on phones) */
+  localFirst: boolean;
   hydrated: boolean;
   hydrate(): Promise<void>;
   update(patch: Partial<Pick<SettingsState, Persisted>>): Promise<void>;
@@ -84,6 +86,7 @@ export const useSettings = create<SettingsState>((set, get) => ({
   reduceEffects: false,
   apiUrl: DEFAULT_API_URL,
   appearance: DEFAULT_APPEARANCE,
+  localFirst: false,
   hydrated: false,
   async hydrate() {
     try {
@@ -97,6 +100,7 @@ export const useSettings = create<SettingsState>((set, get) => ({
           reduceEffects: j.reduceEffects ?? false,
           apiUrl: j.apiUrl || DEFAULT_API_URL,
           appearance: sanitizeAppearance(j.appearance),
+          localFirst: j.localFirst === true,
         });
       }
     } catch {
@@ -108,9 +112,9 @@ export const useSettings = create<SettingsState>((set, get) => ({
   async update(patch) {
     set(patch);
     if (patch.apiUrl) api.baseUrl = patch.apiUrl.replace(/\/+$/, '');
-    const { lang, themeMode, reduceEffects, apiUrl, appearance } = get();
+    const { lang, themeMode, reduceEffects, apiUrl, appearance, localFirst } = get();
     try {
-      await (await getStorage()).set('setting:app', JSON.stringify({ lang, themeMode, reduceEffects, apiUrl, appearance }));
+      await (await getStorage()).set('setting:app', JSON.stringify({ lang, themeMode, reduceEffects, apiUrl, appearance, localFirst }));
     } catch {
       /* non-fatal */
     }
