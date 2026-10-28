@@ -21,6 +21,10 @@ import { useUi } from '@/state/ui';
 
 const isLive = (tx: Tx) => !tx.reversedById && tx.type !== TxType.Reversal;
 
+/** Font size that keeps a long amount on one line (web has no adjustsFontSizeToFit): shrinks past `fits` characters. */
+export const fitFont = (text: string, base: number, fits: number, min: number) =>
+  text.length <= fits ? base : Math.max(min, Math.floor((base * fits) / text.length));
+
 export function History() {
   const t = useT();
   const p = usePalette();
@@ -45,7 +49,7 @@ export function History() {
   const label = (ty: TxTypeValue) => t(TX_TYPE_LABEL[ty]);
 
   const rows = useMemo(() => {
-    const out: ({ kind: 'h'; key: string; iso: string; total: string } | { kind: 't'; key: string; tx: Tx })[] = [];
+    const out: ({ kind: 'h'; key: string; iso: string; totals: string[] } | { kind: 't'; key: string; tx: Tx })[] = [];
     const items = list.data ?? [];
     const dayTotals = new Map<string, Map<string, number>>();
     for (const tx of items) {
@@ -63,8 +67,8 @@ export function History() {
       if (k !== last) {
         last = k;
         const m = dayTotals.get(k);
-        const total = m && m.size > 0 ? [...m].map(([c, v]) => fmtMoney(v, c)).join(' · ') : fmtMoney(0, user?.defaultCurrency ?? 'UZS');
-        out.push({ kind: 'h', key: `h${k}`, iso: tx.occurredAt, total });
+        const totals = m && m.size > 0 ? [...m].map(([c, v]) => fmtMoney(v, c)) : [fmtMoney(0, user?.defaultCurrency ?? 'UZS')];
+        out.push({ kind: 'h', key: `h${k}`, iso: tx.occurredAt, totals });
       }
       out.push({ kind: 't', key: tx.id, tx });
     }
@@ -79,6 +83,10 @@ export function History() {
   const totals = summary.data?.totals ?? [];
   const main = totals.find((x) => x.currency === (user?.defaultCurrency ?? 'UZS')) ?? totals[0];
   const money = (v: number | undefined, c: string) => fmtMoney(v ?? 0, c);
+  const base = user?.defaultCurrency ?? 'UZS';
+  const saldo = main ? money(main.netFlow, main.currency) : money(0, base);
+  const inflow = main ? money(main.income, main.currency) : money(0, base);
+  const outflow = main ? money(main.expense, main.currency) : money(0, base);
 
   const open = (tx: Tx) => {
     const kind = tx.type === TxType.Income ? 'income' : tx.type === TxType.Expense ? 'expense' : tx.type === TxType.Transfer ? 'transfer' : null;
@@ -128,21 +136,21 @@ export function History() {
             <View style={{ alignItems: 'center', paddingVertical: 10 }}>
               <Text style={{ color: p.textSecondary, fontSize: 12 }}>{t('saldo')}</Text>
               <Text testID="saldo" adjustsFontSizeToFit minimumFontScale={0.5} numberOfLines={1}
-                style={{ color: p.text, fontSize: 40, fontWeight: '800', paddingHorizontal: 16 }}>
-                {main ? money(main.netFlow, main.currency) : money(0, user?.defaultCurrency ?? 'UZS')}
+                style={{ color: p.text, fontSize: fitFont(saldo, 40, 13, 22), fontWeight: '800', paddingHorizontal: 16, fontVariant: ['tabular-nums'] }}>
+                {saldo}
               </Text>
             </View>
             <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 16 }}>
               <GlassCard radius={18} padding={12} style={{ flex: 1 }}>
                 <Text style={{ color: p.textSecondary, fontSize: 12 }}>{t('inflow')}</Text>
-                <Text testID="inflow" adjustsFontSizeToFit minimumFontScale={0.6} numberOfLines={1} style={{ color: Ink.income, fontSize: 18, fontWeight: '800' }}>
-                  {main ? money(main.income, main.currency) : money(0, user?.defaultCurrency ?? 'UZS')}
+                <Text testID="inflow" adjustsFontSizeToFit minimumFontScale={0.6} numberOfLines={1} style={{ color: Ink.income, fontSize: fitFont(inflow, 18, 10, 11), fontWeight: '800' }}>
+                  {inflow}
                 </Text>
               </GlassCard>
               <GlassCard radius={18} padding={12} style={{ flex: 1 }}>
                 <Text style={{ color: p.textSecondary, fontSize: 12 }}>{t('outflow')}</Text>
-                <Text testID="outflow" adjustsFontSizeToFit minimumFontScale={0.6} numberOfLines={1} style={{ color: Ink.expense, fontSize: 18, fontWeight: '800' }}>
-                  {main ? money(main.expense, main.currency) : money(0, user?.defaultCurrency ?? 'UZS')}
+                <Text testID="outflow" adjustsFontSizeToFit minimumFontScale={0.6} numberOfLines={1} style={{ color: Ink.expense, fontSize: fitFont(outflow, 18, 10, 11), fontWeight: '800' }}>
+                  {outflow}
                 </Text>
               </GlassCard>
             </View>
@@ -172,12 +180,17 @@ export function History() {
         renderItem={({ item }) => {
           if (item.kind === 'h') {
             return (
+              // date on its own line, the day's totals (one per currency) right-aligned under it: they never overlap
               <View testID={`day-${item.key}`} style={{
-                flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10,
+                paddingHorizontal: 16, paddingVertical: 8, marginTop: 6, gap: 2,
                 backgroundColor: p.glassFill, borderTopWidth: 1, borderTopColor: p.glassBorder,
               }}>
-                <Text style={{ color: p.text, fontSize: 14 }}>{longDay(lang, item.iso)}</Text>
-                <Text style={{ color: p.text, fontSize: 14, fontWeight: '600' }}>{item.total}</Text>
+                <Text numberOfLines={1} style={{ color: p.textSecondary, fontSize: 13, fontWeight: '600' }}>{longDay(lang, item.iso)}</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', columnGap: 12 }}>
+                  {item.totals.map((x) => (
+                    <Text key={x} numberOfLines={1} style={{ color: p.text, fontSize: 14, fontWeight: '700', fontVariant: ['tabular-nums'] }}>{x}</Text>
+                  ))}
+                </View>
               </View>
             );
           }
@@ -199,7 +212,7 @@ export function History() {
             <Tap testID={`tx-${tx.id}`} label={`${title} ${fmtMoney(tx.amount, tx.currency)}`} onPress={() => open(tx)}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 10 }}>
                 <CircleBadge name={icon} color={c?.color ?? s?.color ?? color} size={38} />
-                <View style={{ flex: 1 }}>
+                <View style={{ flex: 1, minWidth: 0 }}>
                   <Text numberOfLines={1} style={[{ color: p.text, fontWeight: '700', fontSize: 15 }, struck]}>{title}</Text>
                   <Text numberOfLines={1} style={[{ color: p.textSecondary, fontSize: 13 }, struck]}>{walletLine}</Text>
                   {tx.memo || tx.reversedById ? (
@@ -208,8 +221,8 @@ export function History() {
                     </Text>
                   ) : null}
                 </View>
-                <View style={{ alignItems: 'flex-end', maxWidth: 150 }}>
-                  <Text numberOfLines={1} style={[{ color: tx.type === TxType.Transfer ? p.text : color, fontWeight: '700', fontSize: 15 }, struck]}>
+                <View style={{ alignItems: 'flex-end', flexShrink: 0, maxWidth: '48%' }}>
+                  <Text numberOfLines={1} style={[{ color: tx.type === TxType.Transfer ? p.text : color, fontWeight: '700', fontSize: 15, fontVariant: ['tabular-nums'] }, struck]}>
                     {sign}{fmtMoney(tx.amount, tx.currency)}
                   </Text>
                   {tx.type === TxType.Transfer && tx.toAmount && tx.toCurrency && tx.toCurrency !== tx.currency ? (
