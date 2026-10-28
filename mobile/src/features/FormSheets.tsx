@@ -8,10 +8,11 @@ import { ICON_KEYS, IconBadge } from '@/design/Icon';
 import { Tap } from '@/design/Glass';
 import { Sheet } from '@/design/Sheet';
 import { usePalette, useT } from '@/design/theme';
-import { newKey, parseAmount } from '@/lib/money';
+import { parseAmount } from '@/lib/money';
 import { api } from '@/state/runtime';
 import { useCatalog } from '@/state/data';
 import { useUi } from '@/state/ui';
+import { createCategory, createSource, createWallet, patchWallet } from '@/state/writes';
 
 const COLORS = ['#3B82F6', '#22C55E', '#EF4444', '#F59E0B', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316', '#64748B', '#0EA5E9'];
 const CURRENCIES = ['UZS', 'USD', 'EUR', 'RUB', 'KZT'];
@@ -116,15 +117,15 @@ export function WalletForm({ done, walletId, onCreated }: { done(): void; wallet
         if (initial === null) return setLocal(t('initial_balance'));
         setLocal(null);
         if (editing && walletId) {
-          void run(() => api.patch(`/api/wallets/${walletId}`, {
+          void run(() => patchWallet(walletId, {
             name: name.trim(), icon, color, bankName: bank.trim() || null, maskedNumber: mask.trim() || null, allowOverdraft: overdraft,
           }));
           return;
         }
-        void run(() => api.post<Wallet>('/api/wallets', {
+        void run(() => createWallet({
           name: name.trim(), type, currency, initialBalance: initial, icon, color,
           bankName: bank.trim() || null, maskedNumber: mask.trim() || null, allowOverdraft: overdraft,
-        }, newKey('w')));
+        }));
       }} />
     </View>
   );
@@ -150,8 +151,8 @@ function CategoryForm({ done, source }: { done(): void; source: boolean }) {
         if (!name.trim()) return setLocal(t('name'));
         setLocal(null);
         void run(() => source
-          ? api.post('/api/income-sources', { name: name.trim(), icon, color })
-          : api.post('/api/categories', {
+          ? createSource({ name: name.trim(), icon, color })
+          : createCategory({
               name: name.trim(), icon, color, monthlyLimit: limit.trim() ? parseAmount(limit) : null, limitCurrency: 'UZS',
             }));
       }} />

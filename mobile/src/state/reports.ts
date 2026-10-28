@@ -2,7 +2,7 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { create } from 'zustand';
 import type { BalanceHistory, BreakdownRow, SeriesPoint, Summary, Tx, WalletPeriod } from '@/api/types';
 import type { Granularity, Query, ReportFilter } from '@/lib/reportFilter';
-import { api } from './runtime';
+import { read } from './reads';
 
 /**
  * The single Reports filter. Charts, statistics, the operations list and the Excel export all read it,
@@ -31,12 +31,12 @@ export const useReports = create<ReportState>((set) => ({
 const opts = { placeholderData: keepPreviousData, staleTime: 5_000 } as const;
 
 export const useReportSummary = (q: Query, enabled = true) =>
-  useQuery({ queryKey: ['report', 'summary', q], queryFn: () => api.get<Summary>('/api/analytics/summary', q), enabled, ...opts });
+  useQuery({ queryKey: ['report', 'summary', q], queryFn: () => read<Summary>('/api/analytics/summary', q), enabled, ...opts });
 
 export const useReportSeries = (q: Query, granularity: Granularity, enabled = true) =>
   useQuery({
     queryKey: ['report', 'series', q, granularity],
-    queryFn: () => api.get<SeriesPoint[]>('/api/analytics/timeseries', { ...q, granularity }),
+    queryFn: () => read<SeriesPoint[]>('/api/analytics/timeseries', { ...q, granularity }),
     enabled,
     ...opts,
   });
@@ -44,7 +44,7 @@ export const useReportSeries = (q: Query, granularity: Granularity, enabled = tr
 export const useReportBalance = (q: Query, granularity: Granularity, enabled = true) =>
   useQuery({
     queryKey: ['report', 'balance', q, granularity],
-    queryFn: () => api.get<BalanceHistory>('/api/analytics/balance', { ...q, granularity }),
+    queryFn: () => read<BalanceHistory>('/api/analytics/balance', { ...q, granularity }),
     enabled,
     ...opts,
   });
@@ -53,18 +53,18 @@ export const useReportBalance = (q: Query, granularity: Granularity, enabled = t
 export const useReportBreakdown = (q: Query, by: string, type: 1 | 2, enabled = true) =>
   useQuery({
     queryKey: ['report', 'breakdown', q, by, type],
-    queryFn: () => api.get<BreakdownRow[]>('/api/analytics/breakdown', { ...q, by, type }),
+    queryFn: () => read<BreakdownRow[]>('/api/analytics/breakdown', { ...q, by, type }),
     enabled,
     ...opts,
   });
 
 export const useReportWallets = (q: Query, enabled = true) =>
-  useQuery({ queryKey: ['report', 'wallets', q], queryFn: () => api.get<WalletPeriod[]>('/api/analytics/wallets', q), enabled, ...opts });
+  useQuery({ queryKey: ['report', 'wallets', q], queryFn: () => read<WalletPeriod[]>('/api/analytics/wallets', q), enabled, ...opts });
 
 /** Latest operations matching the same filter (`type` narrows to one transaction type). */
 export const useReportTransactions = (q: Query, type?: number) =>
   useQuery({
     queryKey: ['report', 'transactions', q, type],
-    queryFn: async () => (await api.get<{ items: Tx[]; total: number }>('/api/transactions', { ...q, type, pageSize: 30 })),
+    queryFn: async () => (await read<{ items: Tx[]; total: number }>('/api/transactions', { ...q, type, pageSize: 30 })),
     ...opts,
   });

@@ -3,7 +3,7 @@ import { errorText } from '@/api/errors';
 import { create } from 'zustand';
 import { ApiError } from '@/api/client';
 import type { PendingOp, Snapshot } from '@/api/types';
-import { applyUiOp, localBook, localSnapshot, type LocalBook } from '@/local/bridge';
+import { applyUiOp, guestBook, localBook, localSnapshot, type LocalBook } from '@/local/bridge';
 import { newKey } from '@/lib/money';
 import { getStorage } from '@/offline/storage';
 import { api, queryClient } from './runtime';
@@ -15,8 +15,10 @@ import { useSettings } from './settings';
  * the server path below runs exactly as before (no extra await).
  */
 export function currentBook(): Promise<LocalBook | null> | null {
-  const user = useSession.getState().user;
-  if (!useSettings.getState().localFirst || !user || Platform.OS === 'web') return null;
+  if (Platform.OS === 'web') return null;
+  const { user, status } = useSession.getState();
+  if (status === 'guest') return guestBook();
+  if (!useSettings.getState().localFirst || !user) return null;
   return localBook(user, true);
 }
 
@@ -156,9 +158,10 @@ export const useQueue = create<QueueState>((set, get) => ({
   async syncLocal(book) {
     set({ syncing: true });
     try {
-      const r = await book.engine.run(book.profileId);
-      const offline = !!r.error && r.error !== 'sync.backoff';
-      const rows = await book.db.all<{ op_id: string; kind: string; payload: string; target_id: string | null; created_at: string; status: string; last_error: string | null }>(
+      // a guest book has no server: nothing is sent, the screens are only refreshed
+      const r = book.engine ? await book.engine.run(book.profileId) : null;
+      const offline = !!r?.error && r.error !== 'sync.backoff';
+      const rows = !book.engine ? [] : await book.db.all<{ op_id: string; kind: string; payload: string; target_id: string | null; created_at: string; status: string; last_error: string | null }>(
         "SELECT op_id, kind, payload, target_id, created_at, status, last_error FROM sync_outbox WHERE profile_id = ? AND status IN ('pending', 'rejected') ORDER BY seq",
         book.profileId);
       set({

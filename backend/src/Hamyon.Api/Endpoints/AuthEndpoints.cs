@@ -18,6 +18,10 @@ public static class AuthEndpoints
         g.MapPost("/login", async (LoginRequest r, AuthService auth, HttpContext ctx, CancellationToken ct) =>
             Results.Ok(await auth.LoginAsync(r, ctx.Connection.RemoteIpAddress?.ToString(), ct))).Validate<LoginRequest>();
 
+        g.MapPost("/google", async (ExternalSignInRequest r, IExternalTokenValidator google, AuthService auth, HttpContext ctx, CancellationToken ct) =>
+            Results.Ok(await auth.ExternalSignInAsync(await google.ValidateAsync(r.IdToken, ct), r.Locale,
+                ctx.Connection.RemoteIpAddress?.ToString(), ct)));
+
         g.MapPost("/refresh", async (RefreshRequest r, AuthService auth, CancellationToken ct) =>
             Results.Ok(await auth.RefreshAsync(r.RefreshToken, ct)));
 
@@ -35,6 +39,11 @@ public static class AuthEndpoints
             var u = await db.Users.AsNoTracking().FirstAsync(x => x.Id == id, ct);
             return Results.Ok(AuthService.ToDto(u));
         });
+
+        // links Google to an account that signed in another way (email + password)
+        me.MapPost("/google", async (ExternalSignInRequest r, IExternalTokenValidator google, AuthService auth, HttpContext ctx, CancellationToken ct) =>
+            Results.Ok(await auth.LinkExternalAsync(ctx.User.UserId(), await google.ValidateAsync(r.IdToken, ct), ct)))
+            .RequireRateLimiting("auth");
 
         me.MapPatch("/", async (UpdateProfileRequest r, HttpContext ctx, AppDbContext db, CancellationToken ct) =>
         {

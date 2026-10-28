@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useMemo, useRef, useState, type ReactNode } from 'react';
 import { Keyboard, Platform, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 import { ApiError } from '@/api/client';
-import { TxType, type Category, type Tx } from '@/api/types';
+import { TxType, type Tx } from '@/api/types';
 import { evaluate, formatExpression, hasOperator, pressKey, toApiNumber, type Key } from '@/lib/calc';
 import { confirmDialog } from '@/lib/confirm';
 import { lastDays, monthShort, occurredAtFor, sameDay, startOfDay, weekdayName } from '@/lib/dates';
@@ -19,6 +19,7 @@ import { useQueue } from '@/state/queue';
 import { api } from '@/state/runtime';
 import { useSettings } from '@/state/settings';
 import { useUi, type OpKind, type OpPrefill } from '@/state/ui';
+import { correctTx, createCategory, reverseTx, writesLocally } from '@/state/writes';
 import { ItemPicker } from './ItemPicker';
 import { WalletPicker } from './WalletPicker';
 
@@ -226,7 +227,7 @@ function OperationForm({ prefill, visible, onDone }: { prefill: OpPrefill; visib
     const name = subName.trim();
     if (!name || !top) return;
     try {
-      const created = await api.post<Category>('/api/categories', { name, icon: top.icon, color: top.color, parentId: top.id });
+      const created = await createCategory({ name, icon: top.icon, color: top.color, parentId: top.id });
       await qc.invalidateQueries({ queryKey: ['snapshot'] });
       setSubId(created.id);
       setSubName('');
@@ -241,7 +242,7 @@ function OperationForm({ prefill, visible, onDone }: { prefill: OpPrefill; visib
     confirmDialog(t('delete_op_title'), t('delete_op_msg'), t('reverse'), t('cancel'), () => {
       void (async () => {
         try {
-          await api.post(`/api/transactions/${editing.id}/reverse`, {});
+          await reverseTx(editing.id);
           await qc.invalidateQueries();
           onDone();
         } catch (e) {
@@ -297,7 +298,9 @@ function OperationForm({ prefill, visible, onDone }: { prefill: OpPrefill; visib
       if (who && (kind === 'income' || kind === 'expense')) {
         const known = cat.people.find((x) => x.name.toLowerCase() === who.toLowerCase());
         if (known) personId = known.id;
-        else {
+        else if (await writesLocally()) {
+          note = `${kind === 'expense' ? t('payee') : t('payer')}: ${who}${note ? ` — ${note}` : ''}`; // the device's book keeps the name in the note
+        } else {
           try {
             personId = (await api.post<{ id: string }>('/api/people', { name: who })).id;
             void qc.invalidateQueries({ queryKey: ['snapshot'] });
@@ -310,13 +313,13 @@ function OperationForm({ prefill, visible, onDone }: { prefill: OpPrefill; visib
       const base = { memo: note || null, occurredAt, projectId: projectId ?? null };
 
       if (editing) {
-        // correction = reversal + new entry on the server (ledger history is never rewritten); needs a connection
+        // correction = reversal + new entry (ledger history is never rewritten)
         const body = kind === 'income'
           ? { walletId, amount: value, incomeSourceId: sourceId ?? null, personId, reason: reason.trim() || null, ...base }
           : kind === 'expense'
             ? { walletId, amount: value, categoryId: subId ?? topCategory, personId, ...base }
             : { fromWalletId: walletId, toWalletId, amount: value, toAmount: toAmountValue, fxRate: null, ...base };
-        await api.put(`/api/transactions/${editing.id}/${kind}`, body);
+        await correctTx(editing.id, kind as 'income' | 'expense' | 'transfer', body); // debts are not edited in place
         await qc.invalidateQueries();
         onDone();
         return;

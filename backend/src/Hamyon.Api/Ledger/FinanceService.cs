@@ -13,6 +13,16 @@ public sealed class FinanceService(AppDbContext db, ILedgerService ledger)
 
     // ------------------------------------------------------------------ wallets
 
+    /// <summary>
+    /// The opening balance is dated when the wallet was opened on the device (an offline or guest wallet may reach the
+    /// server weeks later), never in the future.
+    /// </summary>
+    private static DateTimeOffset OpenedAt(DateTimeOffset? at)
+    {
+        var now = DateTimeOffset.UtcNow;
+        return at is { } t && t.ToUniversalTime() < now ? t.ToUniversalTime() : now;
+    }
+
     public async Task<Wallet> CreateWalletAsync(Guid userId, WalletRequest r, CancellationToken ct)
     {
         var currency = Currencies.Normalize(r.Currency);
@@ -58,7 +68,7 @@ public sealed class FinanceService(AppDbContext db, ILedgerService ledger)
                 var equity = await GetOrCreateAccountAsync(userId, LedgerAccountKind.Equity, NoRef, currency, "Opening balances", true, ct);
                 await ledger.PostAsync(new PostingRequest
                 {
-                    UserId = userId, Type = TransactionType.Opening, OccurredAt = DateTimeOffset.UtcNow,
+                    UserId = userId, Type = TransactionType.Opening, OccurredAt = OpenedAt(r.OpenedAt),
                     IdempotencyKey = $"open:{wallet.Id}", Amount = Math.Abs(r.InitialBalance), Currency = currency,
                     WalletId = wallet.Id, Memo = "Opening balance", EntryId = r.OpeningId,
                     Lines =

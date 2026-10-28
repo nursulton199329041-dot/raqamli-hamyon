@@ -8,6 +8,7 @@ import { getStorage } from '@/offline/storage';
 import { api } from './runtime';
 import { localSnapshot } from '@/local/bridge';
 import { currentBook, useQueue } from './queue';
+import { read } from './reads';
 
 export type Period = 'week' | 'month' | 'year' | 'all';
 
@@ -102,7 +103,7 @@ export function useSummary(period: Period) {
   const from = periodFrom(period);
   return useQuery({
     queryKey: ['summary', period],
-    queryFn: () => api.get<Summary>('/api/analytics/summary', { from }),
+    queryFn: () => read<Summary>('/api/analytics/summary', { from }),
   });
 }
 
@@ -110,12 +111,12 @@ export function useSummary(period: Period) {
 export function useSummaryRange(from: string, to: string) {
   return useQuery({
     queryKey: ['summary', 'range', from, to],
-    queryFn: () => api.get<Summary>('/api/analytics/summary', { from, to }),
+    queryFn: () => read<Summary>('/api/analytics/summary', { from, to }),
   });
 }
 
 export function useBudgets() {
-  return useQuery({ queryKey: ['budgets'], queryFn: () => api.get<BudgetStatus[]>('/api/analytics/budgets') });
+  return useQuery({ queryKey: ['budgets'], queryFn: () => read<BudgetStatus[]>('/api/analytics/budgets') });
 }
 
 /** `type`: transaction type the breakdown sums (1 income, 2 expense; backend default is expense). */
@@ -123,7 +124,7 @@ export function useBreakdown(by: string, period: Period, type?: number) {
   const from = periodFrom(period);
   return useQuery({
     queryKey: ['breakdown', by, period, type],
-    queryFn: () => api.get<BreakdownRow[]>('/api/analytics/breakdown', { by, from, type }),
+    queryFn: () => read<BreakdownRow[]>('/api/analytics/breakdown', { by, from, type }),
   });
 }
 
@@ -131,7 +132,7 @@ export function useSeries(granularity: string, period: Period) {
   const from = periodFrom(period);
   return useQuery({
     queryKey: ['series', granularity, period],
-    queryFn: () => api.get<SeriesPoint[]>('/api/analytics/timeseries', { granularity, from }),
+    queryFn: () => read<SeriesPoint[]>('/api/analytics/timeseries', { granularity, from }),
   });
 }
 
@@ -142,7 +143,7 @@ export function useTransactions(filter: TxFilter) {
     queryKey: ['transactions', filter],
     queryFn: async () => {
       try {
-        const r = await api.get<Paged<Tx>>('/api/transactions', {
+        const r = await read<Paged<Tx>>('/api/transactions', {
           ...filter, includeReversed: true, pageSize: 100,
         } as Record<string, string | number | boolean | undefined>);
         return r.items;

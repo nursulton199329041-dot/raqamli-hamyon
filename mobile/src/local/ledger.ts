@@ -118,6 +118,54 @@ export class LocalLedger {
     });
   }
 
+  /** The device's guest book, if it holds one: its profiles and whether anything beyond the default catalog was entered. */
+  async guestBook(): Promise<{ accountId: string; profiles: { id: string; name: string; baseCurrency: string; color: string; icon: string }[]; empty: boolean } | null> {
+    const acc = await this.db.first<{ id: string; kind: string }>('SELECT id, kind FROM accounts ORDER BY created_at LIMIT 1');
+    if (!acc || acc.kind !== 'local') return null;
+    const profiles = await this.db.all<{ id: string; name: string; baseCurrency: string; color: string; icon: string }>(
+      'SELECT id, name, base_currency AS baseCurrency, color, icon FROM profiles WHERE account_id = ? ORDER BY sort_order, created_at', acc.id);
+    const ids = profiles.map((p) => p.id);
+    let used = 0;
+    for (const id of ids) {
+      const r = await this.db.first<{ n: number }>(
+        `SELECT (SELECT count(*) FROM wallets WHERE profile_id = ?) + (SELECT count(*) FROM transactions WHERE profile_id = ?)
+              + (SELECT count(*) FROM people WHERE profile_id = ?) + (SELECT count(*) FROM sync_outbox WHERE profile_id = ? AND op_id NOT LIKE 'seed:%') AS n`,
+        id, id, id, id);
+      used += r?.n ?? 0;
+    }
+    return { accountId: acc.id, profiles, empty: used === 0 };
+  }
+
+  /**
+   * Links the guest book to a server account: the same rows, now owned by that user, and their outbox (default catalog
+   * included) is pushed by the next sync into the profiles the server created with these ids. Nothing is copied or dropped.
+   */
+  async linkGuest(user: { id: string; email?: string | null; displayName?: string | null }): Promise<void> {
+    await this.db.tx(async () => {
+      const acc = await this.db.first<{ id: string; kind: string; server_user_id: string | null }>('SELECT id, kind, server_user_id FROM accounts ORDER BY created_at LIMIT 1');
+      if (!acc) throw new LedgerError('not_found', 'No local book.');
+      if (acc.kind === 'cloud' && acc.server_user_id === user.id) return;
+      if (acc.kind !== 'local') throw new LedgerError('identity.other_user', "This device holds another user's book.");
+      await this.db.run("UPDATE accounts SET kind = 'cloud', server_user_id = ?, email = ?, display_name = ? WHERE id = ?",
+        user.id, user.email ?? null, user.displayName ?? '', acc.id);
+    });
+  }
+
+  /** A guest book with nothing entered (default catalog only) is removed instead of uploaded as an empty extra profile. */
+  async dropEmptyGuest(): Promise<boolean> {
+    return this.db.tx(async () => {
+      const g = await this.guestBook();
+      if (!g || !g.empty) return false;
+      for (const p of g.profiles) {
+        for (const table of ['sync_outbox', 'sync_checkpoints', 'categories', 'income_sources', 'ledger_accounts'])
+          await this.db.run(`DELETE FROM ${table} WHERE profile_id = ?`, p.id);
+        await this.db.run('DELETE FROM profiles WHERE id = ?', p.id);
+      }
+      await this.db.run('DELETE FROM accounts WHERE id = ?', g.accountId);
+      return true;
+    });
+  }
+
   async createProfile(accountId: string, name: string, baseCurrency = 'UZS'): Promise<string> {
     const n = name.trim();
     if (!n || n.length > 60) throw new LedgerError('profile.name', 'Profile name must be 1-60 characters.');
@@ -134,12 +182,19 @@ export class LocalLedger {
     await this.db.run(
       'INSERT INTO profiles (id, account_id, name, base_currency, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
       id, accountId, name, currency, order, at, at);
-    for (const [i, [n, icon, color]] of DEFAULT_CATEGORIES.entries())
+    // the default catalog travels like anything the user creates, so a linked guest book uploads it with the same ids
+    for (const [i, [n, icon, color]] of DEFAULT_CATEGORIES.entries()) {
+      const c = uuid();
       await this.db.run('INSERT INTO categories (id, profile_id, name, icon, color, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        uuid(), id, n, icon, color, i, at, at);
-    for (const [i, [n, icon, color]] of DEFAULT_SOURCES.entries())
+        c, id, n, icon, color, i, at, at);
+      await this.outbox(id, `seed:category:${c}`, 'category.create', { id: c, name: n, parentId: null, icon, color });
+    }
+    for (const [i, [n, icon, color]] of DEFAULT_SOURCES.entries()) {
+      const c = uuid();
       await this.db.run('INSERT INTO income_sources (id, profile_id, name, icon, color, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        uuid(), id, n, icon, color, i, at, at);
+        c, id, n, icon, color, i, at, at);
+      await this.outbox(id, `seed:source:${c}`, 'source.create', { id: c, name: n, icon, color });
+    }
     return id;
   }
 
@@ -179,7 +234,7 @@ export class LocalLedger {
         })).id;
       }
       await this.outbox(profileId, `wallet:${id}`, 'wallet.create', {
-        id, openingId, name, type: w.type ?? 0, currency, initialBalance: Number(minorToDecimal(initial, currency)), icon: w.icon ?? 'wallet',
+        id, openingId, openedAt: at, name, type: w.type ?? 0, currency, initialBalance: Number(minorToDecimal(initial, currency)), icon: w.icon ?? 'wallet',
         color: w.color ?? '#3B82F6', allowOverdraft: !!w.allowOverdraft,
       });
     });

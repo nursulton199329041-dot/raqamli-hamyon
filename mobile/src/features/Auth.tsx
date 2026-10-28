@@ -20,7 +20,7 @@ export function Auth() {
   const [server, setServer] = useState(apiUrl);
   const [showServer, setShowServer] = useState(false);
   const localOnPhone = Platform.OS !== 'web' && isLocalUrl(apiUrl);
-  const { login, register } = useSession();
+  const { login, register, startGuest, linking, setLinking } = useSession();
   const [isRegister, setIsRegister] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -65,6 +65,7 @@ export function Auth() {
             <Glyph name="wallet" color={p.accent} size={52} />
             <Text style={{ color: p.text, fontSize: 26, fontWeight: '800' }}>{t('app')}</Text>
           </View>
+          {linking && <Text testID="link-notice" style={{ color: p.textSecondary, marginTop: 10 }}>{t('link_notice')}</Text>}
           {isRegister && <Field label={t('name')} value={name} onChangeText={setName} />}
           <Field label={t('email')} value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" autoComplete="email" />
           <Field label={t('password')} value={password} onChangeText={setPassword} secureTextEntry autoComplete="password" onSubmitEditing={submit} />
@@ -78,6 +79,13 @@ export function Auth() {
           <Button title={t(isRegister ? 'register' : 'login')} busy={busy} onPress={submit} />
           <Button title={t(isRegister ? 'login' : 'register')} variant="tonal" onPress={() => setIsRegister((v) => !v)} />
           {!showServer && !localOnPhone && <Button title={t('api_url')} variant="tonal" onPress={() => setShowServer(true)} />}
+          {Platform.OS !== 'web' && !linking && (
+            <View style={{ marginTop: 14, gap: 6 }}>
+              <Button testID="guest-start" title={t('guest_start')} variant="tonal" onPress={() => void startGuest()} />
+              <Text style={{ color: p.textSecondary, fontSize: 12 }}>{t('guest_start_hint')}</Text>
+            </View>
+          )}
+          {linking && <Button testID="link-back" title={t('back')} variant="tonal" onPress={() => setLinking(false)} />}
           <View style={{ marginTop: 14 }}><ConnectionCard /></View>
           {__DEV__ && <Button testID="open-diag" title={t('dnd_diag')} variant="tonal" onPress={() => setDiag(true)} />}
           <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: 16 }}>

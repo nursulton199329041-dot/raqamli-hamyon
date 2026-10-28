@@ -25,6 +25,8 @@ export function Settings() {
   const s = useSettings();
   const user = useSession((x) => x.user);
   const signOut = useSession((x) => x.signOut);
+  const guest = useSession((x) => x.status === 'guest');
+  const setLinking = useSession((x) => x.setLinking);
   const queue = useQueue();
   const upd = useUpdates();
   const [log, setLog] = useState<UpdateLogEntry[]>([]);
@@ -48,10 +50,18 @@ export function Settings() {
     <ScrollView testID="settings-scroll" contentContainerStyle={{ padding: 16, paddingBottom: L.bottomSpace + 16, gap: 12 }}>
       <Text accessibilityRole="header" style={{ color: p.text, fontSize: 24, fontWeight: '800' }}>{t('settings')}</Text>
 
-      <GlassCard>
-        <Text style={{ color: p.text, fontWeight: '800', fontSize: 17 }}>{user?.displayName}</Text>
-        <Text style={{ color: p.textSecondary }}>{user?.email}</Text>
-      </GlassCard>
+      {guest ? (
+        <GlassCard>
+          <Text style={{ color: p.text, fontWeight: '800', fontSize: 17 }}>{t('guest_title')}</Text>
+          <Text style={{ color: p.textSecondary, marginTop: 4 }}>{t('guest_hint')}</Text>
+          <Button testID="link-account" title={t('link_account')} onPress={() => setLinking(true)} />
+        </GlassCard>
+      ) : (
+        <GlassCard>
+          <Text style={{ color: p.text, fontWeight: '800', fontSize: 17 }}>{user?.displayName}</Text>
+          <Text style={{ color: p.textSecondary }}>{user?.email}</Text>
+        </GlassCard>
+      )}
 
       <GlassCard>
         <Label>{t('language')}</Label>
@@ -86,7 +96,7 @@ export function Settings() {
           {queue.online ? t('synced') : t('offline')}{queue.pending.length ? ` · ${t('sync_pending', { n: queue.pending.length })}` : ''}
         </Text>
         <Button title={t('retry')} variant="tonal" onPress={() => void queue.flush().then(() => queryClient.invalidateQueries())} />
-        {Platform.OS !== 'web' && (
+        {Platform.OS !== 'web' && !guest && (
           <>
             <Label>{t('offline_first')}</Label>
             <Text style={{ color: p.textSecondary }}>{t('offline_first_hint')}</Text>
@@ -156,12 +166,12 @@ export function Settings() {
         ))}
       </GlassCard>
 
-      <Button title={t('logout')} variant="tonal" onPress={() => {
+      {!guest && <Button title={t('logout')} variant="tonal" onPress={() => {
         if (queue.pending.length > 0) {
           confirm(t('logout'), t('sync_pending', { n: queue.pending.length }), () => void signOut());
         } else void signOut();
-      }} />
-      <Button title={t('delete_account')} variant="danger" onPress={() =>
+      }} />}
+      {!guest && <Button title={t('delete_account')} variant="danger" onPress={() =>
         confirm(t('delete_account'), t('delete_account_confirm'), () => {
           void (async () => {
             try {
@@ -171,7 +181,7 @@ export function Settings() {
               Alert.alert(e instanceof ApiError ? e.message : t('error_generic'));
             }
           })();
-        })} />
+        })} />}
     </ScrollView>
   );
 }

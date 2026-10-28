@@ -33,7 +33,7 @@ Sana: 2026-10-28. Branch: `feat/liquid-glass-home` (HEAD `a97f375` audit vaqtida
 | 1 Offline storage (sxema v3, atomik migratsiya runner, minor-units money, UUID) | **bajarildi** (testlar Node SQLite'da) |
 | 2 Lokal operatsiyalar (wallet/manba/toifa, kirim, xarajat+FX, transfer+FX, qarz, qaytarish, reversal; outbox bir tranzaksiyada; lokal summary) | **bajarildi** |
 | 3 Sync engine (push/pull, backoff, checkpoint; server: mijoz ID'lari, katalog push turlari) | **bajarildi**; UI ulandi, lekin "Offline-first (beta)" kaliti orqasida (standart: o'chiq) |
-| 4 Identity (guest → Google bog'lash, merge) | qilinmagan; Google client ID'lar kerak |
+| 4 Identity (guest → akkaunt bog'lash, merge; Google) | **bajarildi** (backend + guest rejim + lokal hisobotlar); Google tugmasi telefonda yo'q — client ID'lar va yangi build kerak |
 | 5 Free/PRO entitlement | qilinmagan |
 | 6 Billing (Play/App Store sandbox) | qilinmagan; real to'lov — alohida ruxsat |
 | 7 Migration & update safety (DB backup, EAS compatibility) | qisman (atomik migratsiya + failure test) |
@@ -65,8 +65,35 @@ Sana: 2026-10-28. Branch: `feat/liquid-glass-home` (HEAD `a97f375` audit vaqtida
 - Testlar: `syncEngine.test.ts` 9, `localBridge.test.ts` 3, `syncE2E.test.ts` 1 — ikki "telefon" (Node SQLite) **haqiqiy .NET API** bilan (vaqtinchalik baza): offline ishlar, FX, reversal, qarz, ikki qurilmada bir pulni sarflash (biri rad etiladi va bekor qilinadi), javob yo'qolganda hammasini qayta yuborish → dublikat yo'q. Mutatsiya: dedupe olib tashlansa 2, backoff olib tashlansa 1 test yiqiladi.
 
 **Cheklovlar (hali qilinmagan)**
-- Hisobot/analitika ekranlari (summary, breakdown, budget, tarix filtri) hali serverdan o'qiydi.
 - Loyihalar lokal kitobda yo'q (oxirgi pull nusxasi ko'rsatiladi). Toifa/manba tahriri va arxivi hali faqat online.
 - Katalog tahrirlarida server revision tekshiruvi yo'q (oxirgi yozgan yutadi); pul yozuvlari append-only bo'lgani uchun pul konflikti yo'qolmaydi.
-- Chiqish (sign-out) lokal kitobni o'chirmaydi; boshqa foydalanuvchi kirsa beta o'chadi (server rejimi). Guest ↔ akkaunt birlashtirish — Phase 4.
+- Chiqish (sign-out) lokal kitobni o'chirmaydi; boshqa foydalanuvchi kirsa beta o'chadi (server rejimi). Guest ↔ akkaunt birlashtirish — Phase 4 (pastda).
 - Real telefonda **NOT TESTED**. Beta kalit shu sababli standart o'chiq.
+
+## Phase 4 natijasi — Identity (2026-10-28)
+
+**Server**
+- `POST /api/auth/google {idToken}` — Google ID token imzo (Google kalitlari), issuer, audience (`Google:ClientIds`), muddat bo'yicha tekshiriladi. Noma'lum identity → yangi akkaunt (parolsiz). Email tasdiqlanmagan bo'lsa → 401. Shu email bilan parolli akkaunt bo'lsa **egallab olinmaydi** → `409 auth.link_required` (foydalanuvchi parol bilan kirib, `POST /api/me/google` bilan bog'laydi). Bitta Google identity faqat bitta akkauntga (`auth.identity_taken`). `ClientIds` bo'sh → `503 auth.google_disabled`.
+- `IExternalTokenValidator` — Raqamli Passport (OIDC) uchun ikkinchi adapter qo'shish joyi.
+- `POST /api/profiles` endi telefonda tanlangan `id` va `seedDefaults:false` ni qabul qiladi (takrorlansa o'sha profil qaytadi; boshqa foydalanuvchi o'sha id'ni ololmaydi).
+- `wallet.create` `openedAt` qabul qiladi: oflayn ochilgan hamyonning boshlang'ich balansi telefondagi sana bilan yoziladi (avval yuklash vaqti bilan yozilardi — E2E testda topilgan xato).
+
+**Telefon**
+- Kirish oynasida **"Lokal hisob bilan boshlash"**: akkaunt, internet va serversiz ishlaydi (`status: 'guest'`, kitob `engine: null` — hech narsa yuborilmaydi).
+- Mehmon rejimida barcha yozuvlar lokal: operatsiyalar, hamyon yaratish/tahrirlash/arxivlash, toifa/podkategoriya/manba yaratish, bekor qilish, tahrirlash (reversal + yangi yozuv **bitta** SQLite tranzaksiyada).
+- **Hisobotlar lokal** (`src/local/analytics.ts`): summary, breakdown, timeseries (telefon soat mintaqasi), balans tarixi, hamyon davrlari, budjetlar, operatsiyalar ro'yxati (filtr + qidiruv). Offline-first yoqilgan akkauntda ham ishlaydi.
+- Sozlamalar → **"Akkauntga ulash"** → kirish oynasida ogohlantirish: telefondagi ma'lumot akkauntga **alohida profil** sifatida qo'shiladi, hech narsa o'chirilmaydi. Kirgandan keyin: profil serverda telefon id'si bilan yaratiladi → lokal akkaunt bulutga o'tkaziladi → outbox (standart katalog ham) yuklanadi. Hech narsa kiritilmagan mehmon kitobi bo'sh profil bo'lib qolmasligi uchun o'chiriladi. Bog'lashda xato bo'lsa, mehmon rejimi o'zgarishsiz qoladi.
+
+**Testlar**
+- Backend 74/74 (yangi `IdentityTests` 4 ta: Google kirish, email egallanmasligi + bog'lash, o'chiq Google, mehmon profilini yuklash + `openedAt`).
+- Mobil 223 o'tdi + 2 skip (E2E). Yangi: `guestAndReports.test.ts` 10, `guestUi.test.tsx` 2.
+- E2E (haqiqiy API, vaqtinchalik baza `hamyon_e2e_v6p4`, keyin o'chirildi): mehmon kitobi → ro'yxatdan o'tish → bog'lash → bir marta yuklandi, to'liq qayta yuborishda dublikat yo'q; **lokal hisobotlar server hisobotlari bilan aynan teng** (summary, breakdown ×3, timeseries ×3, balans, hamyonlar, operatsiyalar).
+- Mutatsiya: FX valyuta qoidasi buzilsa 3 test, tahrirlash atomikligi buzilsa 1 test yiqiladi.
+- Android eksport OK; native fingerprint `8874963d…` o'zgarmagan → preview APK bilan OTA mos.
+
+**Qolgan / cheklovlar**
+- Telefonda Google tugmasi **yo'q**: Google Cloud'da OAuth client ID'lar (Android/iOS/web) kerak va `expo-auth-session` (native modul) → yangi build. Server tomoni tayyor va testlangan (soxta validator bilan; haqiqiy Google token bilan **NOT TESTED**).
+- Bog'langan mehmon profili alohida profil bo'lib qoladi; profillarni almashtirish UI'si (V5) hali yo'q — telefon bog'langan profilni ko'rsatadi (`local:current_profile`).
+- Mehmon rejimida: loyihalar, hamyonning bank ma'lumotlari/overdraft tahriri, toifa limitini o'rnatish, odamni alohida yaratish (ism izohga yoziladi) — hali yo'q.
+- Real telefonda **NOT TESTED**.
+

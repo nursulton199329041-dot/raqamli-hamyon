@@ -22,10 +22,10 @@ import { monthShort } from '@/lib/dates';
 import { fitMoney, fmtMoney } from '@/lib/money';
 import { useBreakdown, useCatalog, useSnapshot, type Period } from '@/state/data';
 import { useQueue } from '@/state/queue';
-import { api } from '@/state/runtime';
 import { useSession } from '@/state/session';
 import { useSettings, type HomeSection } from '@/state/settings';
 import { useUi, type OpKind } from '@/state/ui';
+import { patchWallet } from '@/state/writes';
 import { expenseGrid } from './expenseGrid';
 import { UpdateBanner } from './UpdateBanner';
 
@@ -151,7 +151,7 @@ export function Dashboard() {
     setActionError(null);
     if (w.balance !== 0) return setActionError(t('archive_nonzero'));
     try {
-      await api.patch(`/api/wallets/${w.id}`, { isArchived: true });
+      await patchWallet(w.id, { isArchived: true });
       setActionsFor(null);
       await qc.invalidateQueries();
     } catch (e) {

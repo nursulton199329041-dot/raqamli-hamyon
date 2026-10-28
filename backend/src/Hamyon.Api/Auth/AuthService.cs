@@ -102,6 +102,57 @@ public sealed class AuthService(AppDbContext db, PasswordHasher hasher, IOptions
         return await IssueAsync(user, Guid.NewGuid(), ct);
     }
 
+    /// <summary>
+    /// Sign-in with a verified external identity. A known identity signs in; an unknown one opens a new account. An email
+    /// that already belongs to a password account is never taken over: that user signs in with the password and links.
+    /// </summary>
+    public async Task<AuthResponse> ExternalSignInAsync(ExternalIdentity id, string? locale, string? ip, CancellationToken ct)
+    {
+        var user = await db.Users.FirstOrDefaultAsync(u => u.ExternalIssuer == id.Issuer && u.ExternalSubjectId == id.Subject, ct);
+        if (user is null)
+        {
+            if (string.IsNullOrWhiteSpace(id.Email) || !id.EmailVerified)
+                throw new DomainException("auth.email_unverified", "The provider did not confirm the email address.", 401);
+            var email = id.Email.Trim();
+            var norm = email.ToUpperInvariant();
+            if (await db.Users.AnyAsync(u => u.NormalizedEmail == norm, ct))
+                throw new DomainException("auth.link_required", "This email already has an account. Sign in and link it in settings.", 409);
+            user = new User
+            {
+                Email = email, NormalizedEmail = norm, PasswordHash = "", // no password: Verify never matches
+                DisplayName = (id.Name ?? email).Trim()[..Math.Min(100, (id.Name ?? email).Trim().Length)],
+                Locale = locale is "uz" or "ru" or "en" ? locale : "uz",
+                ExternalIssuer = id.Issuer, ExternalSubjectId = id.Subject,
+            };
+            db.Users.Add(user);
+            UserDefaults.AddProfile(db, user.Id, UserDefaults.MainProfileName);
+            db.AuditLogs.Add(new AuditLog { UserId = user.Id, Action = "user.register_external", EntityType = "User", EntityId = user.Id, Ip = ip });
+        }
+        else db.AuditLogs.Add(new AuditLog { UserId = user.Id, Action = "auth.login_external", Ip = ip });
+        await db.SaveChangesAsync(ct);
+        return await IssueAsync(user, Guid.NewGuid(), ct);
+    }
+
+    /// <summary>Links a verified external identity to the signed-in account (one identity per account, one account per identity).</summary>
+    public async Task<UserDto> LinkExternalAsync(Guid userId, ExternalIdentity id, CancellationToken ct)
+    {
+        var owner = await db.Users.AsNoTracking()
+            .FirstOrDefaultAsync(u => u.ExternalIssuer == id.Issuer && u.ExternalSubjectId == id.Subject, ct);
+        if (owner is not null && owner.Id != userId)
+            throw new DomainException("auth.identity_taken", "This account is already linked to another user.", 409);
+        var user = await db.Users.FirstAsync(u => u.Id == userId, ct);
+        if (owner is null)
+        {
+            if (user.ExternalSubjectId is not null)
+                throw new DomainException("auth.already_linked", "Another external account is already linked.", 409);
+            user.ExternalIssuer = id.Issuer;
+            user.ExternalSubjectId = id.Subject;
+            db.AuditLogs.Add(new AuditLog { UserId = userId, Action = "auth.link_external", EntityType = "User", EntityId = userId });
+            await db.SaveChangesAsync(ct);
+        }
+        return ToDto(user);
+    }
+
     public async Task<AuthResponse> RefreshAsync(string refreshToken, CancellationToken ct)
     {
         var hash = Hash(refreshToken);

@@ -33,15 +33,15 @@ public static class UserDefaults
 
     /// <summary>Adds a profile with the default categories and income sources (saved by the caller).</summary>
     public static Profile AddProfile(AppDbContext db, Guid userId, string name, string baseCurrency = "UZS", int sortOrder = 0,
-        string? color = null, string? icon = null)
+        string? color = null, string? icon = null, Guid? id = null, bool seed = true)
     {
         var profile = new Profile
         {
-            UserId = userId, Name = name, BaseCurrency = baseCurrency, SortOrder = sortOrder,
+            Id = id ?? Guid.NewGuid(), UserId = userId, Name = name, BaseCurrency = baseCurrency, SortOrder = sortOrder,
             Color = color ?? "#4D8DFF", Icon = icon ?? "person",
         };
         db.Profiles.Add(profile);
-        Seed(db, userId, profile.Id);
+        if (seed) Seed(db, userId, profile.Id);
         return profile;
     }
 

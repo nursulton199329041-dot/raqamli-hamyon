@@ -14,10 +14,10 @@ import { dayKey, fmtDateTime, fmtMoney } from '@/lib/money';
 import { addMonths, longDay, monthName, monthRange } from '@/lib/dates';
 import { useCatalog, useSummaryRange, useTransactions } from '@/state/data';
 import { useQueue } from '@/state/queue';
-import { api } from '@/state/runtime';
 import { useSession } from '@/state/session';
 import { useSettings } from '@/state/settings';
 import { useUi } from '@/state/ui';
+import { reverseTx } from '@/state/writes';
 
 const isLive = (tx: Tx) => !tx.reversedById && tx.type !== TxType.Reversal;
 
@@ -302,7 +302,7 @@ function DetailSheet({ tx, onClose, label }: { tx: Tx | null; onClose(): void; l
               setBusy(true);
               setErr(null);
               try {
-                await api.post(`/api/transactions/${tx.id}/reverse`, {});
+                await reverseTx(tx.id);
                 await qc.invalidateQueries();
                 onClose();
               } catch (e) {

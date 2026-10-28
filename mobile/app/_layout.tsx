@@ -21,6 +21,7 @@ import { useUpdates } from '@/updates/updates';
 function Bootstrap() {
   const hydrated = useSettings((s) => s.hydrated);
   const status = useSession((s) => s.status);
+  const linking = useSession((s) => s.linking);
   const p = usePalette();
   const t = useT();
   const { store, apiIncompatible, openStore } = useUpdates();
@@ -61,7 +62,7 @@ function Bootstrap() {
       </View>
     );
   }
-  if (status === 'signedOut') return <Auth />;
+  if (status === 'signedOut' || linking) return <Auth />;
   return (
     <>
       <ThemeProvider value={{ ...DefaultTheme, colors: { ...DefaultTheme.colors, background: 'transparent', card: 'transparent' } }}>

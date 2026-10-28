@@ -10,9 +10,55 @@ import { LedgerError, LocalLedger, type OpResult } from './ledger';
 import { minorToNumber, toMinor } from './money';
 import { SyncEngine, type SyncTransport } from './sync';
 
-export interface LocalBook { db: LocalDb; ledger: LocalLedger; engine: SyncEngine; profileId: string }
+/** `engine` is null for a guest book: nothing is sent anywhere until it is linked to an account. */
+export interface LocalBook { db: LocalDb; ledger: LocalLedger; engine: SyncEngine | null; profileId: string }
+
+/** kv key: the profile this device shows (a linked guest book keeps showing its own data). */
+export const CURRENT_PROFILE_KEY = 'local:current_profile';
 
 let current: { userId: string; book: Promise<LocalBook | null> } | null = null;
+
+/** Forget the cached book (after sign-in, linking or sign-out the next call opens it again). */
+export function resetLocalBook() {
+  current = null;
+}
+
+/** The device's own book without any account ("start with a local account"): works with no server at all. */
+export function guestBook(): Promise<LocalBook | null> {
+  if (Platform.OS === 'web') return Promise.resolve(null);
+  if (current?.userId !== GUEST) {
+    const book = openGuest();
+    current = { userId: GUEST, book };
+    void book.then((b) => {
+      if (!b && current?.book === book) current = null;
+    });
+  }
+  return current.book;
+}
+
+const GUEST = '#guest';
+
+async function openGuest(): Promise<LocalBook | null> {
+  try {
+    const db = await openLocalDb();
+    const ledger = new LocalLedger(db);
+    const acc = await db.first<{ kind: string }>('SELECT kind FROM accounts ORDER BY created_at LIMIT 1');
+    if (acc && acc.kind !== 'local') return null; // this device's book belongs to an account: sign in to see it
+    const { profileId } = await ledger.ensureLocalAccount();
+    return { db, ledger, profileId, engine: null };
+  } catch (e) {
+    await logFailure(e);
+    return null;
+  }
+}
+
+async function logFailure(e: unknown) {
+  try {
+    await (await getStorage()).logUpdate('local-book-unavailable', e instanceof Error ? e.message.slice(0, 300) : String(e));
+  } catch {
+    /* logging is best effort */
+  }
+}
 
 /**
  * The on-device book for the signed-in user, or null when the app should keep using the server directly: web, the
@@ -45,15 +91,12 @@ async function open(user: UserProfile): Promise<LocalBook | null> {
     const known = await db.all<{ id: string }>(
       `SELECT p.id FROM profiles p JOIN accounts a ON a.id = p.account_id
        WHERE a.server_user_id = ? AND p.is_archived = 0 ORDER BY p.sort_order, p.created_at`, user.id);
-    const profileId = profiles?.find((p) => p.isCurrent)?.id ?? known[0]?.id;
+    const chosen = (await db.first<{ v: string }>('SELECT v FROM kv WHERE k = ?', CURRENT_PROFILE_KEY))?.v;
+    const profileId = (chosen && known.some((k) => k.id === chosen) ? chosen : null) ?? profiles?.find((p) => p.isCurrent)?.id ?? known[0]?.id;
     if (!profileId || !known.some((k) => k.id === profileId)) return null;
     return { db, ledger, profileId, engine: new SyncEngine(db, keepProjects(db, httpTransport(api))) };
   } catch (e) {
-    try {
-      await (await getStorage()).logUpdate('local-book-unavailable', e instanceof Error ? e.message.slice(0, 300) : String(e));
-    } catch {
-      /* logging is best effort */
-    }
+    await logFailure(e);
     return null;
   }
 }
@@ -73,6 +116,24 @@ function keepProjects(db: LocalDb, t: SyncTransport): SyncTransport {
 
 // ------------------------------------------------------------------ book -> screens (same shapes as /api/sync/pull)
 
+/** A row of the local `transactions` table. */
+export interface TxRecord {
+  id: string; type: number; occurred_at: string; amount_minor: number; currency: string; wallet_id: string | null; to_wallet_id: string | null;
+  to_amount_minor: number | null; to_currency: string | null; fx_rate: string | null; rate_date: string | null; rate_source: string | null; category_id: string | null;
+  income_source_id: string | null; person_id: string | null; project_id: string | null; debt_id: string | null; reason: string | null; memo: string | null;
+  reversal_of_id: string | null; reversed_by_id: string | null; replaces_id: string | null; created_at: string;
+}
+
+export function txFromRow(t: TxRecord): Tx {
+  return {
+    id: t.id, type: t.type as TxTypeValue, occurredAt: t.occurred_at, amount: minorToNumber(t.amount_minor, t.currency), currency: t.currency,
+    walletId: t.wallet_id, toWalletId: t.to_wallet_id, toAmount: t.to_amount_minor == null || !t.to_currency ? null : minorToNumber(t.to_amount_minor, t.to_currency),
+    toCurrency: t.to_currency, fxRate: t.fx_rate == null ? null : Number(t.fx_rate), rateDate: t.rate_date, rateSource: t.rate_source, categoryId: t.category_id,
+    incomeSourceId: t.income_source_id, personId: t.person_id, projectId: t.project_id, debtId: t.debt_id, reason: t.reason, memo: t.memo,
+    reversalOfId: t.reversal_of_id, reversedById: t.reversed_by_id, replacesId: t.replaces_id, createdAt: t.created_at,
+  };
+}
+
 export async function localSnapshot(book: LocalBook): Promise<Snapshot> {
   const { db, profileId: p } = book;
   const num = (minor: number | null, currency: string | null) => (minor == null || !currency ? null : minorToNumber(minor, currency));
@@ -86,11 +147,7 @@ export async function localSnapshot(book: LocalBook): Promise<Snapshot> {
   const people = await db.all<{ id: string; name: string; phone: string | null; note: string | null }>('SELECT * FROM people WHERE profile_id = ? ORDER BY name', p);
   const debts = await db.all<{ id: string; person_id: string; direction: number; currency: string; principal_minor: number; outstanding_minor: number;
     due_date: string | null; status: number; reason: string | null; note: string | null; created_at: string }>('SELECT * FROM debts WHERE profile_id = ?', p);
-  const txs = await db.all<{ id: string; type: number; occurred_at: string; amount_minor: number; currency: string; wallet_id: string | null; to_wallet_id: string | null;
-    to_amount_minor: number | null; to_currency: string | null; fx_rate: string | null; rate_date: string | null; rate_source: string | null; category_id: string | null;
-    income_source_id: string | null; person_id: string | null; project_id: string | null; debt_id: string | null; reason: string | null; memo: string | null;
-    reversal_of_id: string | null; reversed_by_id: string | null; replaces_id: string | null; created_at: string }>(
-    'SELECT * FROM transactions WHERE profile_id = ? ORDER BY occurred_at DESC LIMIT 1000', p);
+  const txs = await db.all<TxRecord>('SELECT * FROM transactions WHERE profile_id = ? ORDER BY occurred_at DESC LIMIT 1000', p);
   const projectsRaw = (await db.first<{ v: string }>('SELECT v FROM kv WHERE k = ?', `local:projects:${p}`))?.v;
 
   return {
@@ -112,13 +169,7 @@ export async function localSnapshot(book: LocalBook): Promise<Snapshot> {
       outstanding: minorToNumber(d.outstanding_minor, d.currency), dueDate: d.due_date, status: d.status,
       reason: d.reason, note: d.note, createdAt: d.created_at,
     })),
-    transactions: txs.map((t): Tx => ({
-      id: t.id, type: t.type as TxTypeValue, occurredAt: t.occurred_at, amount: minorToNumber(t.amount_minor, t.currency), currency: t.currency,
-      walletId: t.wallet_id, toWalletId: t.to_wallet_id, toAmount: num(t.to_amount_minor, t.to_currency), toCurrency: t.to_currency,
-      fxRate: t.fx_rate == null ? null : Number(t.fx_rate), rateDate: t.rate_date, rateSource: t.rate_source, categoryId: t.category_id,
-      incomeSourceId: t.income_source_id, personId: t.person_id, projectId: t.project_id, debtId: t.debt_id, reason: t.reason, memo: t.memo,
-      reversalOfId: t.reversal_of_id, reversedById: t.reversed_by_id, replacesId: t.replaces_id, createdAt: t.created_at,
-    })),
+    transactions: txs.map(txFromRow),
   };
 }
 
@@ -174,4 +225,18 @@ export async function applyUiOp(book: LocalBook, kind: PendingOp['kind'], payloa
     case 'reverse':
       return ledger.reverse(profileId, String(targetId), str(payload.memo) ?? undefined);
   }
+}
+
+/**
+ * Correction of a saved operation: the original is reversed and the corrected one posted, in ONE transaction (the
+ * history is never rewritten; a failure leaves both untouched).
+ */
+export async function correctUiOp(book: LocalBook, txId: string, kind: PendingOp['kind'], payload: Record<string, unknown>): Promise<OpResult> {
+  return book.db.tx(async () => {
+    const db = book.db;
+    const inTx: LocalDb = { exec: (s) => db.exec(s), run: (s, ...p) => db.run(s, ...p), all: (s, ...p) => db.all(s, ...p), first: (s, ...p) => db.first(s, ...p), tx: (w) => w() };
+    const inner: LocalBook = { ...book, db: inTx, ledger: new LocalLedger(inTx) };
+    await inner.ledger.reverse(book.profileId, txId);
+    return applyUiOp(inner, kind, payload);
+  });
 }

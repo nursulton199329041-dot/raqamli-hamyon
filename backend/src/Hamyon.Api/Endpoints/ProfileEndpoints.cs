@@ -6,7 +6,10 @@ namespace Hamyon.Api.Endpoints;
 
 public sealed record ProfileDto(Guid Id, string Name, string Color, string Icon, string BaseCurrency, int SortOrder,
     bool IsArchived, int Revision, bool IsCurrent);
-public sealed record ProfileCreateRequest(string Name, string? BaseCurrency, string? Color, string? Icon);
+/// <param name="Id">client-chosen id (a device's offline profile being linked); repeating the call returns the same profile</param>
+/// <param name="SeedDefaults">false when the device uploads its own catalog (a linked guest book)</param>
+public sealed record ProfileCreateRequest(string Name, string? BaseCurrency, string? Color, string? Icon, Guid? Id = null,
+    bool SeedDefaults = true);
 public sealed record ProfileUpdateRequest(string? Name, string? BaseCurrency, string? Color, string? Icon, bool? IsArchived,
     int Revision);
 
@@ -67,9 +70,17 @@ public static class ProfileEndpoints
             var uid = ctx.User.UserId();
             var name = CleanName(r.Name);
             var currency = Currency(r.BaseCurrency ?? "UZS");
+            if (r.Id is { } wanted)
+            {
+                if (wanted == Guid.Empty) throw new DomainException("sync.id_invalid", "Invalid id.", 400);
+                var existing = await db.Profiles.AsNoTracking().FirstOrDefaultAsync(p => p.Id == wanted, ct);
+                if (existing is not null)
+                    return existing.UserId == uid ? Results.Ok(Map(existing, db.CurrentProfileId))
+                        : throw new DomainException("profile.id_taken", "Profile id is already used.", 409);
+            }
             var count = await db.Profiles.CountAsync(p => p.UserId == uid, ct);
             if (count >= MaxProfiles) throw new DomainException("profile.limit", $"At most {MaxProfiles} profiles.", 422);
-            var p = UserDefaults.AddProfile(db, uid, name, currency, count, Color(r.Color), Icon(r.Icon));
+            var p = UserDefaults.AddProfile(db, uid, name, currency, count, Color(r.Color), Icon(r.Icon), r.Id, r.SeedDefaults);
             db.AuditLogs.Add(new AuditLog { UserId = uid, Action = "profile.create", EntityType = "Profile", EntityId = p.Id });
             await db.SaveChangesAsync(ct);
             return Results.Ok(Map(p, db.CurrentProfileId));

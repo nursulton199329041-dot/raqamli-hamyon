@@ -97,7 +97,7 @@ describe('local schema migrations (never lose data)', () => {
       ledger = new LocalLedger(db);
       expect((await ledger.ensureLocalAccount()).profileId).toBe(profileId); // same account, no second set of defaults
       expect((await ledger.wallet(profileId, w.id))!.balance_minor).toBe(48_750_000);
-      expect(await count(db, "SELECT count(*) AS n FROM sync_outbox WHERE status = 'pending'")).toBe(2);
+      expect(await count(db, "SELECT count(*) AS n FROM sync_outbox WHERE status = 'pending' AND op_id NOT LIKE 'seed:%'")).toBe(2);
       db.close();
     } finally {
       rmSync(dir, { recursive: true, force: true });

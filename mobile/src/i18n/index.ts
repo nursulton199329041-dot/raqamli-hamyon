@@ -144,6 +144,24 @@ const T = {
   more_sections: ['Boshqa bo‘limlar', 'Другие разделы', 'More'],
   expense_rows: ['Xarajat toifalari qatorlari', 'Строки категорий расходов', 'Expense category rows'],
   rows_auto: ['Avto', 'Авто', 'Auto'],
+  guest_start: ['Lokal hisob bilan boshlash', 'Начать без аккаунта', 'Start with a local account'],
+  guest_start_hint: [
+    "Internet va server shart emas. Ma'lumotlar shu telefonda saqlanadi; keyin akkauntga ulab bulutga yuborish mumkin.",
+    'Интернет и сервер не нужны. Данные хранятся на этом телефоне; позже можно подключить аккаунт и отправить их в облако.',
+    'No internet or server needed. Data stays on this phone; link an account later to back it up to the cloud.',
+  ],
+  guest_title: ['Lokal hisob', 'Локальный аккаунт', 'Local account'],
+  guest_hint: [
+    "Ma'lumotlar faqat shu telefonda. Telefon yo'qolsa yoki ilova o'chirilsa, ular ham yo'qoladi.",
+    'Данные только на этом телефоне. Если телефон потеряется или приложение удалят, они пропадут.',
+    'Data is only on this phone. If the phone is lost or the app is removed, it is gone.',
+  ],
+  link_account: ['Akkauntga ulash', 'Подключить аккаунт', 'Link an account'],
+  link_notice: [
+    "Kirganingizdan keyin telefondagi ma'lumotlar shu akkauntga alohida profil sifatida qo'shiladi. Hech narsa o'chirilmaydi.",
+    'После входа данные с телефона добавятся в этот аккаунт отдельным профилем. Ничего не удаляется.',
+    "After you sign in, this phone's data is added to the account as a separate profile. Nothing is deleted.",
+  ],
   offline_first: ['Offline-first (beta)', 'Офлайн-режим (бета)', 'Offline-first (beta)'],
   offline_first_hint: [
     "Amallar avval telefonda saqlanadi va internet bo'lganda serverga yuboriladi. Sinov rejimi.",

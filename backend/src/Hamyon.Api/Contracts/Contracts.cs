@@ -5,6 +5,7 @@ namespace Hamyon.Api.Contracts;
 // ---- auth ----
 public sealed record RegisterRequest(string Email, string Password, string DisplayName, string? Locale);
 public sealed record LoginRequest(string Email, string Password);
+public sealed record ExternalSignInRequest(string IdToken, string? Locale = null);
 public sealed record RefreshRequest(string RefreshToken);
 public sealed record AuthResponse(string AccessToken, string RefreshToken, DateTimeOffset AccessExpiresAt, UserDto User);
 public sealed record UserDto(Guid Id, string Email, string DisplayName, string Locale, string DefaultCurrency, string Theme);
@@ -13,7 +14,7 @@ public sealed record UpdateProfileRequest(string? DisplayName, string? Locale, s
 // ---- catalogs ----
 public sealed record WalletRequest(string Name, WalletType Type, string Currency, decimal InitialBalance, string? Icon,
     string? Color, string? BankName, string? MaskedNumber, string? Note, bool AllowOverdraft, string? ClientKey,
-    Guid? Id = null, Guid? OpeningId = null);
+    Guid? Id = null, Guid? OpeningId = null, DateTimeOffset? OpenedAt = null);
 public sealed record WalletUpdateRequest(string? Name, string? Icon, string? Color, string? BankName, string? MaskedNumber,
     string? Note, bool? AllowOverdraft, bool? IsArchived, int? SortOrder);
 public sealed record WalletDto(Guid Id, string Name, WalletType Type, string Currency, decimal Balance, string Icon,
