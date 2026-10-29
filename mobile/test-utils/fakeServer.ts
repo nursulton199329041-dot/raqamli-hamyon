@@ -68,12 +68,14 @@ export class FakeServer {
 
   private breakdown(by: string, type: number): BreakdownRow[] {
     const key = by === 'source' ? 'incomeSourceId' : 'categoryId';
-    const acc = new Map<string, number>();
+    const acc = new Map<string, { total: number; count: number }>();
     for (const t of this.txs) {
       const id = (t as unknown as Record<string, string | null | undefined>)[key];
-      if (this.live(t) && t.type === type && id) acc.set(id, (acc.get(id) ?? 0) + t.amount);
+      if (!this.live(t) || t.type !== type || !id) continue;
+      const a = acc.get(id) ?? { total: 0, count: 0 };
+      acc.set(id, { total: a.total + t.amount, count: a.count + 1 });
     }
-    return [...acc].map(([id, total]) => ({ id, name: id, currency: 'UZS', total, percent: 0, count: 1 }));
+    return [...acc].map(([id, a]) => ({ id, name: id, currency: 'UZS', total: a.total, percent: 0, count: a.count }));
   }
 
   /** daily income/expense buckets from the same ledger rows the summary uses */

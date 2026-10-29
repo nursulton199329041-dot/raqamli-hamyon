@@ -62,9 +62,21 @@ export const useReportWallets = (q: Query, enabled = true) =>
   useQuery({ queryKey: ['report', 'wallets', q], queryFn: () => read<WalletPeriod[]>('/api/analytics/wallets', q), enabled, ...opts });
 
 /** Latest operations matching the same filter (`type` narrows to one transaction type). */
-export const useReportTransactions = (q: Query, type?: number) =>
+export const useReportTransactions = (q: Query, type?: number, enabled = true) =>
   useQuery({
+    enabled,
     queryKey: ['report', 'transactions', q, type],
     queryFn: async () => (await read<{ items: Tx[]; total: number }>('/api/transactions', { ...q, type, pageSize: 30 })),
     ...opts,
+  });
+
+/** Expenses of one top-level category (its sub-categories included) under the same filter, for the grouped list. */
+export const useCategoryOps = (q: Query, categoryId: string | null, enabled: boolean) =>
+  useQuery({
+    queryKey: ['report', 'category-ops', q, categoryId],
+    queryFn: async () => (await read<{ items: Tx[]; total: number }>('/api/transactions', {
+      ...q, type: 2, categoryId: categoryId ?? undefined, pageSize: 200,
+    })),
+    enabled,
+    staleTime: 5_000,
   });

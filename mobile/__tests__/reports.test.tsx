@@ -164,15 +164,31 @@ describe('reports screen', () => {
 
   const stat = (k: string) => screen.getByTestId(`stat-${k}-value`);
 
-  it('expense report: totals exclude transfers and debts; the list shows only expenses of the same filter', async () => {
+  it('expense report: totals exclude transfers and debts; operations are grouped once per category and open on tap', async () => {
     await renderApp(<Reports />);
     await waitFor(() => expect(stat('expense')).toHaveTextContent(`400${NB}000 UZS`));
     expect(stat('top-category')).toHaveTextContent('c1'); // fake breakdown names rows by id
-    const list = await screen.findByTestId('report-ops');
-    await waitFor(() => expect(within(list).queryByTestId('rtx-t1')).toBeNull());
-    expect(within(list).getByTestId('rtx-t2')).toBeTruthy();
-    expect(within(list).queryByTestId('rtx-t4')).toBeNull(); // transfer
-    expect(within(list).queryByTestId('rtx-t5')).toBeNull(); // debt
+    const list = await screen.findByTestId('category-groups');
+    // the sub-category "Non" (c1a) joins its parent "Oziq": one line, both operations, one total
+    const group = await within(list).findByTestId('cg-c1');
+    expect(group).toHaveTextContent(/^Oziq/);
+    expect(group).toHaveTextContent(/2 operatsiya/);
+    expect(group).toHaveTextContent(/400\s000 UZS/);
+    expect(within(list).queryByTestId('cg-c1a')).toBeNull();
+    expect(within(list).queryByTestId('cg-tx-t2')).toBeNull(); // closed until tapped
+
+    await fireEvent.press(group);
+    const ops = await within(list).findByTestId('cg-ops-c1');
+    await waitFor(() => expect(within(ops).getByTestId('cg-tx-t2')).toBeTruthy());
+    expect(within(ops).getByTestId('cg-tx-t3')).toHaveTextContent(/Non/); // the sub-category is named
+    expect(within(ops).getByTestId('cg-tx-t3')).toHaveTextContent(/Karta/); // and the wallet
+    for (const id of ['t1', 't4', 't5']) expect(within(ops).queryByTestId(`cg-tx-${id}`)).toBeNull(); // income, transfer, debt
+
+    await fireEvent.press(within(ops).getByTestId('cg-tx-t3'));
+    expect(await screen.findByText(`Xarajat · 100${NB}000 UZS`)).toBeTruthy(); // the operation's details
+
+    await fireEvent.press(group); // closes again
+    await waitFor(() => expect(within(list).queryByTestId('cg-ops-c1')).toBeNull());
   });
 
   it('switching the report type and the currency recomputes everything from the same filter', async () => {

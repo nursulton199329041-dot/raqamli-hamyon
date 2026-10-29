@@ -260,8 +260,8 @@ export function History() {
   );
 }
 
-/** Read-only details for operations the form cannot edit (debts, reversed entries) with the reversal action. */
-function DetailSheet({ tx, onClose, label }: { tx: Tx | null; onClose(): void; label(t: TxTypeValue): string }) {
+/** Read-only details of an operation (History: debts and reversed entries; Reports: any operation) with the reversal action. */
+export function DetailSheet({ tx, onClose, label }: { tx: Tx | null; onClose(): void; label(t: TxTypeValue): string }) {
   const t = useT();
   const p = usePalette();
   const cat = useCatalog();

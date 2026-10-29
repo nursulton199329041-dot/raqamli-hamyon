@@ -22,6 +22,7 @@ import {
 } from '@/state/reports';
 import { useSession } from '@/state/session';
 import { useSettings } from '@/state/settings';
+import { CategoryGroups } from './CategoryGroups';
 import { FilterSheet, KIND_LABEL, KindTabs, Panel, PeriodBar, StatGrid, TxList, type Stat } from './ReportControls';
 
 /** Server period key (client calendar: 2026, 2026-10, 2026-10-27) -> [year, month0, day]. */
@@ -87,7 +88,7 @@ export function Reports() {
   const distribution = useReportBreakdown(q, by, by === 'source' ? 1 : 2, kind === 'categories');
   const wallets = useReportWallets(q, kind === 'wallets');
   const txType = kind === 'income' ? 1 : kind === 'expense' ? 2 : undefined;
-  const txs = useReportTransactions(q, txType);
+  const txs = useReportTransactions(q, txType, kind !== 'expense');
   const budgets = useBudgets();
 
   const tot: CurrencyTotals | undefined = summary.data?.totals.find((x) => x.currency === currency);
@@ -408,9 +409,17 @@ export function Reports() {
           </Panel>
         ) : null}
 
-        <Panel title={t('operations')} right={txs.data ? <Text style={[type.caption, { color: p.textSecondary }]}>{txs.data.total}</Text> : null}>
-          <TxList items={txs.data?.items ?? []} loading={txs.isLoading} />
-        </Panel>
+        {kind === 'expense' ? (
+          // expenses: each category once (sub-categories inside their parent), opened to show its operations
+          <Panel testID="ops-by-category" title={`${t('operations')} · ${t('by_category')}`}
+            right={tot ? <Text style={[type.caption, { color: p.textSecondary }]}>{money(tot.expense)}</Text> : null}>
+            <CategoryGroups rows={byCategory.data ?? []} loading={byCategory.isLoading} currency={currency ?? ''} q={q} />
+          </Panel>
+        ) : (
+          <Panel title={t('operations')} right={txs.data ? <Text style={[type.caption, { color: p.textSecondary }]}>{txs.data.total}</Text> : null}>
+            <TxList items={txs.data?.items ?? []} loading={txs.isLoading} />
+          </Panel>
+        )}
       </ScrollView>
 
       <FilterSheet key={sheet ?? 'closed'} visible={sheet !== null} customFirst={sheet === 'custom'} onClose={() => setSheet(null)} />
