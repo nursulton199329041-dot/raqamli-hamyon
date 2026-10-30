@@ -290,3 +290,7 @@ Commit 83bcd0f, `eas update --channel preview` (runtime 1.0.0, android fingerpri
 - **Orqaga qaytarish:** supervisor'ni to'xtatish → `backups\api-prechange-v6p4-20261029-1051\` → `api\` → supervisor'ni ishga tushirish.
 - **OTA:** `eas update --channel preview --environment preview`; update group `a3c03f6c-56fc-4dc4-b979-38ba866ddc33`, Android `01a1863a-ea66-72fb-bdb8-165a26b73ecb`, iOS `01a1863a-ea66-7cef-8498-dd6f343dd1da`; runtime 1.0.0; Android fingerprint `8874963d…` = preview APK. Production'ga tegilmadi.
 - Telefonda: kirish oynasida "Lokal hisob bilan boshlash"; Sozlamalar → "Akkauntga ulash". Real telefonda **NOT TESTED**.
+
+### Hisobot: xarajatlar toifalar bo'yicha — OTA → preview — 2026-10-30
+- `c06c637`: Hisobot → Xarajatlar → "Operatsiyalar · Toifalar bo'yicha": har toifa bir marta (categoryId bo'yicha, podkategoriya parent ichida), soni, ulushi, jami; bosilganda operatsiyalar ochiladi, operatsiya bosilganda tafsilot oynasi. Backend o'zgarmagan.
+- **OTA:** update group `d66d27c3-6f49-4dc8-89e3-36f1b26b4f6d`, Android `01a18cbb-51e4-7c48-bfb6-bef76307d96f`, iOS `01a18cbb-51e4-7ab9-9dc6-1eb12600c2db`; runtime 1.0.0; Android fingerprint `8874963d…` = preview APK. Production'ga tegilmadi. Real telefonda **NOT TESTED**.
