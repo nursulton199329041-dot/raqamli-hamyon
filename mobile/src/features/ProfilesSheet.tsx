@@ -23,18 +23,36 @@ const roundButton = (p: Palette) => ({
  * profile has nothing to switch to, so it goes straight to the new-profile form.
  */
 export function ProfilesSheet({ visible, onClose }: { visible: boolean; onClose(): void }) {
-  return <Sheet visible={visible} onClose={onClose}>{visible ? <Body onClose={onClose} /> : null}</Sheet>;
+  const t = useT();
+  const profiles = useProfiles();
+  const [adding, setAdding] = useState(false);
+  const [showList, setShowList] = useState(false);
+  const form = adding || (!!profiles.data && profiles.data.items.length <= 1 && !showList);
+  const close = () => {
+    setAdding(false);
+    setShowList(false);
+    onClose();
+  };
+  const toList = () => {
+    setAdding(false);
+    setShowList(true);
+  };
+  // the add button sits outside the scrolling list, so it stays on screen however long the list is or if it fails to load
+  const footer = visible && !form ? <Button testID="profiles-add" title={`+ ${t('new_profile')}`} onPress={() => setAdding(true)} /> : undefined;
+  return (
+    <Sheet visible={visible} onClose={close} footer={footer}>
+      {visible ? <Body key={form ? 'form' : 'list'} form={form} onClose={close} onList={toList} /> : null}
+    </Sheet>
+  );
 }
 
 /** Mounted only while the sheet is open, so every opening starts clean. */
-function Body({ onClose }: { onClose(): void }) {
+function Body({ form, onClose, onList }: { form: boolean; onClose(): void; onList(): void }) {
   const t = useT();
   const p = usePalette();
   const router = useRouter();
   const profiles = useProfiles();
   const { refetch } = profiles;
-  const [adding, setAdding] = useState(false);
-  const [showList, setShowList] = useState(false);
   const [switching, setSwitching] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState('');
@@ -47,7 +65,6 @@ function Body({ onClose }: { onClose(): void }) {
 
   const items = profiles.data?.items ?? [];
   const currentId = profiles.data?.currentId ?? null;
-  const form = adding || (!!profiles.data && items.length <= 1 && !showList);
 
   const message = (e: unknown) => (e instanceof ApiError && e.code === 'profile.busy' ? t('profile_busy') : e instanceof Error ? e.message : String(e));
 
@@ -73,9 +90,7 @@ function Body({ onClose }: { onClose(): void }) {
     setBusy(true);
     try {
       await createProfile(clean, currency);
-      setName('');
-      setAdding(false);
-      setShowList(true);
+      onList();
     } catch (e) {
       setError(message(e));
     } finally {
@@ -95,8 +110,8 @@ function Body({ onClose }: { onClose(): void }) {
         </Tap>
       </View>
 
-      {profiles.isLoading ? <Skeleton height={48} /> : null}
-      {profiles.isError && !profiles.data ? (
+      {profiles.isLoading && !form ? <Skeleton height={48} /> : null}
+      {profiles.isError && !profiles.data && !form ? (
         <ErrorState testID="profiles-error" title={t('dash_load_error')} message={profiles.error instanceof Error ? profiles.error.message : undefined}
           retry={t('retry')} onRetry={() => void refetch()} />
       ) : null}
@@ -110,7 +125,7 @@ function Body({ onClose }: { onClose(): void }) {
           <Button title={t('save')} busy={busy} disabled={!name.trim()} onPress={() => void create()} />
           {items.length > 0 ? (
             <Tap testID="profiles-show-list" label={t('profiles')} haptic={false} containerStyle={{ alignSelf: 'center' }} style={{ paddingVertical: space.sm, paddingHorizontal: space.md }}
-              onPress={() => { setError(null); setAdding(false); setShowList(true); }}>
+              onPress={onList}>
               <Text style={[type.footnote, { color: p.accent, fontWeight: '700' }]}>{t('profiles')} ({items.length})</Text>
             </Tap>
           ) : null}
@@ -126,11 +141,6 @@ function Body({ onClose }: { onClose(): void }) {
                   : x.id === currentId ? <Glyph name="check" color={p.accent} size={20} /> : null}
               </Tap>
             ))}
-            <Tap testID="profiles-add" label={t('new_profile')} haptic={false} onPress={() => { setError(null); setAdding(true); }}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, minHeight: 52, paddingHorizontal: space.md, borderTopWidth: 1, borderTopColor: p.glassBorder }}>
-              <Glyph name="plus" color={p.accent} size={18} />
-              <Text numberOfLines={1} style={[type.callout, { color: p.accent, fontWeight: '700' }]}>{t('new_profile')}</Text>
-            </Tap>
           </View>
           {error ? <ErrorText>{error}</ErrorText> : null}
         </>

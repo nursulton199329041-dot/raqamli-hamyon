@@ -73,6 +73,24 @@ describe('home avatar opens the profiles, not the settings', () => {
     expect(screen.queryByTestId('profile-form')).toBeNull();
   });
 
+  it('with several profiles the add button is there; it opens the form, and the form leads back to the list', async () => {
+    server.profiles = [profile('p1', 'Asosiy', true), profile('p2', 'Sultonbek')];
+    await openSheet();
+    await screen.findByText('Sultonbek');
+    await fireEvent.press(screen.getByTestId('profiles-add'));
+    await screen.findByTestId('profile-form');
+    expect(screen.queryByTestId('profiles-add')).toBeNull();
+    await fireEvent.press(screen.getByTestId('profiles-show-list'));
+    await screen.findByTestId('profiles-add');
+  });
+
+  it('the add button works even when the list could not be loaded', async () => {
+    server.profiles = null as never; // the list request fails
+    await openSheet();
+    await fireEvent.press(screen.getByTestId('profiles-add'));
+    await screen.findByTestId('profile-form');
+  });
+
   it('picking a profile: later requests carry it and the screens load again', async () => {
     server.profiles = [profile('p1', 'Asosiy', true), profile('p2', 'Sultonbek')];
     await openSheet();
