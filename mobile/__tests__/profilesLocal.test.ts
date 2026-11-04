@@ -2,7 +2,7 @@ import { localSnapshot, resetLocalBook, type LocalBook } from '@/local/bridge';
 import { LocalLedger } from '@/local/ledger';
 import { migrate } from '@/local/migrate';
 import { SyncEngine, type RemotePull } from '@/local/sync';
-import { createProfile, removeProfile, renameProfile, selectProfile } from '@/state/profiles';
+import { createProfile, removeProfile, renameProfile, selectProfile, startOver } from '@/state/profiles';
 import { currentBook, useQueue } from '@/state/queue';
 import { useSession } from '@/state/session';
 import { nodeDb } from '../test-utils/nodeDb';
@@ -55,6 +55,38 @@ describe('profiles in the device book', () => {
     expect((await mockDb.first<{ a: number }>('SELECT is_archived AS a FROM profiles WHERE id = ?', first.profileId))?.a).toBe(1);
 
     await expect(removeProfile(second)).rejects.toMatchObject({ code: 'profile.last_active' });
+  });
+
+  it('a guest deletes only the operations: same wallets at zero and same catalog in a fresh profile, old rows kept', async () => {
+    const first = await book();
+    const w = await first.ledger.createWallet(first.profileId, { name: 'Naqd', currency: 'UZS', initialMinor: 500_00 });
+    const cat = await first.ledger.createCategory(first.profileId, { name: 'Kafe' });
+    await first.ledger.createCategory(first.profileId, { name: 'Choy', parentId: cat });
+    await first.ledger.expense(first.profileId, { walletId: w.id, amountMinor: 100_00, categoryId: cat });
+
+    await startOver('operations');
+
+    const fresh = await book();
+    expect(fresh.profileId).not.toBe(first.profileId);
+    const snap = await localSnapshot(fresh);
+    expect(snap.wallets.map((x) => [x.name, x.balance])).toEqual([['Naqd', 0]]);
+    expect(snap.transactions).toEqual([]);
+    const kafe = snap.categories.find((c) => c.name === 'Kafe')!;
+    expect(snap.categories.find((c) => c.name === 'Choy')!.parentId).toBe(kafe.id);
+    expect(snap.categories.filter((c) => c.name === 'Kafe')).toHaveLength(1); // not doubled by the default catalog
+
+    expect((await mockDb.first<{ a: number }>('SELECT is_archived AS a FROM profiles WHERE id = ?', first.profileId))?.a).toBe(1);
+    expect((await mockDb.first<{ n: number }>('SELECT count(*) AS n FROM transactions WHERE profile_id = ?', first.profileId))?.n).toBeGreaterThan(0);
+  });
+
+  it('a guest deletes everything: the fresh profile has only the default catalog', async () => {
+    const first = await book();
+    await first.ledger.createWallet(first.profileId, { name: 'Naqd', currency: 'UZS', initialMinor: 500_00 });
+    await startOver('all');
+    const snap = await localSnapshot(await book());
+    expect(snap.wallets).toEqual([]);
+    expect(snap.categories.length).toBeGreaterThan(0);
+    expect((await mockDb.first<{ n: number }>('SELECT count(*) AS n FROM wallets WHERE profile_id = ?', first.profileId))?.n).toBe(1);
   });
 
   it('what was entered in another profile is still sent while this one is on screen', async () => {

@@ -166,22 +166,23 @@ export class LocalLedger {
     });
   }
 
-  async createProfile(accountId: string, name: string, baseCurrency = 'UZS'): Promise<string> {
+  async createProfile(accountId: string, name: string, baseCurrency = 'UZS', seedDefaults = true): Promise<string> {
     const n = name.trim();
     if (!n || n.length > 60) throw new LedgerError('profile.name', 'Profile name must be 1-60 characters.');
     decimalsOf(baseCurrency);
     return this.db.tx(async () => {
       const count = await this.db.first<{ n: number }>('SELECT count(*) AS n FROM profiles WHERE account_id = ?', accountId);
-      return this.insertProfile(accountId, n, normalizeCurrency(baseCurrency), count?.n ?? 0);
+      return this.insertProfile(accountId, n, normalizeCurrency(baseCurrency), count?.n ?? 0, seedDefaults);
     });
   }
 
-  private async insertProfile(accountId: string, name: string, currency: string, order: number): Promise<string> {
+  private async insertProfile(accountId: string, name: string, currency: string, order: number, seedDefaults = true): Promise<string> {
     const id = uuid();
     const at = this.now();
     await this.db.run(
       'INSERT INTO profiles (id, account_id, name, base_currency, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
       id, accountId, name, currency, order, at, at);
+    if (!seedDefaults) return id;
     // the default catalog travels like anything the user creates, so a linked guest book uploads it with the same ids
     for (const [i, [n, icon, color]] of DEFAULT_CATEGORIES.entries()) {
       const c = uuid();

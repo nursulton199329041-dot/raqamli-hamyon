@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { Platform } from 'react-native';
 import { ApiError } from '@/api/client';
-import { CURRENT_PROFILE_KEY, resetLocalBook } from '@/local/bridge';
+import type { Snapshot } from '@/api/types';
+import { CURRENT_PROFILE_KEY, localSnapshot, resetLocalBook } from '@/local/bridge';
 import { openLocalDb } from '@/offline/sqlite';
 import { getStorage } from '@/offline/storage';
 import { currentBook, useQueue } from './queue';
@@ -111,6 +112,81 @@ export async function removeProfile(id: string): Promise<void> {
   if (list.currentId === id) await selectProfile(next.id);
   if (book && !book.engine) await book.db.run('UPDATE profiles SET is_archived = 1, updated_at = ? WHERE id = ?', new Date().toISOString(), id);
   else await patchOnServer(id, { isArchived: true });
+  await queryClient.invalidateQueries({ queryKey: ['profiles'] });
+}
+
+export type StartOverScope = 'all' | 'operations';
+
+/**
+ * "Delete data" of the profile on screen. The old profile is hidden, not erased, so a wrong tap can be undone from the
+ * database and no history is rewritten: a fresh profile with the same name opens in its place. It gets the default
+ * catalog ('all'), or a copy of the wallets at zero, categories, sources, projects and people ('operations'). The fresh
+ * one is finished before anything changes: if the copy fails, the current profile stays as it was.
+ */
+export async function startOver(scope: StartOverScope): Promise<void> {
+  const list = await loadProfiles();
+  const cur = list.items.find((x) => x.id === list.currentId);
+  if (!cur) throw new ApiError(404, 'profile.not_found', 'Profile not found.');
+  const opening = currentBook();
+  const book = opening && (await opening);
+  if (!book && useQueue.getState().pending.length > 0) throw new ApiError(409, 'profile.busy', 'profile.busy');
+  if (book?.engine) {
+    const waiting = await book.db.first<{ n: number }>("SELECT count(*) AS n FROM sync_outbox WHERE profile_id = ? AND status = 'pending'", cur.id);
+    if (waiting?.n) throw new ApiError(409, 'profile.busy', 'profile.busy');
+  }
+
+  if (book && !book.engine) {
+    const g = await book.ledger.guestBook();
+    if (!g) throw new ApiError(404, 'profile.not_found', 'Profile not found.');
+    const old = scope === 'operations' ? await localSnapshot(book) : null;
+    const fresh = await book.ledger.createProfile(g.accountId, cur.name, cur.baseCurrency, scope === 'all');
+    if (old) {
+      const ids = new Map<string, string>();
+      const categories = old.categories.filter((c) => !c.isArchived);
+      for (const c of [...categories.filter((x) => !x.parentId), ...categories.filter((x) => x.parentId)])
+        ids.set(c.id, await book.ledger.createCategory(fresh, { name: c.name, icon: c.icon, color: c.color, parentId: c.parentId ? ids.get(c.parentId) ?? null : null }));
+      for (const s of old.incomeSources.filter((x) => !x.isArchived)) await book.ledger.createSource(fresh, { name: s.name, icon: s.icon, color: s.color });
+      for (const w of old.wallets.filter((x) => !x.isArchived))
+        await book.ledger.createWallet(fresh, { name: w.name, currency: w.currency, type: w.type, icon: w.icon, color: w.color, allowOverdraft: w.allowOverdraft });
+    }
+    await selectProfile(fresh);
+    await book.db.run('UPDATE profiles SET is_archived = 1, updated_at = ? WHERE id = ?', new Date().toISOString(), cur.id);
+    await queryClient.invalidateQueries({ queryKey: ['profiles'] });
+    return;
+  }
+
+  const old = scope === 'operations' ? await api.get<Snapshot>('/api/sync/pull') : null;
+  const fresh = await api.post<ServerProfile>('/api/profiles', {
+    name: cur.name, baseCurrency: cur.baseCurrency, color: cur.color, icon: cur.icon, seedDefaults: scope === 'all',
+  });
+  try {
+    if (old) {
+      const add = (path: string, body: unknown) => api.request<{ id: string }>('POST', path, { body, headers: { 'X-Profile-Id': fresh.id } });
+      const ids = new Map<string, string>();
+      const categories = old.categories.filter((c) => !c.isArchived);
+      for (const c of [...categories.filter((x) => !x.parentId), ...categories.filter((x) => x.parentId)]) {
+        const made = await add('/api/categories', {
+          name: c.name, icon: c.icon, color: c.color, parentId: c.parentId ? ids.get(c.parentId) ?? null : null,
+          monthlyLimit: c.monthlyLimit ?? null, limitCurrency: c.limitCurrency ?? null,
+        });
+        ids.set(c.id, made.id);
+      }
+      for (const s of old.incomeSources.filter((x) => !x.isArchived)) await add('/api/income-sources', { name: s.name, icon: s.icon, color: s.color });
+      for (const w of old.wallets.filter((x) => !x.isArchived)) {
+        await add('/api/wallets', {
+          name: w.name, type: w.type, currency: w.currency, initialBalance: 0, icon: w.icon, color: w.color,
+          bankName: w.bankName ?? null, maskedNumber: w.maskedNumber ?? null, note: w.note ?? null, allowOverdraft: w.allowOverdraft,
+        });
+      }
+      for (const x of (old.projects ?? []).filter((y) => !y.isArchived)) await add('/api/projects', { name: x.name, icon: x.icon, color: x.color, currency: x.currency, note: x.note ?? null });
+      for (const x of old.people ?? []) await add('/api/people', { name: x.name, phone: x.phone ?? null, note: x.note ?? null });
+    }
+  } catch (e) {
+    await patchOnServer(fresh.id, { isArchived: true }).catch(() => undefined);
+    throw e;
+  }
+  await selectProfile(fresh.id);
+  await patchOnServer(cur.id, { isArchived: true });
   await queryClient.invalidateQueries({ queryKey: ['profiles'] });
 }
 

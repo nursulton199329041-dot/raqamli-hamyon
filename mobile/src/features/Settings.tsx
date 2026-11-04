@@ -19,8 +19,9 @@ import { AppearanceCard } from './AppearanceCard';
 import { ConnectionCard } from './ConnectionCard';
 import { ExportSheet } from './ExportSheet';
 import { ProfilesSheet } from './ProfilesSheet';
+import { WipeSheet } from './WipeSheet';
 
-type Page = 'account' | 'appearance' | 'language' | 'server' | 'updates' | 'profiles' | 'export';
+type Page = 'account' | 'appearance' | 'language' | 'server' | 'updates' | 'profiles' | 'export' | 'wipe';
 
 const LANG_NAME: Record<Lang, string> = { uz: 'O‘zbek', ru: 'Русский', en: 'English' };
 
@@ -124,6 +125,7 @@ export function Settings() {
         <Row testID="open-projects" title={t('projects')} onPress={() => router.push('/projects')} />
         {/* the file is made by the server: an account without a server has nothing to ask */}
         {guest ? null : <Row testID="open-export" title={t('export_data')} hint={t('export_hint')} onPress={() => setPage('export')} />}
+        <Row testID="open-wipe" title={t('wipe_row')} hint={t('wipe_hint')} onPress={() => setPage('wipe')} />
       </Group>
 
       <Group>
@@ -142,6 +144,7 @@ export function Settings() {
 
       <ProfilesSheet visible={page === 'profiles'} onClose={close} />
       <ExportSheet visible={page === 'export'} onClose={close} />
+      <WipeSheet visible={page === 'wipe'} onClose={close} />
 
       <PageSheet title={t('my_account')} visible={page === 'account'} onClose={close}>
         <GlassCard>

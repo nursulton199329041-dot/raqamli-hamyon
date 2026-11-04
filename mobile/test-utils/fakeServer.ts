@@ -273,6 +273,9 @@ export class FakeServer {
   }
 
   profiles: { id: string; name: string; color: string; icon: string; baseCurrency: string; sortOrder: number; isArchived: boolean; revision: number; isCurrent: boolean }[] = [];
+  /** what was created in a profile other than the current one */
+  profileWrites: { path: string; profileId: string; id: string; body: Record<string, unknown> }[] = [];
+  failProfileWrite: string | null = null;
   /** the profile each read was made in */
   profileHeaders: (string | null)[] = [];
 
@@ -345,6 +348,16 @@ export class FakeServer {
       }
       return { transaction: this.txs[this.txs.length - 1] };
     }) as never);
+    const realRequest = api.request.bind(api);
+    const request = jest.spyOn(api, 'request').mockImplementation((async (method: string, path: string, opts: { body?: Record<string, unknown>; headers?: Record<string, string> } = {}) => {
+      const profileId = opts.headers?.['X-Profile-Id'];
+      if (method !== 'POST' || !profileId) return realRequest(method, path, opts as never);
+      await this.gate();
+      if (this.failProfileWrite === path) throw new ApiError(500, 'error', 'copy failed');
+      const id = this.id('copy');
+      this.profileWrites.push({ path, profileId, id, body: opts.body ?? {} });
+      return { id };
+    }) as never);
     const patch = jest.spyOn(api, 'patch').mockImplementation((async (path: string, body: { name?: string; isArchived?: boolean; revision: number }) => {
       await this.gate();
       const m = /^\/api\/profiles\/(.+)$/.exec(path);
@@ -357,6 +370,7 @@ export class FakeServer {
       return { ...row };
     }) as never);
     return () => {
+      request.mockRestore();
       patch.mockRestore();
       get.mockRestore();
       post.mockRestore();

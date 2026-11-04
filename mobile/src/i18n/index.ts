@@ -319,6 +319,36 @@ const T = {
   pick_source: ['Kirim manbasini tanlang', 'Выберите источник дохода', 'Choose an income source'],
   total: ['Jami', 'Итого', 'Total'],
   profiles: ['Profillar', 'Профили', 'Profiles'],
+  wipe_row: ['Ma’lumotlarni o‘chirish', 'Удалить данные', 'Delete data'],
+  wipe_hint: [
+    'Hammasini yoki faqat operatsiyalarni o‘chirib, hisobni boshidan boshlash',
+    'Удалить всё или только операции и начать учёт сначала',
+    'Delete everything or only the operations and start over',
+  ],
+  wipe_title: ['Ma’lumotlarni o‘chirish', 'Удалить данные', 'Delete data'],
+  wipe_text: [
+    '«{name}» profilida barcha operatsiyalarni yoki hamma ma’lumotni o‘chirib, hisobni boshidan boshlash mumkin.',
+    'В профиле «{name}» можно удалить все операции или все данные и начать учёт сначала.',
+    'In “{name}” you can delete all operations or all data and start over.',
+  ],
+  wipe_all: ['HAMMASINI o‘chirish', 'Удалить ВСЁ', 'Delete EVERYTHING'],
+  wipe_ops: ['BARCHA operatsiyalarni o‘chirish', 'Удалить ВСЕ операции', 'Delete ALL operations'],
+  wipe_all_confirm: [
+    '«{name}» profilidagi hamyonlar, toifalar, operatsiyalar va qarzlar ko‘rinmaydigan bo‘ladi. Profil boshlang‘ich holatda ochiladi.',
+    'Кошельки, категории, операции и долги профиля «{name}» больше не будут видны. Профиль откроется с начала.',
+    'Wallets, categories, operations and debts of “{name}” will no longer be shown. The profile starts over.',
+  ],
+  wipe_ops_confirm: [
+    '«{name}» profilidagi operatsiyalar va qarzlar ko‘rinmaydigan bo‘ladi. Hamyonlar va toifalar qoladi, balanslar 0 bo‘ladi.',
+    'Операции и долги профиля «{name}» больше не будут видны. Кошельки и категории останутся, балансы станут 0.',
+    'Operations and debts of “{name}” will no longer be shown. Wallets and categories stay, balances become 0.',
+  ],
+  wipe_note: [
+    'Eski yozuvlar arxivda saqlanadi, ilovadan qaytarib bo‘lmaydi.',
+    'Старые записи сохраняются в архиве, вернуть их из приложения нельзя.',
+    'Old records are kept in an archive; they cannot be brought back from the app.',
+  ],
+  wipe_yes: ['Ha, o‘chirish', 'Да, удалить', 'Yes, delete'],
   profiles_hint: [
     'Hisobni ajratish uchun bir nechta profil oching, masalan shaxsiy va ish',
     'Создайте несколько профилей, чтобы разделить учёт, например личный и рабочий',
