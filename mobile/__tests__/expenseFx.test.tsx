@@ -1,7 +1,6 @@
 import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
 import { loadSavedRate, officialRate, saveRate } from '@/lib/rates';
 import { OperationSheet } from '@/features/OperationSheet';
-import { api } from '@/state/runtime';
 import { History } from '@/features/History';
 import { useSettings } from '@/state/settings';
 import { useUi } from '@/state/ui';
@@ -145,7 +144,6 @@ describe('an expense from a wallet in another currency', () => {
   });
 
   it('correcting a sum expense that was wrongly converted to dollars makes it a plain sum expense again', async () => {
-    const put = jest.spyOn(api, 'put');
     const wrong = {
       id: 'bad', type: 2, amount: 10000, currency: 'UZS', walletId: 'uzs', toAmount: 0.84, toCurrency: 'USD', fxRate: 0.000084,
       categoryId: 'c1', occurredAt: '2026-11-04T10:00:00.000Z', createdAt: '2026-11-04T10:00:00.000Z',
@@ -154,12 +152,13 @@ describe('an expense from a wallet in another currency', () => {
     await renderApp(<OperationSheet />);
     await act(async () => { useUi.getState().openOp({ kind: 'expense', edit: wrong }); });
     await screen.findByTestId('amount-display');
+    await screen.findByText('Karta'); // the wallets are loaded
     expect(screen.queryByTestId('amount-to-display')).toBeNull();
     await save();
-    await waitFor(() => expect(put.mock.calls.some(([path]) => String(path).includes('bad'))).toBe(true));
-    const body = put.mock.calls.find(([path]) => String(path).includes('bad'))![1] as Record<string, unknown>;
-    expect(body).toMatchObject({ walletId: 'uzs', amount: 10000 });
-    expect(body).not.toHaveProperty('toCurrency');
+    await waitFor(() => expect(server.puts.length).toBe(1));
+    expect(server.puts[0]!.path).toBe('/api/transactions/bad/expense');
+    expect(server.puts[0]!.body).toMatchObject({ walletId: 'uzs', amount: 10000 });
+    expect(server.puts[0]!.body).not.toHaveProperty('toCurrency');
   });
 
   it('a wallet in the profile currency stays a plain expense, with no second amount', async () => {
