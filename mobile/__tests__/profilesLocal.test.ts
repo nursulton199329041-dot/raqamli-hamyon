@@ -2,7 +2,7 @@ import { localSnapshot, resetLocalBook, type LocalBook } from '@/local/bridge';
 import { LocalLedger } from '@/local/ledger';
 import { migrate } from '@/local/migrate';
 import { SyncEngine, type RemotePull } from '@/local/sync';
-import { createProfile, selectProfile } from '@/state/profiles';
+import { createProfile, removeProfile, renameProfile, selectProfile } from '@/state/profiles';
 import { currentBook, useQueue } from '@/state/queue';
 import { useSession } from '@/state/session';
 import { nodeDb } from '../test-utils/nodeDb';
@@ -38,6 +38,23 @@ describe('profiles in the device book', () => {
 
     await selectProfile(first.profileId);
     expect((await localSnapshot(await book())).wallets.map((w) => w.name)).toEqual(['Birinchi']);
+  });
+
+  it('a guest renames and deletes on the device: the money stays in the book, and the last profile cannot go', async () => {
+    const first = await book();
+    await first.ledger.createWallet(first.profileId, { name: 'Birinchi', currency: 'UZS', initialMinor: 100_00 });
+    await createProfile('Ikkinchi', 'UZS');
+    const second = (await mockDb.all<{ id: string }>('SELECT id FROM profiles ORDER BY sort_order'))[1]!.id;
+
+    await renameProfile(second, 'Shox');
+    expect((await mockDb.first<{ name: string }>('SELECT name FROM profiles WHERE id = ?', second))?.name).toBe('Shox');
+
+    await removeProfile(first.profileId); // the one on screen: the other opens first
+    expect((await book()).profileId).toBe(second);
+    expect((await mockDb.first<{ n: number }>('SELECT count(*) AS n FROM wallets WHERE profile_id = ?', first.profileId))?.n).toBe(1);
+    expect((await mockDb.first<{ a: number }>('SELECT is_archived AS a FROM profiles WHERE id = ?', first.profileId))?.a).toBe(1);
+
+    await expect(removeProfile(second)).rejects.toMatchObject({ code: 'profile.last_active' });
   });
 
   it('what was entered in another profile is still sent while this one is on screen', async () => {

@@ -46,7 +46,7 @@ async function openSheet() {
 }
 
 describe('home avatar opens the profiles, not the settings', () => {
-  it('several profiles: the list, the current one marked by its initial on the avatar; settings stay behind the gear', async () => {
+  it('several profiles: the list, the current one marked by its initial on the avatar; no way into settings from here', async () => {
     server.profiles = [profile('p1', 'Raqamli nazorat', true), profile('p2', 'Sultonbek')];
     await openSheet();
     expect(mockPush).not.toHaveBeenCalled();
@@ -55,8 +55,7 @@ describe('home avatar opens the profiles, not the settings', () => {
     expect(screen.queryByTestId('profile-form')).toBeNull();
     expect(screen.getByText('R')).toBeTruthy();
 
-    await fireEvent.press(screen.getByTestId('profiles-settings'));
-    expect(mockPush).toHaveBeenCalledWith('/settings');
+    expect(screen.queryByTestId('profiles-settings')).toBeNull();
   });
 
   it('only the automatic first profile: the new-profile form opens; the new profile then appears in the list', async () => {
@@ -106,6 +105,44 @@ describe('home avatar opens the profiles, not the settings', () => {
     await screen.findByText(/aloqa/);
     expect(api.getProfileId()).toBeNull();
     expect(screen.getByTestId('profiles-sheet')).toBeTruthy();
+  });
+
+  it('the pencil renames a profile with the revision the server expects', async () => {
+    server.profiles = [profile('p1', 'Asosiy', true), profile('p2', 'Shox')];
+    await openSheet();
+    await fireEvent.press(await screen.findByTestId('profile-edit-p2'));
+    await screen.findByTestId('profile-edit');
+    await fireEvent.changeText(screen.getByLabelText('Ism'), 'Shoxrux');
+    await fireEvent.press(screen.getByTestId('profile-save'));
+
+    await waitFor(() => expect(server.profiles.find((x) => x.id === 'p2')!.name).toBe('Shoxrux'));
+    await screen.findByTestId('profiles-add');
+  });
+
+  it('deleting asks once more, then only hides the profile; the one on screen is left first', async () => {
+    server.profiles = [profile('p1', 'Asosiy', true), profile('p2', 'Shox')];
+    await openSheet();
+    await fireEvent.press(await screen.findByTestId('profile-edit-p1'));
+    await fireEvent.press(await screen.findByTestId('profile-delete'));
+    await screen.findByTestId('profile-delete-warning');
+    expect(server.profiles.every((x) => !x.isArchived)).toBe(true);
+
+    await fireEvent.press(screen.getByTestId('profile-delete-yes'));
+    await waitFor(() => expect(server.profiles.find((x) => x.id === 'p1')!.isArchived).toBe(true));
+    expect(server.profiles).toHaveLength(2); // nothing erased
+    expect(api.getProfileId()).toBe('p2');
+  });
+
+  it('the last profile cannot be deleted', async () => {
+    server.profiles = [profile('p1', 'Asosiy', true), profile('p2', 'Shox')];
+    server.profiles[1]!.isArchived = true;
+    await openSheet();
+    await fireEvent.press(await screen.findByTestId('profiles-show-list'));
+    await fireEvent.press(await screen.findByTestId('profile-edit-p1'));
+    await fireEvent.press(await screen.findByTestId('profile-delete'));
+    await fireEvent.press(await screen.findByTestId('profile-delete-yes'));
+    await screen.findByText(/Oxirgi profilni/);
+    expect(server.profiles[0]!.isArchived).toBe(false);
   });
 
   it('picking a profile: later requests carry it and the screens load again', async () => {

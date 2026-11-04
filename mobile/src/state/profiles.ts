@@ -9,7 +9,7 @@ import { api, queryClient } from './runtime';
 import { PROFILES_CACHE_KEY, PROFILE_STORE_KEY, useSession } from './session';
 
 export interface ProfileRow { id: string; name: string; color: string; icon: string; baseCurrency: string }
-interface ServerProfile extends ProfileRow { sortOrder: number; isArchived: boolean; isCurrent: boolean }
+interface ServerProfile extends ProfileRow { sortOrder: number; isArchived: boolean; isCurrent: boolean; revision: number }
 export interface ProfileList { items: ProfileRow[]; currentId: string | null }
 
 /** The account's active profiles: from the device's book when there is one (works offline), else from the server. */
@@ -77,6 +77,41 @@ export async function selectProfile(id: string): Promise<void> {
   }
   resetLocalBook();
   await queryClient.resetQueries();
+}
+
+/** The server refuses an edit made over a newer one, so the current revision is read right before it. */
+async function patchOnServer(id: string, patch: { name?: string; isArchived?: boolean }): Promise<void> {
+  const row = (await api.get<ServerProfile[]>('/api/profiles')).find((r) => r.id === id);
+  if (!row) throw new ApiError(404, 'profile.not_found', 'Profile not found.');
+  await api.patch(`/api/profiles/${id}`, { ...patch, revision: row.revision });
+}
+
+export async function renameProfile(id: string, name: string): Promise<void> {
+  const opening = currentBook();
+  const book = opening && (await opening);
+  if (book && !book.engine) await book.db.run('UPDATE profiles SET name = ?, updated_at = ? WHERE id = ?', name, new Date().toISOString(), id);
+  else await patchOnServer(id, { name });
+  await queryClient.invalidateQueries({ queryKey: ['profiles'] });
+}
+
+/**
+ * Deleting a profile hides it (archive): no record is erased. The last profile cannot go, operations not yet sent keep
+ * it until they are delivered, and when the profile on screen goes the next one opens first.
+ */
+export async function removeProfile(id: string): Promise<void> {
+  const list = await loadProfiles();
+  const next = list.items.find((x) => x.id !== id);
+  if (!next) throw new ApiError(409, 'profile.last_active', 'profile.last_active');
+  const opening = currentBook();
+  const book = opening && (await opening);
+  if (book?.engine) {
+    const waiting = await book.db.first<{ n: number }>("SELECT count(*) AS n FROM sync_outbox WHERE profile_id = ? AND status = 'pending'", id);
+    if (waiting?.n) throw new ApiError(409, 'profile.busy', 'profile.busy');
+  }
+  if (list.currentId === id) await selectProfile(next.id);
+  if (book && !book.engine) await book.db.run('UPDATE profiles SET is_archived = 1, updated_at = ? WHERE id = ?', new Date().toISOString(), id);
+  else await patchOnServer(id, { isArchived: true });
+  await queryClient.invalidateQueries({ queryKey: ['profiles'] });
 }
 
 /** A guest's new profile lives on the device; an account's is made by the server (with the default catalog). */

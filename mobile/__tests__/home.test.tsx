@@ -95,6 +95,7 @@ describe('appearance', () => {
 
   it('changes from the Settings screen are saved and restored on the next start', async () => {
     await renderApp(<Settings />);
+    await fireEvent.press(screen.getByTestId('open-appearance'));
     await fireEvent.press(screen.getByLabelText('Rang-barang'));
     await fireEvent.press(screen.getByTestId('down-income'));
     await fireEvent.press(screen.getByTestId('accent-#1FCB8B'));

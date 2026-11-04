@@ -306,6 +306,25 @@ const T = {
   pick_source: ['Kirim manbasini tanlang', 'Выберите источник дохода', 'Choose an income source'],
   total: ['Jami', 'Итого', 'Total'],
   profiles: ['Profillar', 'Профили', 'Profiles'],
+  profiles_hint: [
+    'Hisobni ajratish uchun bir nechta profil oching, masalan shaxsiy va ish',
+    'Создайте несколько профилей, чтобы разделить учёт, например личный и рабочий',
+    'Use several profiles to keep records apart, for example personal and work',
+  ],
+  edit_profile: ['Profilni tahrirlash', 'Изменить профиль', 'Edit profile'],
+  profile_delete_confirm: [
+    '«{name}» ro‘yxatdan olib tashlansinmi? Unga yozilgan operatsiyalar o‘chirilmaydi, bazada saqlanib qoladi.',
+    'Убрать «{name}» из списка? Его операции не удаляются и остаются в базе.',
+    'Remove “{name}” from the list? Its records are not erased and stay in the database.',
+  ],
+  profile_last: ['Oxirgi profilni o‘chirib bo‘lmaydi', 'Нельзя удалить последний профиль', 'The last profile cannot be deleted'],
+  my_account: ['Hisob', 'Аккаунт', 'Account'],
+  main_currency: ['Asosiy valyuta', 'Основная валюта', 'Main currency'],
+  main_currency_hint: [
+    'Boshqa valyutadagi xarajatlar shu valyutaga aylantiriladi',
+    'Расходы в другой валюте пересчитываются в эту',
+    'Expenses in another currency are converted to it',
+  ],
   new_profile: ['Yangi profil', 'Новый профиль', 'New profile'],
   profile_busy: [
     'Avval yuborilmagan operatsiyalar serverga yetib borsin, keyin profilni almashtiring',

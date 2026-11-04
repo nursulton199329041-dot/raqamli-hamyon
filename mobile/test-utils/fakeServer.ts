@@ -345,7 +345,19 @@ export class FakeServer {
       }
       return { transaction: this.txs[this.txs.length - 1] };
     }) as never);
+    const patch = jest.spyOn(api, 'patch').mockImplementation((async (path: string, body: { name?: string; isArchived?: boolean; revision: number }) => {
+      await this.gate();
+      const m = /^\/api\/profiles\/(.+)$/.exec(path);
+      const row = m && this.profiles.find((x) => x.id === m[1]);
+      if (!row) throw new ApiError(404, 'not_found', `PATCH ${path}`);
+      if (row.revision !== body.revision) throw new ApiError(409, 'conflict.stale', 'stale');
+      if (body.name) row.name = body.name;
+      if (body.isArchived !== undefined) row.isArchived = body.isArchived;
+      row.revision += 1;
+      return { ...row };
+    }) as never);
     return () => {
+      patch.mockRestore();
       get.mockRestore();
       post.mockRestore();
       put.mockRestore();

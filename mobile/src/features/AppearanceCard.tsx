@@ -40,8 +40,6 @@ export function AppearanceCard() {
 
   return (
     <GlassCard testID="appearance">
-      <Text style={[type.headline, { color: p.text }]}>{t('appearance')}</Text>
-
       {/* live preview: the three home icons in the current look */}
       <View testID="appearance-preview" style={{ flexDirection: 'row', justifyContent: 'space-around', paddingVertical: space.md }}>
         {(['income', 'wallets', 'expense'] as HomeSection[]).map((s) => (
