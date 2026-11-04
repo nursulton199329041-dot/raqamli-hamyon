@@ -28,13 +28,13 @@ export function FilterButton({ testID, count, onPress }: { testID: string; count
 }
 
 /** The filter sheet's title line with its close button. */
-export function FilterHeader({ onClose }: { onClose(): void }) {
+export function FilterHeader({ onClose, title }: { onClose(): void; title?: string }) {
   const t = useT();
   const p = usePalette();
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: space.sm }}>
       <View style={{ width: 42 }} />
-      <Text accessibilityRole="header" style={[type.headline, { flex: 1, textAlign: 'center', color: p.text }]}>{t('filter')}</Text>
+      <Text accessibilityRole="header" style={[type.headline, { flex: 1, textAlign: 'center', color: p.text }]}>{title ?? t('filter')}</Text>
       <Tap testID="filter-close" label={t('close')} onPress={onClose} style={round(p, false)}>
         <Glyph name="close" color={p.text} size={18} />
       </Tap>

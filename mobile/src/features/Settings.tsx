@@ -17,9 +17,10 @@ import { useSettings, type ThemeMode } from '@/state/settings';
 import { runtimeInfo, useUpdates } from '@/updates/updates';
 import { AppearanceCard } from './AppearanceCard';
 import { ConnectionCard } from './ConnectionCard';
+import { ExportSheet } from './ExportSheet';
 import { ProfilesSheet } from './ProfilesSheet';
 
-type Page = 'account' | 'appearance' | 'language' | 'server' | 'updates' | 'profiles';
+type Page = 'account' | 'appearance' | 'language' | 'server' | 'updates' | 'profiles' | 'export';
 
 const LANG_NAME: Record<Lang, string> = { uz: 'O‘zbek', ru: 'Русский', en: 'English' };
 
@@ -121,6 +122,8 @@ export function Settings() {
         {/* projects and debts left the main navigation; their data, screens and APIs are unchanged */}
         <Row testID="open-debts" title={t('debts')} onPress={() => router.push('/debts')} />
         <Row testID="open-projects" title={t('projects')} onPress={() => router.push('/projects')} />
+        {/* the file is made by the server: an account without a server has nothing to ask */}
+        {guest ? null : <Row testID="open-export" title={t('export_data')} hint={t('export_hint')} onPress={() => setPage('export')} />}
       </Group>
 
       <Group>
@@ -138,6 +141,7 @@ export function Settings() {
       <Text style={{ color: p.textSecondary, fontSize: 13, paddingHorizontal: 16 }}>{t('version')}: {info.version} ({info.build})</Text>
 
       <ProfilesSheet visible={page === 'profiles'} onClose={close} />
+      <ExportSheet visible={page === 'export'} onClose={close} />
 
       <PageSheet title={t('my_account')} visible={page === 'account'} onClose={close}>
         <GlassCard>

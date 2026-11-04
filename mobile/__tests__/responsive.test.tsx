@@ -135,7 +135,9 @@ describe('reports screen with real (fake-ledger) data', () => {
     await layoutAll();
     expect(JSON.stringify(screen.toJSON())).not.toMatch(/"origin"|"rotation"/);
 
-    await fireEvent.press(screen.getByTestId('kind-expense'));
+    await fireEvent.press(screen.getByTestId('open-filters'));
+    await fireEvent.press(await screen.findByTestId('kind-expense'));
+    await fireEvent.press(screen.getByTestId('close-filters'));
     await screen.findByTestId('distribution-UZS');
     await layoutAll();
     expect(JSON.stringify(screen.toJSON())).toMatch(/400\s000/); // donut centre: total expense (narrow no-break space)

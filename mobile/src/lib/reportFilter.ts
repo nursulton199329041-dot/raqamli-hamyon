@@ -137,6 +137,37 @@ export function toQuery(f: ReportFilter, now = new Date()): Query {
   };
 }
 
+export type ExportPeriod = 'month' | 'lastMonth' | 'year' | 'lastYear' | 'all' | 'custom';
+export const EXPORT_PERIODS: ExportPeriod[] = ['month', 'lastMonth', 'year', 'lastYear', 'all', 'custom'];
+
+export interface ExportRange { from?: Date; to?: Date; granularity: Granularity }
+
+/** The file's period; null when the typed dates are not valid. "All time" sends no dates: the server takes everything. */
+export function exportRange(p: ExportPeriod, now: Date, customFrom?: string, customTo?: string): ExportRange | null {
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  const span = (a: Date, b: Date, granularity: Granularity): ExportRange => ({ from: startOfDay(a), to: endOfDay(b), granularity });
+  switch (p) {
+    case 'month': return span(new Date(y, m, 1), new Date(y, m + 1, 0), 'day');
+    case 'lastMonth': return span(new Date(y, m - 1, 1), new Date(y, m, 0), 'day');
+    case 'year': return span(new Date(y, 0, 1), new Date(y, 11, 31), 'month');
+    case 'lastYear': return span(new Date(y - 1, 0, 1), new Date(y - 1, 11, 31), 'month');
+    case 'all': return { granularity: 'month' };
+    default: {
+      const a = parseDay(customFrom);
+      const b = parseDay(customTo);
+      if (!a || !b || a > b) return null;
+      return span(a, b, (b.getTime() - a.getTime()) / 86_400_000 > 62 ? 'month' : 'day');
+    }
+  }
+}
+
+/** "01.11.2026 — 30.11.2026" */
+export function rangeText(r: ExportRange): string {
+  const dmy = (d: Date) => `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
+  return r.from && r.to ? `${dmy(r.from)} — ${dmy(r.to)}` : '';
+}
+
 /** How many non-default filters are active (badge on the filter button). */
 export function activeFilterCount(f: ReportFilter): number {
   return [f.walletId, f.sourceId, f.categoryId, f.subCategoryId, f.projectId].filter(Boolean).length;

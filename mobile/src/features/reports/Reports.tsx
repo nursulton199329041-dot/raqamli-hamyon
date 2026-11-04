@@ -15,7 +15,7 @@ import type { Lang } from '@/i18n';
 import { monthName, monthShort } from '@/lib/dates';
 import { exportReport, type ExportFormat } from '@/lib/exporter';
 import { fmtMoney } from '@/lib/money';
-import { activeFilterCount, resolveRange, toQuery, type Granularity, type ReportKind } from '@/lib/reportFilter';
+import { activeFilterCount, rangeLabel, resolveRange, toQuery, type Granularity } from '@/lib/reportFilter';
 import { useBudgets, useCatalog } from '@/state/data';
 import {
   useReportBalance, useReportBreakdown, useReportSeries, useReportSummary, useReportTransactions, useReportWallets, useReports,
@@ -24,7 +24,7 @@ import { useSession } from '@/state/session';
 import { useSettings } from '@/state/settings';
 import { CategoryGroups } from './CategoryGroups';
 import { FilterButton } from '../FilterSection';
-import { FilterSheet, KIND_LABEL, KindTabs, Panel, PeriodBar, StatGrid, TxList, type Stat } from './ReportControls';
+import { FilterSheet, KIND_LABEL, Panel, StatGrid, TxList, type Stat } from './ReportControls';
 
 /** Server period key (client calendar: 2026, 2026-10, 2026-10-27) -> [year, month0, day]. */
 function parts(period: string): [number, number, number] {
@@ -64,10 +64,7 @@ export function Reports() {
   const user = useSession((s) => s.user);
   const filter = useReports((s) => s.filter);
   const set = useReports((s) => s.set);
-  const [sheet, setSheet] = useState<null | 'filters' | 'custom'>(null);
-  const [busy, setBusy] = useState(false);
-  const [note, setNote] = useState<string | null>(null);
-  const [err, setErr] = useState<string | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   // Currencies are never mixed: a wallet filter fixes the currency, otherwise the chosen one (default currency first).
   const currencies = [...new Set(cat.wallets.map((w) => w.currency))]
@@ -97,22 +94,6 @@ export function Reports() {
   const days = elapsedDays(range.from, range.to);
   const pts: SeriesPoint[] = (series.data ?? []).filter((x) => x.currency === currency);
   const topRow = (rows?: BreakdownRow[]) => rows?.filter((r) => r.currency === currency)[0];
-
-  const doExport = async (format: ExportFormat) => {
-    setErr(null);
-    setNote(null);
-    setBusy(true);
-    try {
-      const name = await exportReport(format, lang, {
-        ...q, type: kind === 'income' ? 1 : kind === 'expense' ? 2 : undefined, granularity: g,
-      });
-      setNote(t('exported', { name }));
-    } catch (e) {
-      setErr(e instanceof ApiError && e.isNetwork ? t('net_error') : t('download_failed'));
-    } finally {
-      setBusy(false);
-    }
-  };
 
   const tipPair = (i: number): Tip => {
     const x = pts[i];
@@ -207,35 +188,18 @@ export function Reports() {
   return (
     <View style={{ flex: 1 }}>
       <ScrollView testID="reports-scroll" contentContainerStyle={{ paddingHorizontal: L.gutter, paddingTop: space.lg, paddingBottom: L.bottomSpace + space.lg, gap: space.md }}>
-        {/* title + filter, as in History */}
+        {/* title + filter, as in History; everything else about what is shown lives behind the funnel */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', minHeight: 42 }}>
           <Text accessibilityRole="header" style={{ color: p.text, fontSize: 17, fontWeight: '700' }}>{t('reports')}</Text>
           <View style={{ position: 'absolute', right: 0 }}>
-            <FilterButton testID="open-filters" count={filters} onPress={() => setSheet('filters')} />
+            <FilterButton testID="open-filters" count={filters} onPress={() => setSheetOpen(true)} />
           </View>
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: space.sm, flexWrap: 'wrap' }}>
-          {busy ? <ActivityIndicator color={p.accent} /> : null}
-          <Tap testID="export-xlsx" label={t('export_excel')} onPress={() => void doExport('xlsx')} disabled={busy}
-            style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: space.md, minHeight: 38, borderRadius: radii.pill, backgroundColor: Ink.income }}>
-            <Glyph name="share" color="#fff" size={16} />
-            <Text style={[type.callout, { color: '#fff', fontWeight: '800' }]}>{t('export_excel')}</Text>
-          </Tap>
-          <Chip label="PDF" selected={false} onPress={() => void doExport('pdf')} />
-          <Chip label="CSV" selected={false} onPress={() => void doExport('csv')} />
-        </View>
-        {note ? <Text testID="export-note" style={[type.footnote, { color: Ink.income }]}>{note}</Text> : null}
-        <ErrorText>{err}</ErrorText>
-
-        <KindTabs value={kind} onChange={(k: ReportKind) => set({ kind: k })} />
-        <PeriodBar onCustom={() => setSheet('custom')} />
-
-        {/* currency (charts never mix currencies) + filters */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, flexWrap: 'wrap' }}>
-          {currencies.length > 1 && !walletCur ? currencies.map((c) => (
-            <Chip key={c} label={c} selected={c === currency} onPress={() => set({ currency: c })} />
-          )) : currency ? <Chip label={currency} selected onPress={() => undefined} /> : null}
-        </View>
+        <Tap testID="report-summary" label={t('filter')} haptic={false} onPress={() => setSheetOpen(true)}>
+          <Text numberOfLines={1} style={[type.footnote, { color: p.textSecondary, textAlign: 'center' }]}>
+            {t(KIND_LABEL[kind])} · {rangeLabel(lang, filter)}{currency ? ` · ${currency}` : ''}
+          </Text>
+        </Tap>
         {named.length > 0 ? (
           <Wrap>
             {named.map((n) => (
@@ -247,11 +211,8 @@ export function Reports() {
             ))}
           </Wrap>
         ) : null}
-        {currencies.length > 1 ? <Text style={[type.caption, { color: p.textSecondary }]}>{t('currency_note')}</Text> : null}
 
-        <StatGrid items={stats} loading={loadingStats} />
-
-        {/* charts */}
+        {/* charts first, then the figures and the report */}
         {kind === 'income' || kind === 'expense' || kind === 'compare' || kind === 'net' ? (
           <Panel testID="chart-panel" title={t(KIND_LABEL[kind])}
             right={kind === 'compare' ? (
@@ -315,6 +276,8 @@ export function Reports() {
             })()}
           </Panel>
         ) : null}
+
+        <StatGrid items={stats} loading={loadingStats} />
 
         {kind === 'income' ? (
           <Panel title={`${t('breakdown_by')} · ${t('income_source')}`}>
@@ -422,7 +385,7 @@ export function Reports() {
         )}
       </ScrollView>
 
-      <FilterSheet key={sheet ?? 'closed'} visible={sheet !== null} customFirst={sheet === 'custom'} onClose={() => setSheet(null)} />
+      {sheetOpen ? <FilterSheet visible currencies={currencies} currency={currency} onClose={() => setSheetOpen(false)} /> : null}
     </View>
   );
 }

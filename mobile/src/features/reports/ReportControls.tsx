@@ -124,7 +124,7 @@ const navBtn = (p: ReturnType<typeof usePalette>) => ({
  * Wallet, income source, category -> sub-category, project and a custom date range, all in one sheet.
  * Currency is chosen outside (always visible) because charts never mix currencies.
  */
-export function FilterSheet({ visible, onClose, customFirst }: { visible: boolean; onClose(): void; customFirst: boolean }) {
+export function FilterSheet({ visible, onClose, currencies, currency }: { visible: boolean; onClose(): void; currencies: string[]; currency?: string }) {
   const t = useT();
   const p = usePalette();
   const cat = useCatalog();
@@ -136,6 +136,8 @@ export function FilterSheet({ visible, onClose, customFirst }: { visible: boolea
   const [to, setTo] = useState(filter.customTo ?? dayString(r.to));
   const [err, setErr] = useState<string | null>(null);
   const subs = cat.childrenOf(filter.categoryId);
+  const [showDates, setShowDates] = useState(filter.preset === 'custom');
+  const walletCurrency = cat.wallet(filter.walletId)?.currency;
 
   const applyDates = () => {
     if (!parseDay(from) || !parseDay(to)) return setErr(t('date_invalid'));
@@ -173,7 +175,20 @@ export function FilterSheet({ visible, onClose, customFirst }: { visible: boolea
         </View>
       )}>
       <FilterHeader onClose={onClose} />
-      {customFirst ? [dates, chips] : [chips, dates]}
+      {/* what the Reports page shows: its type, period and currency (charts never mix currencies) */}
+      <Label>{t('report_type')}</Label>
+      <KindTabs value={filter.kind} onChange={(k) => set({ kind: k })} />
+      <Label>{t('period')}</Label>
+      <PeriodBar onCustom={() => setShowDates(true)} />
+      {showDates ? dates : null}
+      {currencies.length > 1 && !walletCurrency ? (
+        <>
+          <Label>{t('currency')}</Label>
+          <Wrap>{currencies.map((c) => <Chip key={c} label={c} selected={c === currency} onPress={() => set({ currency: c })} />)}</Wrap>
+          <Text style={[type.caption, { color: p.textSecondary, marginTop: space.xs }]}>{t('currency_note')}</Text>
+        </>
+      ) : null}
+      {chips}
     </Sheet>
   );
 }

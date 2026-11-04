@@ -193,6 +193,7 @@ describe('reports screen', () => {
 
   it('switching the report type and the currency recomputes everything from the same filter', async () => {
     await renderApp(<Reports />);
+    await fireEvent.press(await screen.findByTestId('open-filters'));
     await fireEvent.press(await screen.findByTestId('kind-compare'));
     await waitFor(() => expect(stat('income')).toHaveTextContent(`2${NB}000${NB}000 UZS`));
     expect(stat('net')).toHaveTextContent(`+1${NB}600${NB}000 UZS`);
@@ -213,7 +214,9 @@ describe('reports screen', () => {
     useReports.setState({ filter: { kind: 'balance', preset: 'month', anchor: now.toISOString() } });
     await renderApp(<Reports />);
     await waitFor(() => expect(stat('closing')).toHaveTextContent(`5${NB}000${NB}000 UZS`));
-    await fireEvent.press(screen.getByTestId('kind-debts'));
+    await fireEvent.press(screen.getByTestId('open-filters'));
+    await fireEvent.press(await screen.findByTestId('kind-debts'));
+    await fireEvent.press(screen.getByTestId('close-filters'));
     await waitFor(() => expect(stat('i-owe')).toHaveTextContent(`700${NB}000 UZS`));
     expect(stat('borrowed')).toHaveTextContent(`700${NB}000 UZS`);
   });
@@ -237,21 +240,6 @@ describe('reports screen', () => {
     expect(tip).toHaveTextContent(/Kirim/);
   });
 
-  it('Excel export sends exactly the on-screen filter and shows the server file name', async () => {
-    const download = jest.spyOn(api, 'download').mockResolvedValue({ bytes: new ArrayBuffer(4), name: 'RaqamliHamyon_2026-10_Oylik_Xarajat_UZS.xlsx' });
-    try {
-      useReports.setState({ filter: { kind: 'expense', preset: 'month', anchor: now.toISOString(), categoryId: 'c1' } });
-      await renderApp(<Reports />);
-      await fireEvent.press(await screen.findByTestId('export-xlsx'));
-      await waitFor(() => expect(download).toHaveBeenCalled());
-      const q = download.mock.calls[0]![1] as Record<string, unknown>;
-      expect(q).toMatchObject({ format: 'xlsx', lang: 'uz', type: 2, categoryId: 'c1', currency: 'UZS', from: toQuery(useReports.getState().filter).from });
-      expect(await screen.findByTestId('export-note')).toHaveTextContent(/RaqamliHamyon_2026-10_Oylik_Xarajat_UZS\.xlsx/);
-      expect(mockWritten).toContainEqual({ name: 'RaqamliHamyon_2026-10_Oylik_Xarajat_UZS.xlsx', bytes: 4 }); // saved under the server's name
-    } finally {
-      download.mockRestore();
-    }
-  });
 
   it.each([
     ['uz', 'Hisobot', 'Xarajatlar', 'Jami xarajat'],
