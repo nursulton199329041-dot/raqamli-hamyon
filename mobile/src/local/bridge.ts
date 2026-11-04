@@ -45,7 +45,9 @@ async function openGuest(): Promise<LocalBook | null> {
     const acc = await db.first<{ kind: string }>('SELECT kind FROM accounts ORDER BY created_at LIMIT 1');
     if (acc && acc.kind !== 'local') return null; // this device's book belongs to an account: sign in to see it
     const { profileId } = await ledger.ensureLocalAccount();
-    return { db, ledger, profileId, engine: null };
+    const chosen = (await db.first<{ v: string }>('SELECT v FROM kv WHERE k = ?', CURRENT_PROFILE_KEY))?.v;
+    const usable = chosen && (await db.first<{ id: string }>('SELECT id FROM profiles WHERE id = ? AND is_archived = 0', chosen));
+    return { db, ledger, profileId: usable ? chosen : profileId, engine: null };
   } catch (e) {
     await logFailure(e);
     return null;
@@ -94,6 +96,7 @@ async function open(user: UserProfile): Promise<LocalBook | null> {
     const chosen = (await db.first<{ v: string }>('SELECT v FROM kv WHERE k = ?', CURRENT_PROFILE_KEY))?.v;
     const profileId = (chosen && known.some((k) => k.id === chosen) ? chosen : null) ?? profiles?.find((p) => p.isCurrent)?.id ?? known[0]?.id;
     if (!profileId || !known.some((k) => k.id === profileId)) return null;
+    api.setProfileId(profileId); // what still goes straight to the server (exports) works in the same profile
     return { db, ledger, profileId, engine: new SyncEngine(db, keepProjects(db, httpTransport(api))) };
   } catch (e) {
     await logFailure(e);

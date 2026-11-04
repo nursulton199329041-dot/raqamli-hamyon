@@ -17,9 +17,12 @@ export interface Tokens { access: string; refresh: string }
 /** Minimal typed REST client with transparent single-flight refresh-token rotation. */
 export class ApiClient {
   private tokens: Tokens | null = null;
+  private profileId: string | null = null;
   private refreshing: Promise<boolean> | null = null;
   onTokens?: (t: Tokens | null) => void;
   onExpired?: () => void;
+  /** the remembered profile no longer exists for this account (archived elsewhere, another user signed in) */
+  onProfileGone?: () => void;
 
   constructor(public baseUrl: string) {}
 
@@ -28,6 +31,14 @@ export class ApiClient {
   }
   getTokens() {
     return this.tokens;
+  }
+
+  /** The financial profile every request works in; null = the account's first profile. */
+  setProfileId(id: string | null) {
+    this.profileId = id;
+  }
+  getProfileId() {
+    return this.profileId;
   }
 
   private url(path: string, q?: Query): string {
@@ -42,7 +53,7 @@ export class ApiClient {
   }
 
   private async raw(method: string, path: string, body?: unknown, q?: Query, idem?: string, extra?: Record<string, string>): Promise<Response> {
-    const headers: Record<string, string> = { 'Content-Type': 'application/json', ...extra };
+    const headers: Record<string, string> = { 'Content-Type': 'application/json', ...(this.profileId ? { 'X-Profile-Id': this.profileId } : {}), ...extra };
     if (this.tokens) headers.Authorization = `Bearer ${this.tokens.access}`;
     if (idem) headers['Idempotency-Key'] = idem;
     const ctrl = new AbortController();
@@ -94,6 +105,15 @@ export class ApiClient {
       this.tokens = null;
       this.onTokens?.(null);
       this.onExpired?.();
+    }
+    // the server refused the request before doing anything, so asking again in the first profile is safe
+    if (res.status === 404 && this.profileId && !opts.headers?.['X-Profile-Id']) {
+      const gone = await res.clone().json().then((j: { code?: string }) => j.code === 'profile.not_found', () => false);
+      if (gone) {
+        this.profileId = null;
+        this.onProfileGone?.();
+        return this.request<T>(method, path, opts, retry);
+      }
     }
     if (res.ok) {
       if (res.status === 204) return undefined as T;

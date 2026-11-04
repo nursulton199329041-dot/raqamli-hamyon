@@ -1,0 +1,78 @@
+import { useQuery } from '@tanstack/react-query';
+import { Platform } from 'react-native';
+import { ApiError } from '@/api/client';
+import { CURRENT_PROFILE_KEY, resetLocalBook } from '@/local/bridge';
+import { openLocalDb } from '@/offline/sqlite';
+import { getStorage } from '@/offline/storage';
+import { currentBook, useQueue } from './queue';
+import { api, queryClient } from './runtime';
+import { PROFILE_STORE_KEY, useSession } from './session';
+
+export interface ProfileRow { id: string; name: string; color: string; icon: string; baseCurrency: string }
+interface ServerProfile extends ProfileRow { sortOrder: number; isArchived: boolean; isCurrent: boolean }
+export interface ProfileList { items: ProfileRow[]; currentId: string | null }
+
+/** The account's active profiles: from the device's book when there is one (works offline), else from the server. */
+async function loadProfiles(): Promise<ProfileList> {
+  const opening = currentBook();
+  const book = opening && (await opening);
+  if (!book) {
+    const rows = await api.get<ServerProfile[]>('/api/profiles');
+    const items = rows.filter((r) => !r.isArchived);
+    return { items, currentId: items.find((r) => r.isCurrent)?.id ?? items[0]?.id ?? null };
+  }
+  const user = useSession.getState().user;
+  if (book.engine && user) {
+    try {
+      await book.ledger.adoptCloudAccount(user, await api.get<ServerProfile[]>('/api/profiles'));
+    } catch {
+      /* offline: the list the device already knows */
+    }
+  }
+  const items = await book.db.all<ProfileRow>(
+    'SELECT id, name, color, icon, base_currency AS baseCurrency FROM profiles WHERE is_archived = 0 ORDER BY sort_order, created_at');
+  return { items, currentId: book.profileId };
+}
+
+export function useProfiles() {
+  return useQuery({ queryKey: ['profiles'], queryFn: loadProfiles, staleTime: 60_000 });
+}
+
+/**
+ * Opens another profile: everything on screen is loaded again from it. A server-only device with unsent operations
+ * must deliver them first, since they carry no profile of their own and would land in the new one.
+ */
+export async function selectProfile(id: string): Promise<void> {
+  const opening = currentBook();
+  const book = opening && (await opening);
+  if (!book && useQueue.getState().pending.length > 0) throw new ApiError(409, 'profile.busy', 'profile.busy');
+  if (book?.engine !== null) {
+    // a guest (engine null) has no server to tell
+    api.setProfileId(id);
+    const store = await getStorage();
+    await store.set(PROFILE_STORE_KEY, id);
+    await store.remove('snapshot'); // the offline copy of the previous profile
+  }
+  if (Platform.OS !== 'web') {
+    try {
+      await (await openLocalDb()).run('INSERT OR REPLACE INTO kv (k, v) VALUES (?, ?)', CURRENT_PROFILE_KEY, id);
+    } catch (e) {
+      if (book) throw e; // without a device book the server path above is all that matters
+    }
+  }
+  resetLocalBook();
+  await queryClient.resetQueries();
+}
+
+/** A guest's new profile lives on the device; an account's is made by the server (with the default catalog). */
+export async function createProfile(name: string, baseCurrency: string): Promise<void> {
+  const opening = currentBook();
+  const book = opening && (await opening);
+  if (book && !book.engine) {
+    const g = await book.ledger.guestBook();
+    if (g) await book.ledger.createProfile(g.accountId, name, baseCurrency);
+  } else {
+    await api.post('/api/profiles', { name, baseCurrency });
+  }
+  await queryClient.invalidateQueries({ queryKey: ['profiles'] });
+}

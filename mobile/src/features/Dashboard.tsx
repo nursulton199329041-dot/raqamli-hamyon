@@ -1,5 +1,4 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useRouter } from 'expo-router';
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { ActivityIndicator, RefreshControl, Text, View, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
@@ -14,19 +13,21 @@ import { CONTENT_MAX, SIDEBAR_W, useScreenLayout } from '@/design/layout';
 import { useLook } from '@/design/look';
 import { Sheet } from '@/design/Sheet';
 import { EmptyState, ErrorState, LoadingState } from '@/design/States';
-import { Ink, usePalette, useT, type Palette } from '@/design/theme';
+import { Ink, usePalette, useT } from '@/design/theme';
 import { motion, radii, space, type } from '@/design/tokens';
 import { DragRow, DropZone, Draggable, useDrag, type DragPayload } from '@/dnd/DragDrop';
 import type { Lang } from '@/i18n';
 import { monthShort } from '@/lib/dates';
 import { fitMoney, fmtMoney } from '@/lib/money';
 import { useBreakdown, useCatalog, useSnapshot, type Period } from '@/state/data';
+import { useProfiles } from '@/state/profiles';
 import { useQueue } from '@/state/queue';
 import { useSession } from '@/state/session';
 import { useSettings, type HomeSection } from '@/state/settings';
 import { useUi, type OpKind } from '@/state/ui';
 import { patchWallet } from '@/state/writes';
 import { expenseGrid } from './expenseGrid';
+import { ProfilesSheet } from './ProfilesSheet';
 import { UpdateBanner } from './UpdateBanner';
 
 type Amounts = { currency: string; total: number }[];
@@ -68,11 +69,6 @@ export function periodLabel(lang: Lang, period: Period, t: (k: 'all') => string,
   }
 }
 
-const headerButton = (p: Palette) => ({
-  width: 40, height: 40, borderRadius: 20, alignItems: 'center' as const, justifyContent: 'center' as const,
-  backgroundColor: p.glassFill, borderWidth: 1, borderColor: p.glassBorder,
-});
-
 const SECTION_COLOR: Record<HomeSection, string> = { income: Ink.income, wallets: Ink.transfer, expense: Ink.expense };
 
 /**
@@ -88,7 +84,6 @@ export function Dashboard() {
   const lang = useSettings((s) => s.lang);
   const order = useSettings((s) => s.appearance.sectionOrder);
   const hidden = useSettings((s) => s.appearance.hiddenSections);
-  const router = useRouter();
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();
   const cat = useCatalog();
@@ -96,6 +91,9 @@ export function Dashboard() {
   const user = useSession((s) => s.user);
   const [period, setPeriod] = useState<Period>('month');
   const [periodMenu, setPeriodMenu] = useState(false);
+  const [profilesOpen, setProfilesOpen] = useState(false);
+  const profiles = useProfiles().data;
+  const currentProfile = profiles?.items.find((x) => x.id === profiles.currentId);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const incomeBy = amountsById(useBreakdown('source', period, 1).data);
   const expenseBy = amountsById(useBreakdown('category', period, 2).data);
@@ -224,12 +222,17 @@ export function Dashboard() {
         >
           <UpdateBanner />
 
-          {/* compact header: profile | name + sync state | period | sync | settings */}
+          {/* compact header: profile + sync | name + sync state */}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
-            <Tap label={user?.displayName ?? 'account'} onPress={() => router.push('/settings')}
-              style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: `${p.accent}29`, borderWidth: 1, borderColor: `${p.accent}66` }}>
-              <Text style={[type.headline, { color: p.accent }]}>{(user?.displayName ?? '?').slice(0, 1).toUpperCase()}</Text>
-            </Tap>
+            <View testID="profile-pill" style={{ flexDirection: 'row', alignItems: 'center', height: 44, borderRadius: 22, padding: 3, gap: 2, backgroundColor: p.glassFill, borderWidth: 1, borderColor: p.glassBorder }}>
+              <Tap testID="profile-button" label={t('profiles')} onPress={() => setProfilesOpen(true)}
+                style={{ width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: p.textSecondary }}>
+                <Text style={[type.callout, { color: p.text }]}>{(currentProfile?.name ?? user?.displayName ?? '?').slice(0, 1).toUpperCase()}</Text>
+              </Tap>
+              <Tap testID="sync-button" label={t('sync_now')} onPress={sync} style={{ width: 40, height: 36, alignItems: 'center', justifyContent: 'center' }}>
+                {snap.isFetching || queue.syncing ? <ActivityIndicator size="small" color={p.textSecondary} /> : <Glyph name="sync" color={p.text} size={22} />}
+              </Tap>
+            </View>
             <View style={{ flex: 1, minWidth: 0 }}>
               <Text numberOfLines={1} style={[type.headline, { color: p.text, fontSize: 17 * look.fontScale }]}>{t('app')}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs }}>
@@ -237,12 +240,6 @@ export function Dashboard() {
                 <Text testID="sync-status" numberOfLines={1} style={[type.caption, { color: p.textSecondary, flexShrink: 1 }]}>{status}</Text>
               </View>
             </View>
-            <Tap testID="sync-button" label={t('sync_now')} onPress={sync} style={headerButton(p)}>
-              {snap.isFetching || queue.syncing ? <ActivityIndicator size="small" color={p.textSecondary} /> : <Glyph name="sync" color={p.text} size={18} />}
-            </Tap>
-            <Tap label={t('settings')} onPress={() => router.push('/settings')} style={headerButton(p)}>
-              <Glyph name="settings" color={p.text} size={18} />
-            </Tap>
           </View>
           <Tap testID="period-button" label={periodLabel(lang, period, () => t('all'))} onPress={() => setPeriodMenu(true)} containerStyle={{ alignSelf: 'flex-start' }}
             style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs, paddingHorizontal: space.md, minHeight: 34, borderRadius: radii.pill, backgroundColor: p.glassFill, borderWidth: 1, borderColor: p.glassBorder }}>
@@ -261,6 +258,8 @@ export function Dashboard() {
           {order.filter((s) => !hidden.includes(s)).map((s) => sections[s])}
         </ScrollView>
       </View>
+
+      <ProfilesSheet visible={profilesOpen} onClose={() => setProfilesOpen(false)} />
 
       <Sheet visible={periodMenu} onClose={() => setPeriodMenu(false)}>
         <View style={{ gap: 8 }}>

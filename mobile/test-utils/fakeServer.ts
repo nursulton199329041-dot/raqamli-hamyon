@@ -272,12 +272,18 @@ export class FakeServer {
     if (this.offline) throw new ApiError(0, 'network', 'Server bilan aloqa yo‘q');
   }
 
+  profiles: { id: string; name: string; color: string; icon: string; baseCurrency: string; sortOrder: number; isArchived: boolean; revision: number; isCurrent: boolean }[] = [];
+  /** the profile each read was made in */
+  profileHeaders: (string | null)[] = [];
+
   install(): () => void {
     __setStorageForTests(memStorage());
     useQueue.setState({ pending: [], online: true, syncing: false });
     queryClient.clear();
     const get = jest.spyOn(api, 'get').mockImplementation((async (path: string, q?: Record<string, unknown>) => {
       await this.gate();
+      this.profileHeaders.push(api.getProfileId());
+      if (path === '/api/profiles') return this.profiles;
       if (path === '/api/sync/pull') return this.snapshot();
       if (path === '/api/analytics/breakdown') return this.breakdown(String(q?.by), Number(q?.type ?? 2));
       if (path === '/api/analytics/budgets') return [];
@@ -294,6 +300,12 @@ export class FakeServer {
         const ops = (body?.operations ?? []) as PushOp[];
         this.pushes.push(...ops);
         return { results: ops.map((o) => ({ clientOperationId: o.clientOperationId, ...this.apply(o) })) };
+      }
+      if (path === '/api/profiles') {
+        const b = body as { name: string; baseCurrency: string };
+        const created = { id: this.id('pr'), name: b.name.trim(), color: '#4D8DFF', icon: 'person', baseCurrency: b.baseCurrency, sortOrder: this.profiles.length, isArchived: false, revision: 1, isCurrent: false };
+        this.profiles.push(created);
+        return created;
       }
       if (path === '/api/wallets') {
         const b = body as { name: string; currency: string; initialBalance: number; icon: string; color: string; type: number };

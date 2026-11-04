@@ -78,6 +78,7 @@ class WebStorage implements Storage {
   async clearUserData() {
     await this.remove('snapshot');
     await this.remove('profile');
+    await this.remove('current_profile');
     await this.remove('__ops');
   }
 }

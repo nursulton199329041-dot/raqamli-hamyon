@@ -37,7 +37,7 @@ const GLYPHS: Record<string, GlyphFn> = {
   other: (c) => (<><Rect {...stroke(c)} x="4" y="4" width="7" height="7" rx="2" /><Rect {...stroke(c)} x="13" y="4" width="7" height="7" rx="2" /><Rect {...stroke(c)} x="4" y="13" width="7" height="7" rx="2" /><Rect {...stroke(c)} x="13" y="13" width="7" height="7" rx="2" /></>),
   // UI glyphs
   plus: (c) => (<Path {...stroke(c)} d="M12 5v14M5 12h14" />),
-  settings: (c) => (<><Circle {...stroke(c)} cx="12" cy="12" r="3" /><Path {...stroke(c)} d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M18.4 5.6l-1.8 1.8M7.4 16.6l-1.8 1.8" /></>),
+  settings: (c) => (<><Path {...stroke(c)} strokeWidth={2} d="M10.08 4.85L10.52 2.11L13.48 2.11L13.92 4.85L15.70 5.59L17.95 3.96L20.04 6.05L18.41 8.30L19.15 10.08L21.89 10.52L21.89 13.48L19.15 13.92L18.41 15.70L20.04 17.95L17.95 20.04L15.70 18.41L13.92 19.15L13.48 21.89L10.52 21.89L10.08 19.15L8.30 18.41L6.05 20.04L3.96 17.95L5.59 15.70L4.85 13.92L2.11 13.48L2.11 10.52L4.85 10.08L5.59 8.30L3.96 6.05L6.05 3.96L8.30 5.59z" /><Circle {...stroke(c)} strokeWidth={2} cx="12" cy="12" r="3" /></>),
   history: (c) => (<><Path {...stroke(c)} d="M6 3.5h12v17l-3-2-3 2-3-2-3 2z" /><Path {...stroke(c)} d="M9 8h6M9 12h6" /></>),
   chart: (c) => (<><Path {...stroke(c)} d="M12 3.5a8.5 8.5 0 1 0 8.5 8.5H12z" /><Path {...stroke(c)} d="M15 3.8A8.5 8.5 0 0 1 20.2 9H15z" /></>),
   arrowIn: (c) => (<Path {...stroke(c)} d="M17 7L7 17M7 8v9h9" />),
@@ -61,7 +61,7 @@ const GLYPHS: Record<string, GlyphFn> = {
   grid: (c) => (<><Circle cx="6" cy="6" r="1.7" fill={c} /><Circle cx="12" cy="6" r="1.7" fill={c} /><Circle cx="18" cy="6" r="1.7" fill={c} /><Circle cx="6" cy="12" r="1.7" fill={c} /><Circle cx="12" cy="12" r="1.7" fill={c} /><Circle cx="18" cy="12" r="1.7" fill={c} /><Circle cx="6" cy="18" r="1.7" fill={c} /><Circle cx="12" cy="18" r="1.7" fill={c} /><Circle cx="18" cy="18" r="1.7" fill={c} /></>),
   forward: (c) => (<Path {...stroke(c)} d="M6 6.5l5.5 5.5L6 17.5M12.5 6.5l5.5 5.5-5.5 5.5" />),
   user: (c) => (<><Circle {...stroke(c)} cx="12" cy="8.5" r="3.6" /><Path {...stroke(c)} d="M4.5 20a7.5 7.5 0 0 1 15 0" /></>),
-  sync: (c) => (<Path {...stroke(c)} d="M4.5 12a7.5 7.5 0 0 1 12.8-5.3L19.5 9M19.5 4.5V9H15M19.5 12a7.5 7.5 0 0 1-12.8 5.3L4.5 15M4.5 19.5V15H9" />),
+  sync: (c) => (<><Path {...stroke(c)} strokeWidth={2.2} d="M4.2 12a7.8 7.8 0 0 1 12.6-6.15M19.8 12a7.8 7.8 0 0 1-12.6 6.15" /><Path fill={c} d="M20.3 3.2v6.6h-6.6zM3.7 20.8v-6.6h6.6z" /></>),
   more: (c) => (<><Circle cx="5.5" cy="12" r="1.7" fill={c} /><Circle cx="12" cy="12" r="1.7" fill={c} /><Circle cx="18.5" cy="12" r="1.7" fill={c} /></>),
 };
 

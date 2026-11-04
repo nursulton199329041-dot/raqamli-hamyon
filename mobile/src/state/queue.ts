@@ -22,6 +22,13 @@ export function currentBook(): Promise<LocalBook | null> | null {
   return localBook(user, true);
 }
 
+/** The user moved to another profile while this book was busy: its results must not reach the screens. */
+async function switchedAway(book: LocalBook): Promise<boolean> {
+  const opening = currentBook();
+  const now = opening && (await opening);
+  return !!now && now.profileId !== book.profileId;
+}
+
 interface PushResult {
   clientOperationId: string;
   status: 'applied' | 'duplicate' | 'rejected';
@@ -161,6 +168,13 @@ export const useQueue = create<QueueState>((set, get) => ({
       // a guest book has no server: nothing is sent, the screens are only refreshed
       const r = book.engine ? await book.engine.run(book.profileId) : null;
       const offline = !!r?.error && r.error !== 'sync.backoff';
+      // what was entered in the other profiles is sent too, whichever one is on screen now
+      if (book.engine && !r?.error) {
+        const others = await book.db.all<{ profile_id: string }>(
+          "SELECT DISTINCT profile_id FROM sync_outbox WHERE status = 'pending' AND profile_id <> ?", book.profileId);
+        for (const o of others) await book.engine.run(o.profile_id);
+      }
+      if (await switchedAway(book)) return;
       const rows = !book.engine ? [] : await book.db.all<{ op_id: string; kind: string; payload: string; target_id: string | null; created_at: string; status: string; last_error: string | null }>(
         "SELECT op_id, kind, payload, target_id, created_at, status, last_error FROM sync_outbox WHERE profile_id = ? AND status IN ('pending', 'rejected') ORDER BY seq",
         book.profileId);
@@ -173,6 +187,7 @@ export const useQueue = create<QueueState>((set, get) => ({
       });
       const before = queryClient.getQueryData<Snapshot>(['snapshot']);
       const after = await localSnapshot(book);
+      if (await switchedAway(book)) return;
       const strip = (s?: Snapshot) => (s ? JSON.stringify({ ...s, cursor: '' }) : '');
       if (strip(before) !== strip(after)) {
         queryClient.setQueryData(['snapshot'], after);

@@ -93,7 +93,7 @@ Sana: 2026-10-28. Branch: `feat/liquid-glass-home` (HEAD `a97f375` audit vaqtida
 
 **Qolgan / cheklovlar**
 - Telefonda Google tugmasi **yo'q**: Google Cloud'da OAuth client ID'lar (Android/iOS/web) kerak va `expo-auth-session` (native modul) → yangi build. Server tomoni tayyor va testlangan (soxta validator bilan; haqiqiy Google token bilan **NOT TESTED**).
-- Bog'langan mehmon profili alohida profil bo'lib qoladi; profillarni almashtirish UI'si (V5) hali yo'q — telefon bog'langan profilni ko'rsatadi (`local:current_profile`).
+- Bog'langan mehmon profili alohida profil bo'lib qoladi; bosh ekrandagi avatar orqali profillarni almashtirish mumkin (`features/ProfilesSheet.tsx`, `state/profiles.ts`; tanlov `local:current_profile` va `X-Profile-Id` orqali). Serverga to'g'ridan-to'g'ri ishlaydigan telefonda yuborilmagan operatsiyalar bo'lsa, almashtirish bloklanadi. Real telefonda: NOT TESTED.
 - Mehmon rejimida: loyihalar, hamyonning bank ma'lumotlari/overdraft tahriri, toifa limitini o'rnatish, odamni alohida yaratish (ism izohga yoziladi) — hali yo'q.
 - Real telefonda **NOT TESTED**.
 

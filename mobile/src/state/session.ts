@@ -39,6 +39,8 @@ async function loadTokens(): Promise<Tokens | null> {
 type Status = 'loading' | 'signedOut' | 'signedIn' | 'guest';
 
 const GUEST_KEY = 'guest';
+/** The profile a signed-in user last chose on this device. */
+export const PROFILE_STORE_KEY = 'current_profile';
 
 interface SessionState {
   status: Status;
@@ -67,8 +69,11 @@ async function linkGuest(user: UserProfile): Promise<void> {
   for (const p of g.profiles)
     await api.post('/api/profiles', { id: p.id, name: p.name, baseCurrency: p.baseCurrency, color: p.color, icon: p.icon, seedDefaults: false });
   await ledger.linkGuest(user);
-  const first = g.profiles[0];
-  if (first) await (await openLocalDb()).run('INSERT OR REPLACE INTO kv (k, v) VALUES (?, ?)', CURRENT_PROFILE_KEY, first.id);
+  // the profile the guest was looking at stays on screen
+  const db = await openLocalDb();
+  const chosen = (await db.first<{ v: string }>('SELECT v FROM kv WHERE k = ?', CURRENT_PROFILE_KEY))?.v;
+  const keep = g.profiles.find((p) => p.id === chosen) ?? g.profiles[0];
+  if (keep) await db.run('INSERT OR REPLACE INTO kv (k, v) VALUES (?, ?)', CURRENT_PROFILE_KEY, keep.id);
   // the guest's data now lives only in the local book: keep using it
   await useSettings.getState().update({ localFirst: true });
 }
@@ -130,6 +135,8 @@ export const useSession = create<SessionState>((set, get) => ({
       return set({ status: guest ? 'guest' : 'signedOut', user: null });
     }
     api.setTokens(t);
+    api.onProfileGone = () => void getStorage().then((store) => store.remove(PROFILE_STORE_KEY));
+    api.setProfileId(await (await getStorage()).get(PROFILE_STORE_KEY));
     try {
       const me = await api.get<UserProfile>('/api/me');
       set({ status: 'signedIn', user: me });
@@ -163,6 +170,8 @@ export const useSession = create<SessionState>((set, get) => ({
       }
     }
     api.setTokens(null);
+    api.setProfileId(null);
+    await (await getStorage()).remove(PROFILE_STORE_KEY);
     await saveTokens(null);
     // An expired session keeps the offline queue (never lose unsent money operations); explicit sign-out wipes it
     // so one account's pending operations can't leak into another.

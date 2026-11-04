@@ -305,6 +305,13 @@ const T = {
   borrower: ['Qarz oluvchi', 'Заёмщик', 'Borrower'],
   pick_source: ['Kirim manbasini tanlang', 'Выберите источник дохода', 'Choose an income source'],
   total: ['Jami', 'Итого', 'Total'],
+  profiles: ['Profillar', 'Профили', 'Profiles'],
+  new_profile: ['Yangi profil', 'Новый профиль', 'New profile'],
+  profile_busy: [
+    'Avval yuborilmagan operatsiyalar serverga yetib borsin, keyin profilni almashtiring',
+    'Сначала дождитесь отправки операций, затем смените профиль',
+    'Wait until the unsent operations are delivered, then switch the profile',
+  ],
   sync_now: ['Sinxronlash', 'Синхронизировать', 'Sync now'],
   dnd_diag: ['Sensor (surish) diagnostikasi', 'Диагностика касаний (drag)', 'Touch (drag) diagnostics'],
   rate_hint: ['Kurs', 'Курс', 'Rate'],
