@@ -305,3 +305,4 @@ Commit 83bcd0f, `eas update --channel preview` (runtime 1.0.0, android fingerpri
 
 ### Valyutali xarajat formasi — 2026-11-04
 - Profil valyutasidan boshqa valyutadagi hamyondan xarajat: hamyondan o'z valyutasi yechiladi, toifaga profil valyutasidagi summa yoziladi; ikkinchi summa kuni bo'yicha Markaziy bank kursidan (`cbu.uz`), bo'lmasa oxirgi kursdan olinadi, qo'lda o'zgartirsa bo'ladi; kurs topilmasa summa so'raladi. Tarixda ikkala summa va kurs. O'tkazmadagi oxirgi kursni avtomatik qo'yish xatosi ham tuzatildi. Backend o'zgarmadi. Real telefonda: NOT TESTED.
+- `1c1288c` **OTA → preview:** update group `6e0edf68-44c3-4814-8d7c-62b5504f4b3f`, Android `01a1a788-f74c-73fd-91a2-2c0aa565933e`, iOS `01a1a788-f74c-7597-94c5-ade58152e96f`; fingerprint `8874963d…` = preview APK. Production'ga tegilmadi. Real telefonda: NOT TESTED.
