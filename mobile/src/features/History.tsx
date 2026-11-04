@@ -225,7 +225,7 @@ export function History() {
                   <Text numberOfLines={1} style={[{ color: tx.type === TxType.Transfer ? p.text : color, fontWeight: '700', fontSize: 15, fontVariant: ['tabular-nums'] }, struck]}>
                     {sign}{fmtMoney(tx.amount, tx.currency)}
                   </Text>
-                  {tx.type === TxType.Transfer && tx.toAmount && tx.toCurrency && tx.toCurrency !== tx.currency ? (
+                  {(tx.type === TxType.Transfer || tx.type === TxType.Expense) && tx.toAmount && tx.toCurrency && tx.toCurrency !== tx.currency ? (
                     <Text numberOfLines={1} style={{ color: p.textSecondary, fontSize: 12 }}>{fmtMoney(tx.toAmount, tx.toCurrency)}</Text>
                   ) : null}
                 </View>
@@ -273,7 +273,8 @@ export function DetailSheet({ tx, onClose, label }: { tx: Tx | null; onClose(): 
     [t('date'), fmtDateTime(tx.occurredAt)],
     [t('wallet'), cat.wallet(tx.walletId)?.name],
     [t('to_wallet'), cat.wallet(tx.toWalletId)?.name],
-    [t('to_amount'), tx.toAmount ? fmtMoney(tx.toAmount, tx.toCurrency ?? undefined) : null],
+    [tx.type === TxType.Expense ? t('converted_amount') : t('to_amount'), tx.toAmount ? fmtMoney(tx.toAmount, tx.toCurrency ?? undefined) : null],
+    [t('rate_hint'), tx.fxRate && tx.toCurrency ? `1 ${tx.currency} = ${fmtMoney(tx.fxRate, tx.toCurrency)}` : null],
     [t('category'), cat.category(tx.categoryId)?.name],
     [t('source'), cat.source(tx.incomeSourceId)?.name],
     [t('person'), cat.person(tx.personId)?.name],

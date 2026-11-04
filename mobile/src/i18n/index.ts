@@ -314,6 +314,8 @@ const T = {
   ],
   sync_now: ['Sinxronlash', 'Синхронизировать', 'Sync now'],
   dnd_diag: ['Sensor (surish) diagnostikasi', 'Диагностика касаний (drag)', 'Touch (drag) diagnostics'],
+  converted_amount: ['Aylantirilgan summa', 'Сумма в пересчёте', 'Converted amount'],
+  fx_amount_needed: ['Kurs topilmadi: {currency} dagi summani kiriting', 'Курс не найден: введите сумму в {currency}', 'No rate found: enter the amount in {currency}'],
   rate_hint: ['Kurs', 'Курс', 'Rate'],
   amount_invalid: ['Summani to‘g‘ri kiriting (0 dan katta)', 'Введите корректную сумму (больше 0)', 'Enter a valid amount (greater than 0)'],
   details: ['Tafsilotlar', 'Подробности', 'Details'],

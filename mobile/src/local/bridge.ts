@@ -203,7 +203,9 @@ export async function applyUiOp(book: LocalBook, kind: PendingOp['kind'], payloa
     case 'expense': {
       const w = await walletOf(payload.walletId);
       return ledger.expense(profileId, {
-        walletId: w.id, amountMinor: minor(payload.amount, w.currency), categoryId: String(payload.categoryId), personId: str(payload.personId), ...common,
+        walletId: w.id, amountMinor: minor(payload.amount, w.currency), categoryId: String(payload.categoryId), personId: str(payload.personId),
+        toCurrency: str(payload.toCurrency), toAmountMinor: payload.toAmount == null || !str(payload.toCurrency) ? null : minor(payload.toAmount, String(payload.toCurrency)),
+        rateDate: str(payload.rateDate), rateSource: str(payload.rateSource), ...common,
       });
     }
     case 'transfer': {

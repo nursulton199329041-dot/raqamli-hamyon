@@ -20,6 +20,26 @@ async function book(): Promise<LocalBook> {
 }
 
 describe('offline-first bridge: the operation sheet writes into the device book', () => {
+  it('a dollar expense converted to sums: dollars leave the wallet, the sum is booked, both travel to the server', async () => {
+    const b = await book();
+    const usd = await b.ledger.createWallet(PROFILE, { name: 'Dollar', currency: 'USD', initialMinor: 100_00 });
+    const cat = await b.ledger.createCategory(PROFILE, { name: 'Kafe' });
+
+    await applyUiOp(b, 'expense', {
+      walletId: usd.id, amount: 10, categoryId: cat, personId: null, memo: null, occurredAt: '2026-11-04T09:00:00.000Z', projectId: null,
+      toCurrency: 'UZS', toAmount: 119_117.1, rateDate: '2026-11-04', rateSource: 'cbu',
+    });
+
+    const snap = await localSnapshot(b);
+    expect(snap.wallets.find((w) => w.id === usd.id)!.balance).toBe(90);
+    expect(snap.transactions.find((t) => t.type === TxKind.Expense)).toMatchObject({
+      amount: 10, currency: 'USD', toAmount: 119_117.1, toCurrency: 'UZS', fxRate: 11911.71, rateDate: '2026-11-04', rateSource: 'cbu',
+    });
+    const out = await b.db.first<{ payload: string }>("SELECT payload FROM sync_outbox WHERE kind = 'expense'");
+    expect(JSON.parse(out!.payload)).toMatchObject({ amount: 10, toCurrency: 'UZS', toAmount: 119117.1, rateDate: '2026-11-04', rateSource: 'cbu' });
+    expect((await ledgerCheck(b.db, PROFILE)).ok).toBe(true);
+  });
+
   it('UI payloads (decimal amounts) become exact book entries; the snapshot has the shapes the screens use', async () => {
     const b = await book();
     const naqd = await b.ledger.createWallet(PROFILE, { name: 'Naqd', currency: 'UZS', initialMinor: 1_000_000_00 });

@@ -1,5 +1,5 @@
 import * as Haptics from 'expo-haptics';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useRef, useState, type ReactNode } from 'react';
 import { Keyboard, Platform, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 import { ApiError } from '@/api/client';
@@ -14,7 +14,9 @@ import { CircleBadge, Glyph } from '@/design/Icon';
 import { Keypad } from '@/design/Keypad';
 import { Sheet } from '@/design/Sheet';
 import { Ink, usePalette, useT } from '@/design/theme';
+import { officialRate } from '@/lib/rates';
 import { useCatalog, useSnapshot } from '@/state/data';
+import { useProfiles } from '@/state/profiles';
 import { useQueue } from '@/state/queue';
 import { api } from '@/state/runtime';
 import { useSettings } from '@/state/settings';
@@ -184,26 +186,41 @@ function OperationForm({ prefill, visible, onDone }: { prefill: OpPrefill; visib
   const walletId = pickedWallet ?? wallets[0]?.id;
   const from = cat.wallet(walletId);
   const to = cat.wallet(toWalletId);
-  const cross = kind === 'transfer' && !!from && !!to && from.currency !== to.currency;
+  const profiles = useProfiles().data;
+  const baseCurrency = profiles?.items.find((x) => x.id === profiles.currentId)?.baseCurrency ?? 'UZS';
+  // An expense from a wallet in another currency is written in the profile's currency: the wallet loses its own money,
+  // the category is charged the converted sum. An old expense being corrected keeps the form it was saved in.
+  const expenseTo = kind !== 'expense' || !from ? null
+    : editing ? editing.toCurrency ?? null
+      : from.currency !== baseCurrency ? baseCurrency : null;
+  const toCurrency = kind === 'transfer' ? to?.currency ?? null : expenseTo;
+  const cross = !!from && !!toCurrency && from.currency !== toCurrency;
+  const expenseCross = cross && kind === 'expense';
+  const rateDay = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  const official = useQuery({
+    queryKey: ['official-rate', from?.currency, toCurrency, rateDay],
+    queryFn: () => officialRate(from!.currency, toCurrency!, rateDay),
+    enabled: expenseCross && !editing,
+    retry: false,
+    staleTime: 6 * 3600 * 1000,
+  }).data ?? null;
   const accent = TABS.find((x) => x.kind === kind)!.color;
   const source = cat.source(sourceId);
   const top = cat.category(topCategory);
   const children = cat.childrenOf(topCategory);
   const sub = cat.category(subId);
 
-  // Last used rate for this currency pair (from history) pre-fills the received amount of a cross-currency transfer.
-  const knownRate = useMemo(() => {
-    if (!cross || !from || !to) return null;
-    const tx = cat.transactions.find((x) => x.type === TxType.Transfer && !!x.fxRate && x.currency === from.currency && x.toCurrency === to.currency);
-    return tx?.fxRate ?? null;
-  }, [cross, from, to, cat.transactions]);
+  // Pre-fills the second amount: an expense takes the day's official rate, otherwise the last used rate of this pair.
+  const lastRate = !cross || !from ? null
+    : cat.transactions.find((x) => (x.type === TxType.Transfer || x.type === TxType.Expense) && !!x.fxRate && x.currency === from.currency && x.toCurrency === toCurrency)?.fxRate ?? null;
+  const knownRate = (expenseCross ? official : null) ?? lastRate;
 
   // Until the user types the received amount it follows mount x last used rate (derived, not stored).
   const autoTo = useMemo(() => {
     if (!cross || toTouched || !knownRate) return null;
     const a = evaluate(expr, DECIMALS);
     if (!a.ok) return '';
-    const r = evaluate(`×`, DECIMALS);
+    const r = evaluate(`${a.value}×${knownRate}`, DECIMALS);
     return r.ok ? r.value : '';
   }, [cross, toTouched, knownRate, expr]);
   const toShown = autoTo ?? toExpr;
@@ -219,6 +236,11 @@ function OperationForm({ prefill, visible, onDone }: { prefill: OpPrefill; visib
   const pickFrom = (id: string) => {
     setWalletId(id);
     if (toWalletId === id) setToWalletId(undefined);
+    if (kind === 'expense') { // the second amount belonged to the previous wallet's currency
+      setToExpr('');
+      setToTouched(false);
+      setActive('amount');
+    }
     setError(null);
     setPage('form');
   };
@@ -281,7 +303,10 @@ function OperationForm({ prefill, visible, onDone }: { prefill: OpPrefill; visib
     let toAmountValue: number | null = null;
     if (cross) {
       const r2 = evaluate(toShown, DECIMALS);
-      if (!r2.ok) return setError(t('amount_invalid'));
+      if (!r2.ok) {
+        if (expenseCross) openKeypad('toAmount');
+        return setError(expenseCross ? t('fx_amount_needed', { currency: toCurrency ?? '' }) : t('amount_invalid'));
+      }
       toAmountValue = toApiNumber(r2.value);
     }
     const spends = kind === 'expense' || kind === 'transfer' || (kind === 'debt' && !borrowed);
@@ -311,13 +336,16 @@ function OperationForm({ prefill, visible, onDone }: { prefill: OpPrefill; visib
         }
       }
       const base = { memo: note || null, occurredAt, projectId: projectId ?? null };
+      const fx = expenseCross
+        ? { toCurrency, toAmount: toAmountValue, rateDate: rateDay, rateSource: !toTouched && official ? 'cbu' : 'manual' }
+        : {};
 
       if (editing) {
         // correction = reversal + new entry (ledger history is never rewritten)
         const body = kind === 'income'
           ? { walletId, amount: value, incomeSourceId: sourceId ?? null, personId, reason: reason.trim() || null, ...base }
           : kind === 'expense'
-            ? { walletId, amount: value, categoryId: subId ?? topCategory, personId, ...base }
+            ? { walletId, amount: value, categoryId: subId ?? topCategory, personId, ...fx, ...base }
             : { fromWalletId: walletId, toWalletId, amount: value, toAmount: toAmountValue, fxRate: null, ...base };
         await correctTx(editing.id, kind as 'income' | 'expense' | 'transfer', body); // debts are not edited in place
         await qc.invalidateQueries();
@@ -331,7 +359,7 @@ function OperationForm({ prefill, visible, onDone }: { prefill: OpPrefill; visib
           res = await submit('income', { walletId, amount: value, incomeSourceId: sourceId ?? null, personId, reason: reason.trim() || null, ...base });
           break;
         case 'expense':
-          res = await submit('expense', { walletId, amount: value, categoryId: subId ?? topCategory, personId, ...base });
+          res = await submit('expense', { walletId, amount: value, categoryId: subId ?? topCategory, personId, ...fx, ...base });
           break;
         case 'transfer':
           res = await submit('transfer', { fromWalletId: walletId, toWalletId, amount: value, toAmount: toAmountValue, fxRate: null, ...base });
@@ -402,7 +430,7 @@ function OperationForm({ prefill, visible, onDone }: { prefill: OpPrefill; visib
         ) : null}
 
         {!cat.loaded && snap.isError ? (
-          <Tap testID="load-error" label={t('retry')} onPress={() => void snap.refetch()} style={{ padding: 10, borderRadius: 14, backgroundColor: `22`, marginBottom: 8 }}>
+          <Tap testID="load-error" label={t('retry')} onPress={() => void snap.refetch()} style={{ padding: 10, borderRadius: 14, backgroundColor: `${Ink.expense}22`, marginBottom: 8 }}>
             <Text style={{ color: Ink.expense, fontWeight: '800' }}>{t('picker_failed')}</Text>
             <Text style={{ color: p.textSecondary, fontSize: 12 }}>{t('picker_failed_hint', { url: apiUrl })}</Text>
           </Tap>
@@ -412,20 +440,20 @@ function OperationForm({ prefill, visible, onDone }: { prefill: OpPrefill; visib
           <AmountBlock caption={t('amount')} expr={expr} currency={from?.currency} accent={accent} testID="amount-display"
             active={active === 'amount' && keypadOpen} onPress={() => openKeypad('amount')} dim={cross && active === 'toAmount'} />
           {cross ? (
-            <AmountBlock caption={t('amount')} expr={toShown} currency={to?.currency} accent={accent} testID="amount-to-display"
+            <AmountBlock caption={t('amount')} expr={toShown} currency={toCurrency ?? undefined} accent={accent} testID="amount-to-display"
               active={active === 'toAmount' && keypadOpen} onPress={() => openKeypad('toAmount')} dim={active === 'amount'} />
           ) : null}
         </View>
-        {cross && from && to ? (
+        {cross && from && toCurrency ? (
           <Text testID="rate-line" style={{ color: p.textSecondary, fontSize: 12, textAlign: 'center', marginTop: 2 }}>
             {t('rate_hint')}: 1 {from.currency} = {(() => {
               const a = evaluate(expr, DECIMALS);
               const b = evaluate(toShown, DECIMALS);
               if (a.ok && b.ok) {
                 const r = evaluate(`${b.value}÷${a.value}`, 6);
-                return r.ok ? `${formatExpression(r.value)} ${to.currency}` : '—';
+                return r.ok ? `${formatExpression(r.value)} ${toCurrency}` : '—';
               }
-              return knownRate ? `${formatExpression(String(knownRate))} ${to.currency}` : '—';
+              return knownRate ? `${formatExpression(String(knownRate))} ${toCurrency}` : '—';
             })()}
           </Text>
         ) : null}
