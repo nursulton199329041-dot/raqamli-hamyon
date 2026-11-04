@@ -30,13 +30,6 @@ export function AppearanceCard() {
   const sizes = (v: Size3, on: (x: Size3) => void) => (
     <Segmented<Size3> value={v} onChange={on} options={[{ value: 's', label: t('size_s') }, { value: 'm', label: t('size_m') }, { value: 'l', label: t('size_l') }]} />
   );
-  const move = (i: number, d: -1 | 1) => {
-    const order = [...a.sectionOrder];
-    const j = i + d;
-    if (j < 0 || j >= order.length) return;
-    [order[i], order[j]] = [order[j]!, order[i]!];
-    void setA({ sectionOrder: order });
-  };
 
   return (
     <GlassCard testID="appearance">
@@ -89,6 +82,27 @@ export function AppearanceCard() {
         <Chip label={a.animations ? t('on') : t('off')} selected={a.animations} onPress={() => void setA({ animations: !a.animations })} />
       </Wrap>
 
+      <Button testID="appearance-reset" title={t('reset_appearance')} variant="tonal"
+        onPress={() => { void setA(DEFAULT_APPEARANCE); void update({ reduceEffects: false }); }} />
+    </GlassCard>
+  );
+}
+
+/** Settings -> Panel: which home blocks show, in what order, and how many rows the expense grid takes. */
+export function PanelCard() {
+  const t = useT();
+  const p = usePalette();
+  const a = useSettings((s) => s.appearance);
+  const setA = useSettings((s) => s.setAppearance);
+  const move = (i: number, d: -1 | 1) => {
+    const order = [...a.sectionOrder];
+    const j = i + d;
+    if (j < 0 || j >= order.length) return;
+    [order[i], order[j]] = [order[j]!, order[i]!];
+    void setA({ sectionOrder: order });
+  };
+  return (
+    <GlassCard testID="panel-settings">
       <Label>{t('home_sections')}</Label>
       <View testID="section-order" style={{ gap: space.xs }}>
         {a.sectionOrder.map((s, i) => {
@@ -114,8 +128,6 @@ export function AppearanceCard() {
       <Segmented<string> value={String(a.expenseRows)}
         onChange={(v) => void setA({ expenseRows: v === 'auto' ? 'auto' : (Number(v) as ExpenseRows) })}
         options={EXPENSE_ROWS.map((r) => ({ value: String(r), label: r === 'auto' ? t('rows_auto') : String(r) }))} />
-      <Button testID="appearance-reset" title={t('reset_appearance')} variant="tonal"
-        onPress={() => { void setA(DEFAULT_APPEARANCE); void update({ reduceEffects: false }); }} />
     </GlassCard>
   );
 }

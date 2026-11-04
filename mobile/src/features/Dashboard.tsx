@@ -1,4 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
+import { useRouter } from 'expo-router';
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Text, View, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { RefreshControl, ScrollView } from 'react-native-gesture-handler';
@@ -87,6 +88,7 @@ export function Dashboard() {
   const lang = useSettings((s) => s.lang);
   const order = useSettings((s) => s.appearance.sectionOrder);
   const hidden = useSettings((s) => s.appearance.hiddenSections);
+  const showDebts = useSettings((s) => s.appearance.showDebts);
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();
   const cat = useCatalog();
@@ -205,6 +207,7 @@ export function Dashboard() {
           <EmptyState testID="wallets-empty" icon="wallet" title={t('empty_wallets')} action={t('create_wallet')} onAction={() => openForm('wallet')} />
         ) : (
           <HRow id="wallets">
+            {showDebts ? <DebtsTile /> : null}
             {cat.activeWallets.map((w) => <WalletTile key={w.id} wallet={w} onActions={() => { setActionError(null); setActionsFor(w); }} />)}
             <AddTile label={t('new_wallet')} onPress={() => openForm('wallet')} />
           </HRow>
@@ -499,6 +502,25 @@ function SourceTile({ source, amounts }: { source: IncomeSource; amounts?: Amoun
         <TileText name={source.name} amounts={amounts} amountColor={p.text} />
       </Tile>
     </Draggable>
+  );
+}
+
+/** The debts among the wallets: what is lent minus what is owed, per currency. Opens the debts. */
+function DebtsTile() {
+  const t = useT();
+  const p = usePalette();
+  const look = useLook();
+  const router = useRouter();
+  const cat = useCatalog();
+  const net = new Map<string, number>();
+  for (const d of cat.debts) net.set(d.currency, (net.get(d.currency) ?? 0) + (d.direction === 1 ? d.outstanding : -d.outstanding));
+  const amounts = [...net].filter(([, total]) => total !== 0).map(([currency, total]) => ({ currency, total }));
+  return (
+    <Tap testID="debts-tile" label={t('debts')} onPress={() => router.push('/debts')}>
+      <Tile icon={<CircleBadge name="debt" color={Ink.debt} size={look.iconPx} />}>
+        <TileText name={t('debts')} amounts={amounts} amountColor={p.text} />
+      </Tile>
+    </Tap>
   );
 }
 

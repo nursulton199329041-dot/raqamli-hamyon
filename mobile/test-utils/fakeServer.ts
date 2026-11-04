@@ -325,6 +325,13 @@ export class FakeServer {
         return { ...c };
       }
       if (path === '/api/people') return { id: this.id('p') };
+      const adjust = /^\/api\/wallets\/([^/]+)\/adjust$/.exec(path);
+      if (adjust) {
+        const w = this.wallets.find((x) => x.id === adjust[1]);
+        if (!w) throw new ApiError(404, 'not_found', 'Wallet');
+        w.balance = (body as { newBalance: number }).newBalance;
+        return { transaction: null };
+      }
       const rev = /^\/api\/transactions\/([^/]+)\/reverse$/.exec(path);
       if (rev) return { transaction: this.reverse(rev[1]!) };
       throw new ApiError(404, 'not_found', `POST ${path}`);

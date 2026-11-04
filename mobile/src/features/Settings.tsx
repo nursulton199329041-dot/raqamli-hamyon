@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useState, type ReactNode } from 'react';
-import { Alert, Platform, ScrollView, Text, View } from 'react-native';
+import { Alert, Platform, ScrollView, Switch, Text, View } from 'react-native';
 import { ApiError } from '@/api/client';
 import { Button, Chip, Field, Label, Segmented } from '@/design/Controls';
 import { GlassCard, Tap } from '@/design/Glass';
@@ -15,13 +15,14 @@ import { api, queryClient } from '@/state/runtime';
 import { useSession } from '@/state/session';
 import { useSettings, type ThemeMode } from '@/state/settings';
 import { runtimeInfo, useUpdates } from '@/updates/updates';
-import { AppearanceCard } from './AppearanceCard';
+import { AppearanceCard, PanelCard } from './AppearanceCard';
+import { BalanceSheet } from './BalanceSheet';
 import { ConnectionCard } from './ConnectionCard';
 import { ExportSheet } from './ExportSheet';
 import { ProfilesSheet } from './ProfilesSheet';
 import { WipeSheet } from './WipeSheet';
 
-type Page = 'account' | 'appearance' | 'language' | 'server' | 'updates' | 'profiles' | 'export' | 'wipe';
+type Page = 'account' | 'appearance' | 'panel' | 'language' | 'server' | 'updates' | 'profiles' | 'export' | 'balance' | 'wipe';
 
 const LANG_NAME: Record<Lang, string> = { uz: 'O‘zbek', ru: 'Русский', en: 'English' };
 
@@ -31,8 +32,8 @@ function Group({ children }: { children: ReactNode }) {
 }
 
 /** One settings line: title with an optional hint under it, an optional value and a chevron when it leads somewhere. */
-function Row({ testID, title, hint, value, onPress, first }: {
-  testID?: string; title: string; hint?: string; value?: string; onPress?(): void; first?: boolean;
+function Row({ testID, title, hint, value, right, onPress, first }: {
+  testID?: string; title: string; hint?: string; value?: string; right?: ReactNode; onPress?(): void; first?: boolean;
 }) {
   const p = usePalette();
   const body = (
@@ -42,6 +43,7 @@ function Row({ testID, title, hint, value, onPress, first }: {
         {hint ? <Text numberOfLines={2} style={{ color: p.textSecondary, fontSize: 12, marginTop: 2 }}>{hint}</Text> : null}
       </View>
       {value ? <Text numberOfLines={1} style={{ color: p.textSecondary, fontSize: 15, maxWidth: '45%' }}>{value}</Text> : null}
+      {right}
       {onPress ? <Glyph name="chevronRight" color={p.textSecondary} size={18} /> : null}
     </View>
   );
@@ -116,25 +118,28 @@ export function Settings() {
             <Row testID="link-account" title={t('link_account')} onPress={() => setLinking(true)} />
           </>
         ) : (
-          <Row first testID="open-account" title={t('my_account')} hint={user?.email} onPress={() => setPage('account')} />
+          <Row first testID="open-account" title={`${t('my_account')}: ${user?.email ?? ''}`} hint={syncState} onPress={() => setPage('account')} />
         )}
         <Row testID="open-profiles" title={t('profiles')} hint={t('profiles_hint')} onPress={() => setPage('profiles')} />
-        <Row testID="main-currency" title={t('main_currency')} hint={t('main_currency_hint')} value="so‘m" />
-        {/* projects and debts left the main navigation; their data, screens and APIs are unchanged */}
-        <Row testID="open-debts" title={t('debts')} onPress={() => router.push('/debts')} />
-        <Row testID="open-projects" title={t('projects')} onPress={() => router.push('/projects')} />
-        {/* the file is made by the server: an account without a server has nothing to ask */}
+        <Row testID="main-currency" title={t('main_currency')} hint={t('main_currency_name')} value="so‘m" />
+        <Row testID="debts-row" title={t('debts')} hint={t('debts_hint')}
+          right={<Switch accessibilityLabel={t('debts')} value={s.appearance.showDebts} onValueChange={(v) => void s.setAppearance({ showDebts: v })} />} />
+        <Row testID="open-panel" title={t('panel_settings')} onPress={() => setPage('panel')} />
+        {/* the file and the correction are made by the server: an account without one has nothing to ask */}
         {guest ? null : <Row testID="open-export" title={t('export_data')} hint={t('export_hint')} onPress={() => setPage('export')} />}
+        {guest ? null : <Row testID="open-balance" title={t('adjust_title')} hint={t('adjust_hint')} onPress={() => setPage('balance')} />}
         <Row testID="open-wipe" title={t('wipe_row')} hint={t('wipe_hint')} onPress={() => setPage('wipe')} />
       </Group>
 
       <Group>
-        <Row first testID="open-appearance" title={t('appearance')} hint={themeName} onPress={() => setPage('appearance')} />
-        <Row testID="open-language" title={t('language')} value={LANG_NAME[s.lang]} onPress={() => setPage('language')} />
+        <Row first testID="open-language" title={t('language')} value={LANG_NAME[s.lang]} onPress={() => setPage('language')} />
+        <Row testID="open-appearance" title={t('theme')} hint={themeName} onPress={() => setPage('appearance')} />
       </Group>
 
       <Group>
-        <Row first testID="open-server" title={t('conn_title')} hint={syncState} onPress={() => setPage('server')} />
+        {/* projects left the main navigation; their data, screens and APIs are unchanged */}
+        <Row first testID="open-projects" title={t('projects')} onPress={() => router.push('/projects')} />
+        <Row testID="open-server" title={t('conn_title')} hint={syncState} onPress={() => setPage('server')} />
         <Row testID="open-updates" title={t('updates')} hint={upd.ready ? t('update_ready') : undefined} value={info.version} onPress={() => setPage('updates')} />
         {/* developer tool: not shipped in release builds */}
         {__DEV__ ? <Row testID="open-dnd-test" title={t('dnd_diag')} onPress={() => router.push('/dnd-test')} /> : null}
@@ -145,6 +150,11 @@ export function Settings() {
       <ProfilesSheet visible={page === 'profiles'} onClose={close} />
       <ExportSheet visible={page === 'export'} onClose={close} />
       <WipeSheet visible={page === 'wipe'} onClose={close} />
+      <BalanceSheet visible={page === 'balance'} onClose={close} />
+
+      <PageSheet title={t('panel_settings')} visible={page === 'panel'} onClose={close}>
+        <PanelCard />
+      </PageSheet>
 
       <PageSheet title={t('my_account')} visible={page === 'account'} onClose={close}>
         <GlassCard>
@@ -170,7 +180,7 @@ export function Settings() {
       </PageSheet>
 
       {/* everything about how the app looks lives in one place */}
-      <PageSheet title={t('appearance')} visible={page === 'appearance'} onClose={close}>
+      <PageSheet title={t('theme')} visible={page === 'appearance'} onClose={close}>
         <GlassCard>
           <Label>{t('theme')}</Label>
           <Segmented<ThemeMode> value={s.themeMode} onChange={(v) => void s.update({ themeMode: v })}

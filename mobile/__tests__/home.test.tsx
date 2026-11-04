@@ -39,13 +39,13 @@ async function home() {
 }
 
 describe('home: income -> wallets -> expenses, nothing else', () => {
-  it('shows exactly the three sections in the default order; no balance card, projects or debts', async () => {
+  it('shows exactly the three sections in the default order; no balance card or projects; debts as an icon among the wallets', async () => {
     await home();
     const titles = screen.getAllByRole('header').map((h) => h.props.children);
     expect(titles).toEqual(['Kirim manbalari', 'Hamyonlar', 'Xarajat toifalari']);
     expect(screen.queryByTestId('balance-summary')).toBeNull();
     expect(screen.queryByText('Loyihalar')).toBeNull();
-    expect(screen.queryByText('Qarzlar')).toBeNull();
+    expect(screen.getByTestId('debts-tile')).toBeTruthy();
   });
 
   it('order and visibility follow the Appearance settings', async () => {
@@ -71,11 +71,10 @@ describe('navigation', () => {
     expect(MAIN_TABS.some((t) => (SECONDARY_ROUTES as readonly string[]).includes(t.name))).toBe(false);
   });
 
-  it('projects and debts stay reachable from Settings (data and APIs untouched)', async () => {
+  it('projects stay reachable from Settings (data and APIs untouched)', async () => {
     await renderApp(<Settings />);
     await fireEvent.press(screen.getByTestId('open-projects'));
-    await fireEvent.press(screen.getByTestId('open-debts'));
-    expect(mockPush.mock.calls.map((c) => c[0])).toEqual(['/projects', '/debts']);
+    expect(mockPush.mock.calls.map((c) => c[0])).toEqual(['/projects']);
   });
 });
 
@@ -97,8 +96,10 @@ describe('appearance', () => {
     await renderApp(<Settings />);
     await fireEvent.press(screen.getByTestId('open-appearance'));
     await fireEvent.press(screen.getByLabelText('Rang-barang'));
-    await fireEvent.press(screen.getByTestId('down-income'));
     await fireEvent.press(screen.getByTestId('accent-#1FCB8B'));
+    await fireEvent.press(screen.getByTestId('page-close'));
+    await fireEvent.press(await screen.findByTestId('open-panel'));
+    await fireEvent.press(await screen.findByTestId('down-income'));
     expect(useSettings.getState().appearance).toMatchObject({ uiStyle: 'colorful', accent: '#1FCB8B', sectionOrder: ['wallets', 'income', 'expense'] });
     useSettings.setState({ appearance: DEFAULT_APPEARANCE, hydrated: false });
     await act(async () => { await useSettings.getState().hydrate(); });

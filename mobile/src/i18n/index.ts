@@ -319,6 +319,21 @@ const T = {
   pick_source: ['Kirim manbasini tanlang', 'Выберите источник дохода', 'Choose an income source'],
   total: ['Jami', 'Итого', 'Total'],
   profiles: ['Profillar', 'Профили', 'Profiles'],
+  debts_hint: ['Belgi hamyonlar qatoriga qo‘shiladi', 'Иконка добавлена в кошельки', 'The icon is added to the wallets'],
+  panel_settings: ['Panel sozlamasi', 'Настройка панели', 'Panel settings'],
+  main_currency_name: ['O‘zbek so‘mi', 'Узбекский сум', 'Uzbek sum'],
+  adjust_title: ['Hamyon balanslarini yangilash', 'Обновить балансы кошельков', 'Update wallet balances'],
+  adjust_hint: [
+    'Operatsiyalarni kiritmay qolgan bo‘lsangiz, joriy balansni to‘g‘rilab, hisobni davom ettiring',
+    'Если пропустили часть операций, скорректируйте текущие балансы и продолжайте учёт',
+    'If you missed some operations, correct the current balances and carry on',
+  ],
+  adjust_memo: ['Balans tuzatildi', 'Корректировка баланса', 'Balance correction'],
+  adjust_busy: [
+    'Avval yuborilmagan operatsiyalar serverga yetib borsin, keyin balansni tuzating',
+    'Сначала дождитесь отправки операций, затем корректируйте баланс',
+    'Wait until the unsent operations are delivered, then correct the balance',
+  ],
   wipe_row: ['Ma’lumotlarni o‘chirish', 'Удалить данные', 'Delete data'],
   wipe_hint: [
     'Hammasini yoki faqat operatsiyalarni o‘chirib, hisobni boshidan boshlash',
