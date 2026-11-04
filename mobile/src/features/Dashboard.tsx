@@ -157,9 +157,27 @@ export function Dashboard() {
     }
   };
 
-  const sync = () => {
-    void useQueue.getState().flush();
-    void qc.invalidateQueries();
+  // One refresh at a time, and a running request is never thrown away: a second tap or a pull just joins it. The main
+  // data comes first, the rest (other tabs, reports) after it, so a tap does not start everything at the same moment.
+  const refreshingNow = useRef(false);
+  const refreshAll = async () => {
+    if (refreshingNow.current) return;
+    refreshingNow.current = true;
+    try {
+      await qc.invalidateQueries({ queryKey: ['snapshot'] }, { cancelRefetch: false });
+      await qc.invalidateQueries({ predicate: (x) => x.queryKey[0] !== 'snapshot' }, { cancelRefetch: false });
+    } finally {
+      refreshingNow.current = false;
+    }
+  };
+  const [pulling, setPulling] = useState(false);
+  const onPull = async () => {
+    setPulling(true);
+    try {
+      await refreshAll();
+    } finally {
+      setPulling(false);
+    }
   };
   const toggle = (k: string) => setCollapsed((c) => ({ ...c, [k]: !c[k] }));
   const loading = !cat.loaded && snap.isLoading;
@@ -218,7 +236,7 @@ export function Dashboard() {
           onScroll={onScroll}
           onContentSizeChange={(_w, h) => { maxOffset.current = Math.max(0, h - viewH.current); }}
           contentContainerStyle={{ paddingHorizontal: L.gutter, paddingTop: space.sm, paddingBottom: L.bottomSpace + Math.max(insets.bottom, 8), gap: space.md }}
-          refreshControl={<RefreshControl refreshing={snap.isFetching} onRefresh={() => void snap.refetch()} tintColor={p.accent} />}
+          refreshControl={<RefreshControl refreshing={pulling} onRefresh={() => void onPull()} tintColor={p.accent} />}
         >
           <UpdateBanner />
 
@@ -229,7 +247,7 @@ export function Dashboard() {
                 style={{ width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: p.textSecondary }}>
                 <Text style={[type.callout, { color: p.text }]}>{(currentProfile?.name ?? user?.displayName ?? '?').slice(0, 1).toUpperCase()}</Text>
               </Tap>
-              <Tap testID="sync-button" label={t('sync_now')} onPress={sync} style={{ width: 40, height: 36, alignItems: 'center', justifyContent: 'center' }}>
+              <Tap testID="sync-button" label={t('sync_now')} onPress={() => void refreshAll()} style={{ width: 40, height: 36, alignItems: 'center', justifyContent: 'center' }}>
                 {snap.isFetching || queue.syncing ? <ActivityIndicator size="small" color={p.textSecondary} /> : <Glyph name="sync" color={p.text} size={22} />}
               </Tap>
             </View>
