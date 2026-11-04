@@ -294,3 +294,8 @@ Commit 83bcd0f, `eas update --channel preview` (runtime 1.0.0, android fingerpri
 ### Hisobot: xarajatlar toifalar bo'yicha — OTA → preview — 2026-10-30
 - `c06c637`: Hisobot → Xarajatlar → "Operatsiyalar · Toifalar bo'yicha": har toifa bir marta (categoryId bo'yicha, podkategoriya parent ichida), soni, ulushi, jami; bosilganda operatsiyalar ochiladi, operatsiya bosilganda tafsilot oynasi. Backend o'zgarmagan.
 - **OTA:** update group `d66d27c3-6f49-4dc8-89e3-36f1b26b4f6d`, Android `01a18cbb-51e4-7c48-bfb6-bef76307d96f`, iOS `01a18cbb-51e4-7ab9-9dc6-1eb12600c2db`; runtime 1.0.0; Android fingerprint `8874963d…` = preview APK. Production'ga tegilmadi. Real telefonda **NOT TESTED**.
+
+
+### Bosh ekran: Profillar oynasi, yangilash tugmasi — OTA → preview — 2026-11-04
+- `2df2730`: avatar sozlamalar o'rniga Profillar oynasini ochadi (bitta avtomatik profil bo'lsa — yangi profil formasi); avatar va yangilash bitta tugmada; bosh ekrandagi sozlamalar tugmasi olib tashlandi; sozlamalar ikoni tishli g'ildirak. Backend o'zgarmadi.
+- **OTA:** update group `6749da00-df32-480e-882f-95cd1f51c6de`, Android `01a1a750-ad99-7d10-a77f-394144b484ce`, iOS `01a1a750-ad99-76e1-8b0e-7f7200f6e23b`; runtime 1.0.0; Android fingerprint `8874963d…` = preview APK. Production'ga tegilmadi. Real telefonda: NOT TESTED.
