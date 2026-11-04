@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
-import { ActivityIndicator, RefreshControl, Text, View, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
-import { ScrollView } from 'react-native-gesture-handler';
+import { ActivityIndicator, Text, View, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import { RefreshControl, ScrollView } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ApiError } from '@/api/client';
@@ -68,6 +68,9 @@ export function periodLabel(lang: Lang, period: Period, t: (k: 'all') => string,
     default: return t('all');
   }
 }
+
+const PULL_SPINNER_MIN_MS = 700;
+const PULL_SPINNER_MAX_MS = 4000;
 
 const SECTION_COLOR: Record<HomeSection, string> = { income: Ink.income, wallets: Ink.transfer, expense: Ink.expense };
 
@@ -171,13 +174,13 @@ export function Dashboard() {
     }
   };
   const [pulling, setPulling] = useState(false);
+  // Android's spinner is left hanging when it is told to hide before its appear animation has ended, and refreshing is
+  // often quicker than that: it stays a moment at least. A slow server keeps its own spinner in the sync button.
   const onPull = async () => {
     setPulling(true);
-    try {
-      await refreshAll();
-    } finally {
-      setPulling(false);
-    }
+    const wait = (ms: number) => new Promise<void>((resolve) => { setTimeout(resolve, ms); });
+    await Promise.all([wait(PULL_SPINNER_MIN_MS), Promise.race([refreshAll(), wait(PULL_SPINNER_MAX_MS)])]);
+    setPulling(false);
   };
   const toggle = (k: string) => setCollapsed((c) => ({ ...c, [k]: !c[k] }));
   const loading = !cat.loaded && snap.isLoading;

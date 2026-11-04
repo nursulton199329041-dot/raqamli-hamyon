@@ -63,7 +63,7 @@ describe('the sync button and pull to refresh', () => {
     await act(async () => { refresh().onRefresh(); await new Promise((r) => setTimeout(r, 50)); });
     expect(pulls.length).toBe(1);
     await release();
-    await waitFor(() => expect(refresh().refreshing).toBe(false));
+    await waitFor(() => expect(refresh().refreshing).toBe(false), { timeout: 3000 });
   });
 
   it('pulling shows its spinner until the data is back, and it never stays stuck', async () => {
@@ -72,6 +72,22 @@ describe('the sync button and pull to refresh', () => {
     await waitFor(() => expect(pulls.length).toBe(1));
     expect(refresh().refreshing).toBe(true);
     await release();
-    await waitFor(() => expect(refresh().refreshing).toBe(false));
+    await waitFor(() => expect(refresh().refreshing).toBe(false), { timeout: 3000 });
+  });
+
+  it('a very quick refresh still lets the spinner finish appearing before it is told to hide', async () => {
+    await home();
+    holdPulls = false;
+    await act(async () => { refresh().onRefresh(); await new Promise((r) => setTimeout(r, 200)); });
+    expect(refresh().refreshing).toBe(true);
+    await waitFor(() => expect(refresh().refreshing).toBe(false), { timeout: 3000 });
+  });
+
+  it('a server that does not answer cannot leave the spinner hanging', async () => {
+    await home();
+    await act(async () => { refresh().onRefresh(); });
+    await waitFor(() => expect(pulls.length).toBe(1));
+    await waitFor(() => expect(refresh().refreshing).toBe(false), { timeout: 6000 });
+    await release();
   });
 });
