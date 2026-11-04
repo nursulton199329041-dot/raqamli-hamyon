@@ -11,8 +11,8 @@ import { read } from './reads';
 interface ReportState {
   filter: ReportFilter;
   set(patch: Partial<ReportFilter>): void;
-  /** clears wallet / source / category / project, keeps report kind, period and currency */
-  clearFilters(): void;
+  /** the common clear: everything back to what the report shows on opening */
+  resetAll(): void;
 }
 
 export const useReports = create<ReportState>((set) => ({
@@ -23,9 +23,7 @@ export const useReports = create<ReportState>((set) => ({
     if ('categoryId' in patch && patch.categoryId !== s.filter.categoryId) next.subCategoryId = undefined;
     return { filter: next };
   }),
-  clearFilters: () => set((s) => ({
-    filter: { ...s.filter, walletId: undefined, sourceId: undefined, categoryId: undefined, subCategoryId: undefined, projectId: undefined },
-  })),
+  resetAll: () => set({ filter: { kind: 'expense', preset: 'month', anchor: new Date().toISOString() } }),
 }));
 
 const opts = { placeholderData: keepPreviousData, staleTime: 5_000 } as const;

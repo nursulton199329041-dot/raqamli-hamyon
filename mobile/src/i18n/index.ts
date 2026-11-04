@@ -383,7 +383,6 @@ const T = {
     '“localhost” does not work on a phone. Enter your computer’s LAN IP (http://192.168.x.x:5080) or an https server URL.',
   ],
   pdf: ['PDF', 'PDF', 'PDF'],
-  clear_selection: ['Tozalash', 'Сбросить', 'Clear'],
   filters: ['Filtrlar', 'Фильтры', 'Filters'],
   attach: ['Chek biriktirish', 'Прикрепить чек', 'Attach receipt'],
   success: ['Bajarildi', 'Готово', 'Done'],

@@ -61,13 +61,14 @@ const GLYPHS: Record<string, GlyphFn> = {
   grid: (c) => (<><Circle cx="6" cy="6" r="1.7" fill={c} /><Circle cx="12" cy="6" r="1.7" fill={c} /><Circle cx="18" cy="6" r="1.7" fill={c} /><Circle cx="6" cy="12" r="1.7" fill={c} /><Circle cx="12" cy="12" r="1.7" fill={c} /><Circle cx="18" cy="12" r="1.7" fill={c} /><Circle cx="6" cy="18" r="1.7" fill={c} /><Circle cx="12" cy="18" r="1.7" fill={c} /><Circle cx="18" cy="18" r="1.7" fill={c} /></>),
   forward: (c) => (<Path {...stroke(c)} d="M6 6.5l5.5 5.5L6 17.5M12.5 6.5l5.5 5.5-5.5 5.5" />),
   user: (c) => (<><Circle {...stroke(c)} cx="12" cy="8.5" r="3.6" /><Path {...stroke(c)} d="M4.5 20a7.5 7.5 0 0 1 15 0" /></>),
+  filterOff: (c) => (<Path {...stroke(c)} d="M3.5 5h13l-5 6v4.5l-3 1.5v-6zM15.5 14.5l5 5M20.5 14.5l-5 5" />),
   edit: (c) => (<Path {...stroke(c)} d="M4 20l1-4.5L16.5 4a2.1 2.1 0 0 1 3 0l.5.5a2.1 2.1 0 0 1 0 3L8.5 19 4 20zM14.5 6l3.5 3.5" />),
   sync: (c) => (<><Path {...stroke(c)} strokeWidth={2.2} d="M4.2 12a7.8 7.8 0 0 1 12.6-6.15M19.8 12a7.8 7.8 0 0 1-12.6 6.15" /><Path fill={c} d="M20.3 3.2v6.6h-6.6zM3.7 20.8v-6.6h6.6z" /></>),
   more: (c) => (<><Circle cx="5.5" cy="12" r="1.7" fill={c} /><Circle cx="12" cy="12" r="1.7" fill={c} /><Circle cx="18.5" cy="12" r="1.7" fill={c} /></>),
 };
 
 const UI_GLYPHS = ['plus', 'settings', 'history', 'chart', 'arrowIn', 'arrowOut', 'swap', 'handshake', 'check', 'close', 'clock', 'share', 'undo', 'search', 'refresh',
-  'backspace', 'trash', 'chevronDown', 'chevronLeft', 'chevronRight', 'filter', 'calendar', 'grid', 'forward', 'user', 'sync', 'more', 'edit'];
+  'backspace', 'trash', 'chevronDown', 'chevronLeft', 'chevronRight', 'filter', 'calendar', 'grid', 'forward', 'user', 'sync', 'more', 'edit', 'filterOff'];
 export const ICON_KEYS = Object.keys(GLYPHS).filter((k) => !UI_GLYPHS.includes(k));
 
 /** Decorative: hidden from screen readers. react-native-svg forwards unknown props to the DOM on web, so web gets aria-hidden. */

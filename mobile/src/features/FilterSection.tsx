@@ -28,36 +28,36 @@ export function FilterButton({ testID, count, onPress }: { testID: string; count
 }
 
 /**
- * The filter sheet's title line. With `onReset`: clear on the left, a check on the right (choices apply at once, so the
- * check just confirms and closes). Without it (a sheet that is not a filter): only a close button.
+ * The filter sheet's title line. Left: leave the sheet; nothing is undone, choices are applied the moment they are made.
+ * With `onReset`, right: clear everything, and a check that confirms (`onClose` also takes typed dates, `onExit` does not).
  */
-export function FilterHeader({ onClose, title, onReset, canReset }: { onClose(): void; title?: string; onReset?(): void; canReset?: boolean }) {
+export function FilterHeader({ onClose, onExit, title, onReset, canReset }: { onClose(): void; onExit?(): void; title?: string; onReset?(): void; canReset?: boolean }) {
   const t = useT();
   const p = usePalette();
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: space.sm }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, minHeight: 42, marginBottom: space.sm }}>
+      <Text accessibilityRole="header" numberOfLines={1} style={[type.headline, { position: 'absolute', left: 104, right: 104, textAlign: 'center', color: p.text }]}>{title ?? t('filter')}</Text>
+      <Tap testID="filter-close" label={t('close')} onPress={onExit ?? onClose} style={round(p, false)}>
+        <Glyph name="close" color={p.text} size={18} />
+      </Tap>
+      <View style={{ flex: 1 }} />
       {onReset ? (
-        <Tap testID="reset-filters" label={t('reset_filters')} disabled={!canReset} onPress={onReset} style={[round(p, false), { opacity: canReset ? 1 : 0.35 }]}>
-          <Glyph name="undo" color={p.text} size={20} />
-        </Tap>
-      ) : <View style={{ width: 42 }} />}
-      <Text accessibilityRole="header" style={[type.headline, { flex: 1, textAlign: 'center', color: p.text }]}>{title ?? t('filter')}</Text>
-      {onReset ? (
-        <Tap testID="close-filters" label={t('confirm')} onPress={onClose} style={[round(p, false), { backgroundColor: p.accent, borderColor: p.accent }]}>
-          <Glyph name="check" color="#fff" size={22} />
-        </Tap>
-      ) : (
-        <Tap testID="filter-close" label={t('close')} onPress={onClose} style={round(p, false)}>
-          <Glyph name="close" color={p.text} size={18} />
-        </Tap>
-      )}
+        <>
+          <Tap testID="reset-filters" label={t('reset_filters')} disabled={!canReset} onPress={onReset} style={[round(p, false), { opacity: canReset ? 1 : 0.35 }]}>
+            <Glyph name="filterOff" color={p.text} size={21} />
+          </Tap>
+          <Tap testID="close-filters" label={t('confirm')} onPress={onClose} style={[round(p, false), { backgroundColor: p.accent, borderColor: p.accent }]}>
+            <Glyph name="check" color="#fff" size={22} />
+          </Tap>
+        </>
+      ) : null}
     </View>
   );
 }
 
 /**
- * One block of the filter: its title, how much is chosen, a clear action and the icons to tap. The server filters by one
- * wallet, one category and so on, so one can be chosen per block; nothing chosen means all of them.
+ * One block of the filter: its title, how much is chosen and the icons to tap. The server filters by one wallet, one
+ * category and so on, so one can be chosen per block: tapping it again removes it; nothing chosen means all of them.
  */
 export function FilterSection({ id, title, items, selected, onChange }: {
   id: string; title: string; items: FilterItem[]; selected?: string; onChange(id: string | undefined): void;
@@ -74,12 +74,6 @@ export function FilterSection({ id, title, items, selected, onChange }: {
             {selected ? `1 / ${items.length}` : t('all')}
           </Text>
         </View>
-        <View style={{ flex: 1 }} />
-        {selected ? (
-          <Tap testID={`filter-clear-${id}`} label={t('clear_selection')} haptic={false} onPress={() => onChange(undefined)}>
-            <Text style={[type.footnote, { color: p.accent, fontWeight: '700' }]}>{t('clear_selection')}</Text>
-          </Tap>
-        ) : null}
       </View>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: space.sm, padding: space.sm, borderRadius: radii.lg, backgroundColor: p.glassFill, borderWidth: 1, borderColor: p.glassBorder }}>
         {items.map((x) => {

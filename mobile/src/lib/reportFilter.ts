@@ -168,6 +168,13 @@ export function rangeText(r: ExportRange): string {
   return r.from && r.to ? `${dmy(r.from)} — ${dmy(r.to)}` : '';
 }
 
+/** True when the report shows what it shows on opening: this month's expenses, no filter. */
+export function isDefaultReport(f: ReportFilter, now = new Date()): boolean {
+  const a = new Date(f.anchor);
+  return f.kind === 'expense' && f.preset === 'month' && !f.currency && activeFilterCount(f) === 0
+    && a.getFullYear() === now.getFullYear() && a.getMonth() === now.getMonth();
+}
+
 /** How many non-default filters are active (badge on the filter button). */
 export function activeFilterCount(f: ReportFilter): number {
   return [f.walletId, f.sourceId, f.categoryId, f.subCategoryId, f.projectId].filter(Boolean).length;

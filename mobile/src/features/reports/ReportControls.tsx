@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { ScrollView, Text, View, type LayoutChangeEvent } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { TxType, type Tx } from '@/api/types';
-import { Button, Chip, ErrorText, Field, Label, Segmented, Wrap } from '@/design/Controls';
+import { Chip, ErrorText, Field, Label, Segmented, Wrap } from '@/design/Controls';
 import { GlassCard, Tap } from '@/design/Glass';
 import { Grid } from '@/design/Grid';
 import { CircleBadge, Glyph } from '@/design/Icon';
@@ -18,7 +18,7 @@ import { spent } from '@/lib/categoryGroups';
 import { longDay } from '@/lib/dates';
 import { fmtMoney } from '@/lib/money';
 import { TX_TYPE_LABEL, flowSign, txColor } from '@/lib/txMeta';
-import { activeFilterCount, REPORT_KINDS, dayString, parseDay, rangeLabel, resolveRange, shiftAnchor, type RangePreset, type ReportKind } from '@/lib/reportFilter';
+import { isDefaultReport, REPORT_KINDS, dayString, parseDay, rangeLabel, resolveRange, shiftAnchor, type RangePreset, type ReportKind } from '@/lib/reportFilter';
 import { useCatalog } from '@/state/data';
 import { useReports } from '@/state/reports';
 import { useSettings } from '@/state/settings';
@@ -130,19 +130,32 @@ export function FilterSheet({ visible, onClose, currencies, currency }: { visibl
   const cat = useCatalog();
   const filter = useReports((s) => s.filter);
   const set = useReports((s) => s.set);
-  const clear = useReports((s) => s.clearFilters);
+  const resetAll = useReports((s) => s.resetAll);
   const r = resolveRange(filter);
   const [from, setFrom] = useState(filter.customFrom ?? dayString(r.from));
   const [to, setTo] = useState(filter.customTo ?? dayString(r.to));
   const [err, setErr] = useState<string | null>(null);
   const subs = cat.childrenOf(filter.categoryId);
-  const [showDates, setShowDates] = useState(filter.preset === 'custom');
   const walletCurrency = cat.wallet(filter.walletId)?.currency;
 
-  const applyDates = () => {
-    if (!parseDay(from) || !parseDay(to)) return setErr(t('date_invalid'));
+  // choosing "Davr" starts from the period on screen; the typed dates are taken when the check is pressed
+  const openCustom = () => {
+    if (filter.preset === 'custom') return;
+    const start = dayString(r.from);
+    const end = dayString(r.to);
+    setFrom(start);
+    setTo(end);
     setErr(null);
-    set({ preset: 'custom', customFrom: from, customTo: to });
+    set({ preset: 'custom', customFrom: start, customTo: end });
+  };
+  const confirm = () => {
+    if (filter.preset === 'custom') {
+      const a = parseDay(from);
+      const b = parseDay(to);
+      if (!a || !b || a > b) return setErr(t('date_invalid'));
+      set({ customFrom: from, customTo: to });
+    }
+    setErr(null);
     onClose();
   };
   const dates = (
@@ -153,7 +166,6 @@ export function FilterSheet({ visible, onClose, currencies, currency }: { visibl
         <View style={{ flex: 1 }}><Field testID="custom-to" label={t('date_to')} value={to} onChangeText={setTo} autoCapitalize="none" /></View>
       </View>
       <ErrorText>{err}</ErrorText>
-      <Button testID="apply-dates" title={t('apply')} variant="tonal" onPress={applyDates} />
     </View>
   );
   const chips = (
@@ -168,13 +180,13 @@ export function FilterSheet({ visible, onClose, currencies, currency }: { visibl
   );
   return (
     <Sheet visible={visible} onClose={onClose} full>
-      <FilterHeader onClose={onClose} onReset={clear} canReset={activeFilterCount(filter) > 0} />
+      <FilterHeader onClose={confirm} onExit={onClose} onReset={() => { setErr(null); resetAll(); }} canReset={!isDefaultReport(filter)} />
       {/* what the Reports page shows: its type, period and currency (charts never mix currencies) */}
       <Label>{t('report_type')}</Label>
       <KindTabs value={filter.kind} onChange={(k) => set({ kind: k })} />
       <Label>{t('period')}</Label>
-      <PeriodBar onCustom={() => setShowDates(true)} />
-      {showDates ? dates : null}
+      <PeriodBar onCustom={openCustom} />
+      {filter.preset === 'custom' ? dates : null}
       {currencies.length > 1 && !walletCurrency ? (
         <>
           <Label>{t('currency')}</Label>
