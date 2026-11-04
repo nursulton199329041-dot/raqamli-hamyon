@@ -8,6 +8,7 @@ import { GlassCard, Tap } from '@/design/Glass';
 import { CircleBadge, Glyph } from '@/design/Icon';
 import { Sheet } from '@/design/Sheet';
 import { useScreenLayout } from '@/design/layout';
+import { spent } from '@/lib/categoryGroups';
 import { TX_TYPE_LABEL, flowSign, txColor } from '@/lib/txMeta';
 import { Ink, usePalette, useT } from '@/design/theme';
 import { dayKey, fmtDateTime, fmtMoney } from '@/lib/money';
@@ -58,7 +59,9 @@ export function History() {
       const m = dayTotals.get(k) ?? new Map<string, number>();
       // opening balances are not "money that came in today": keep them out of the day total (like the header totals)
       const sign = tx.type === TxType.Opening ? 0 : flowSign(tx.type);
-      m.set(tx.currency, (m.get(tx.currency) ?? 0) + sign * tx.amount);
+      // a converted expense counts in the currency it was written in, so the day adds up to one figure
+      const s = spent(tx);
+      m.set(s.currency, (m.get(s.currency) ?? 0) + sign * s.amount);
       dayTotals.set(k, m);
     }
     let last = '';
@@ -208,8 +211,12 @@ export function History() {
           const color = txColor(tx.type);
           const struck = tx.reversedById || tx.type === TxType.Reversal ? { textDecorationLine: 'line-through' as const, opacity: 0.55 } : null;
           const icon = c?.icon ?? s?.icon ?? (tx.type === TxType.Transfer ? 'swap' : 'debt');
+          // a converted expense reads in sums; what actually left the wallet is the small line under it
+          const shown = spent(tx);
+          const other = tx.type === TxType.Expense && shown.currency !== tx.currency ? fmtMoney(tx.amount, tx.currency)
+            : tx.type === TxType.Transfer && tx.toAmount && tx.toCurrency && tx.toCurrency !== tx.currency ? fmtMoney(tx.toAmount, tx.toCurrency) : null;
           return (
-            <Tap testID={`tx-${tx.id}`} label={`${title} ${fmtMoney(tx.amount, tx.currency)}`} onPress={() => open(tx)}>
+            <Tap testID={`tx-${tx.id}`} label={`${title} ${fmtMoney(shown.amount, shown.currency)}`} onPress={() => open(tx)}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 10 }}>
                 <CircleBadge name={icon} color={c?.color ?? s?.color ?? color} size={38} />
                 <View style={{ flex: 1, minWidth: 0 }}>
@@ -223,11 +230,9 @@ export function History() {
                 </View>
                 <View style={{ alignItems: 'flex-end', flexShrink: 0, maxWidth: '48%' }}>
                   <Text numberOfLines={1} style={[{ color: tx.type === TxType.Transfer ? p.text : color, fontWeight: '700', fontSize: 15, fontVariant: ['tabular-nums'] }, struck]}>
-                    {sign}{fmtMoney(tx.amount, tx.currency)}
+                    {sign}{fmtMoney(shown.amount, shown.currency)}
                   </Text>
-                  {(tx.type === TxType.Transfer || tx.type === TxType.Expense) && tx.toAmount && tx.toCurrency && tx.toCurrency !== tx.currency ? (
-                    <Text numberOfLines={1} style={{ color: p.textSecondary, fontSize: 12 }}>{fmtMoney(tx.toAmount, tx.toCurrency)}</Text>
-                  ) : null}
+                  {other ? <Text testID={`amount-other-${tx.id}`} numberOfLines={1} style={{ color: p.textSecondary, fontSize: 12 }}>{other}</Text> : null}
                 </View>
               </View>
             </Tap>
@@ -272,8 +277,9 @@ export function DetailSheet({ tx, onClose, label }: { tx: Tx | null; onClose(): 
   const rows: [string, string | null | undefined][] = tx ? [
     [t('date'), fmtDateTime(tx.occurredAt)],
     [t('wallet'), cat.wallet(tx.walletId)?.name],
+    [t('wallet_charged'), tx.type === TxType.Expense && spent(tx).currency !== tx.currency ? fmtMoney(tx.amount, tx.currency) : null],
     [t('to_wallet'), cat.wallet(tx.toWalletId)?.name],
-    [tx.type === TxType.Expense ? t('converted_amount') : t('to_amount'), tx.toAmount ? fmtMoney(tx.toAmount, tx.toCurrency ?? undefined) : null],
+    [t('to_amount'), tx.type !== TxType.Expense && tx.toAmount ? fmtMoney(tx.toAmount, tx.toCurrency ?? undefined) : null],
     [t('rate_hint'), tx.fxRate && tx.toCurrency ? `1 ${tx.currency} = ${fmtMoney(tx.fxRate, tx.toCurrency)}` : null],
     [t('category'), cat.category(tx.categoryId)?.name],
     [t('source'), cat.source(tx.incomeSourceId)?.name],
@@ -288,7 +294,7 @@ export function DetailSheet({ tx, onClose, label }: { tx: Tx | null; onClose(): 
     <Sheet visible={tx !== null} onClose={onClose}>
       {tx && (
         <View>
-          <Text style={{ color: p.text, fontSize: 20, fontWeight: '800' }}>{label(tx.type)} · {fmtMoney(tx.amount, tx.currency)}</Text>
+          <Text style={{ color: p.text, fontSize: 20, fontWeight: '800' }}>{label(tx.type)} · {fmtMoney(spent(tx).amount, spent(tx).currency)}</Text>
           <Label>{t('details')}</Label>
           {rows.filter(([, v]) => !!v).map(([k, v]) => (
             <View key={k} style={{ flexDirection: 'row', paddingVertical: 4 }}>

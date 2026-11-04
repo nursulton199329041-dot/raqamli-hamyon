@@ -95,7 +95,9 @@ describe('an expense from a wallet in another currency', () => {
       categoryId: 'c1', occurredAt: new Date().toISOString(), createdAt: new Date().toISOString(),
     } as never];
     await renderApp(<History />);
-    await screen.findByText(/119\s41\d/);
-    expect(screen.getAllByText(/10\sUSD/).length).toBeGreaterThan(0);
+    await screen.findByTestId('tx-t1');
+    // the row and the day total read in sums; the dollars are only the small line under the row
+    expect(screen.getAllByText(/119\s416,50\sUZS/).length).toBe(2);
+    expect(textOf('amount-other-t1')).toBe('10 USD');
   });
 });

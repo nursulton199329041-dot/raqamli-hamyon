@@ -13,6 +13,7 @@ import { usePalette, useT } from '@/design/theme';
 import { useMotionOff } from '@/design/look';
 import { motion, radii, space, type } from '@/design/tokens';
 import type { I18nKey } from '@/i18n';
+import { spent } from '@/lib/categoryGroups';
 import { longDay } from '@/lib/dates';
 import { fmtMoney } from '@/lib/money';
 import { TX_TYPE_LABEL, flowSign, txColor } from '@/lib/txMeta';
@@ -272,7 +273,8 @@ export function TxList({ items, loading }: { items: Tx[]; loading: boolean }) {
         const sign = flowSign(tx.type);
         const color = txColor(tx.type);
         // a cross-currency transfer also shows what arrived (the report may be filtered by the receiving currency)
-        const received = tx.toAmount != null && tx.toCurrency && tx.toCurrency !== tx.currency ? `→ ${fmtMoney(tx.toAmount, tx.toCurrency)}` : null;
+        const received = tx.type === TxType.Expense && spent(tx).currency !== tx.currency ? fmtMoney(tx.amount, tx.currency)
+          : tx.toAmount != null && tx.toCurrency && tx.toCurrency !== tx.currency ? `→ ${fmtMoney(tx.toAmount, tx.toCurrency)}` : null;
         return (
           <View key={tx.id} testID={`rtx-${tx.id}`} style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, paddingVertical: space.sm, borderTopWidth: 1, borderTopColor: p.glassBorder }}>
             <CircleBadge name={c?.icon ?? s?.icon ?? (tx.type === TxType.Transfer ? 'swap' : 'debt')} color={c?.color ?? s?.color ?? color} size={34} />
@@ -284,7 +286,7 @@ export function TxList({ items, loading }: { items: Tx[]; loading: boolean }) {
             </View>
             <View style={{ alignItems: 'flex-end' }}>
               <Text numberOfLines={1} style={[type.callout, { color, fontVariant: ['tabular-nums'] }]}>
-                {sign > 0 ? '+' : sign < 0 ? '−' : ''}{fmtMoney(tx.amount, tx.currency)}
+                {sign > 0 ? '+' : sign < 0 ? '−' : ''}{fmtMoney(spent(tx).amount, spent(tx).currency)}
               </Text>
               {received ? <Text numberOfLines={1} style={[type.caption, { color: p.textSecondary }]}>{received}</Text> : null}
             </View>
