@@ -1,5 +1,5 @@
 import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
-import { officialRate } from '@/lib/rates';
+import { loadSavedRate, officialRate, saveRate } from '@/lib/rates';
 import { OperationSheet } from '@/features/OperationSheet';
 import { History } from '@/features/History';
 import { useSettings } from '@/state/settings';
@@ -9,7 +9,7 @@ import { renderApp, save, textOf, typeKeys } from '../test-utils/ui';
 
 jest.mock('react-native-gesture-handler', () => jest.requireActual('../test-utils/gestureMock'));
 jest.mock('expo-router', () => ({ useRouter: () => ({ push: jest.fn(), back: jest.fn() }) }));
-jest.mock('@/lib/rates', () => ({ officialRate: jest.fn() }));
+jest.mock('@/lib/rates', () => ({ ...jest.requireActual('@/lib/rates'), officialRate: jest.fn() }));
 jest.setTimeout(30000);
 
 const rate = officialRate as jest.MockedFunction<typeof officialRate>;
@@ -77,6 +77,42 @@ describe('an expense from a wallet in another currency', () => {
     await save();
     await waitFor(() => expect(server.pushes.length).toBe(1));
     expect(server.pushes[0]!.payload).toMatchObject({ toAmount: 120000, rateSource: 'manual' });
+  });
+
+  it('saving never waits: the last known rate is used at once, and a newer one serves the next operation', async () => {
+    await saveRate('USD', 'UZS', 12000, '2026-11-01');
+    let answer: (v: number) => void = () => undefined;
+    rate.mockReturnValue(new Promise((resolve) => { answer = resolve; }));
+    await openExpense('usd');
+    await typeKeys('10');
+    await waitFor(() => expect(textOf('amount-to-display')).toBe('120 000 UZS'));
+
+    await save();
+    await waitFor(() => expect(server.pushes.length).toBe(1));
+    expect(server.pushes[0]!.payload).toMatchObject({ toAmount: 120000, rateSource: 'cbu', rateDate: '2026-11-01' });
+
+    await act(async () => { answer(12500); });
+    await waitFor(async () => expect((await loadSavedRate('USD', 'UZS'))?.rate).toBe(12500));
+  });
+
+  it('an old date looked up later does not bring an old rate back', async () => {
+    await saveRate('USD', 'UZS', 12500, '2026-11-04');
+    await saveRate('USD', 'UZS', 11000, '2026-01-10');
+    expect(await loadSavedRate('USD', 'UZS')).toEqual({ rate: 12500, day: '2026-11-04' });
+  });
+
+  it('no connection and no saved rate: the last rate from history is used without waiting', async () => {
+    rate.mockResolvedValue(null);
+    server.txs = [{
+      id: 't0', type: 2, amount: 1, currency: 'USD', walletId: 'usd', toAmount: 12100, toCurrency: 'UZS', fxRate: 12100,
+      categoryId: 'c1', occurredAt: '2026-10-01T10:00:00.000Z', createdAt: '2026-10-01T10:00:00.000Z',
+    } as never];
+    await openExpense('usd');
+    await typeKeys('10');
+    await waitFor(() => expect(textOf('amount-to-display')).toBe('121 000 UZS'));
+    await save();
+    await waitFor(() => expect(server.pushes.length).toBe(1));
+    expect(server.pushes[0]!.payload).toMatchObject({ toAmount: 121000, rateSource: 'last_used' });
   });
 
   it('a wallet in the profile currency stays a plain expense, with no second amount', async () => {

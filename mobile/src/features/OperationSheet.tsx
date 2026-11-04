@@ -14,7 +14,7 @@ import { CircleBadge, Glyph } from '@/design/Icon';
 import { Keypad } from '@/design/Keypad';
 import { Sheet } from '@/design/Sheet';
 import { Ink, usePalette, useT } from '@/design/theme';
-import { officialRate } from '@/lib/rates';
+import { loadSavedRate, officialRate, saveRate } from '@/lib/rates';
 import { useCatalog, useSnapshot } from '@/state/data';
 import { useProfiles } from '@/state/profiles';
 import { useQueue } from '@/state/queue';
@@ -197,12 +197,24 @@ function OperationForm({ prefill, visible, onDone }: { prefill: OpPrefill; visib
   const cross = !!from && !!toCurrency && from.currency !== toCurrency;
   const expenseCross = cross && kind === 'expense';
   const rateDay = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  const savedRateKey = ['saved-rate', from?.currency, toCurrency];
+  const savedRate = useQuery({
+    queryKey: savedRateKey,
+    queryFn: () => loadSavedRate(from!.currency, toCurrency!),
+    enabled: expenseCross && !editing,
+  }).data ?? null;
+  // Asked in the background and never waited for: until it answers the form works with the last known rate, and an
+  // answer is kept for the operations after this one.
   const official = useQuery({
     queryKey: ['official-rate', from?.currency, toCurrency, rateDay],
-    queryFn: () => officialRate(from!.currency, toCurrency!, rateDay),
+    queryFn: async () => {
+      const r = await officialRate(from!.currency, toCurrency!, rateDay);
+      if (r) qc.setQueryData(savedRateKey, await saveRate(from!.currency, toCurrency!, r, rateDay));
+      return r;
+    },
     enabled: expenseCross && !editing,
     retry: false,
-    staleTime: 6 * 3600 * 1000,
+    staleTime: (q) => (q.state.data ? 6 * 3600 * 1000 : 0), // "no rate" (no connection) is asked again next time
   }).data ?? null;
   const accent = TABS.find((x) => x.kind === kind)!.color;
   const source = cat.source(sourceId);
@@ -210,10 +222,11 @@ function OperationForm({ prefill, visible, onDone }: { prefill: OpPrefill; visib
   const children = cat.childrenOf(topCategory);
   const sub = cat.category(subId);
 
-  // Pre-fills the second amount: an expense takes the day's official rate, otherwise the last used rate of this pair.
+  // Pre-fills the second amount: the day's official rate, else the last official rate kept on this device, else the
+  // last rate used in this pair's history. Only when none exists does the user type the amount.
   const lastRate = !cross || !from ? null
     : cat.transactions.find((x) => (x.type === TxType.Transfer || x.type === TxType.Expense) && !!x.fxRate && x.currency === from.currency && x.toCurrency === toCurrency)?.fxRate ?? null;
-  const knownRate = (expenseCross ? official : null) ?? lastRate;
+  const knownRate = (expenseCross ? official ?? savedRate?.rate : null) ?? lastRate;
 
   // Until the user types the received amount it follows mount x last used rate (derived, not stored).
   const autoTo = useMemo(() => {
@@ -337,7 +350,11 @@ function OperationForm({ prefill, visible, onDone }: { prefill: OpPrefill; visib
       }
       const base = { memo: note || null, occurredAt, projectId: projectId ?? null };
       const fx = expenseCross
-        ? { toCurrency, toAmount: toAmountValue, rateDate: rateDay, rateSource: !toTouched && official ? 'cbu' : 'manual' }
+        ? {
+          toCurrency, toAmount: toAmountValue,
+          rateDate: !toTouched && !official && savedRate ? savedRate.day : rateDay,
+          rateSource: toTouched ? 'manual' : official || savedRate ? 'cbu' : 'last_used',
+        }
         : {};
 
       if (editing) {

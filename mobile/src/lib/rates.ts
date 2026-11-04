@@ -3,7 +3,28 @@
  * Rates are quoted against the sum, so any other pair goes through it. Null when it cannot be told (no connection, a
  * currency the bank does not quote): the form then falls back to the last used rate or asks for the amount.
  */
+import { getStorage } from '@/offline/storage';
+
 const TIMEOUT_MS = 6000;
+
+export interface SavedRate { rate: number; day: string }
+
+const savedKey = (from: string, to: string) => `fx:last:${from}:${to}`;
+
+/** The newest official rate this device has seen for the pair: saving never waits for the network, it uses this one. */
+export async function loadSavedRate(from: string, to: string): Promise<SavedRate | null> {
+  const raw = await (await getStorage()).get(savedKey(from, to));
+  return raw ? (JSON.parse(raw) as SavedRate) : null;
+}
+
+/** Keeps a rate unless a newer day is already kept (looking up an old date must not bring an old rate back). */
+export async function saveRate(from: string, to: string, rate: number, day: string): Promise<SavedRate> {
+  const kept = await loadSavedRate(from, to);
+  if (kept && kept.day > day) return kept;
+  const next = { rate, day };
+  await (await getStorage()).set(savedKey(from, to), JSON.stringify(next));
+  return next;
+}
 
 async function sumsPerUnit(currency: string, day: string): Promise<number | null> {
   if (currency === 'UZS') return 1;
