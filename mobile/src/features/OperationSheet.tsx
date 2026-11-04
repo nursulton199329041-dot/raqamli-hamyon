@@ -16,7 +16,6 @@ import { Sheet } from '@/design/Sheet';
 import { Ink, usePalette, useT } from '@/design/theme';
 import { loadSavedRate, officialRate, saveRate } from '@/lib/rates';
 import { useCatalog, useSnapshot } from '@/state/data';
-import { useProfiles } from '@/state/profiles';
 import { useQueue } from '@/state/queue';
 import { api } from '@/state/runtime';
 import { useSettings } from '@/state/settings';
@@ -33,6 +32,7 @@ const TABS: { kind: OpKind; key: 'income' | 'expense' | 'transfer' | 'debt'; col
 ];
 
 const DECIMALS = 2;
+const MAIN_CURRENCY = 'UZS';
 
 /** Global operation form (income / expense / transfer / debt). Opened by tiles, drag&drop and history; nothing is sent before "Save". */
 export function OperationSheet() {
@@ -186,13 +186,12 @@ function OperationForm({ prefill, visible, onDone }: { prefill: OpPrefill; visib
   const walletId = pickedWallet ?? wallets[0]?.id;
   const from = cat.wallet(walletId);
   const to = cat.wallet(toWalletId);
-  const profiles = useProfiles().data;
-  const baseCurrency = profiles?.items.find((x) => x.id === profiles.currentId)?.baseCurrency ?? 'UZS';
-  // An expense from a wallet in another currency is written in the profile's currency: the wallet loses its own money,
-  // the category is charged the converted sum. An old expense being corrected keeps the form it was saved in.
+  // Sums are the main money of the books, whatever currency a profile was opened in. An expense from a wallet in another
+  // currency is written in sums: the wallet loses its own money, the category is charged the converted sum, and an
+  // expense from a sum wallet stays a plain expense. An old expense being corrected keeps a conversion to sums.
   const expenseTo = kind !== 'expense' || !from ? null
-    : editing ? editing.toCurrency ?? null
-      : from.currency !== baseCurrency ? baseCurrency : null;
+    : editing ? (editing.toCurrency === MAIN_CURRENCY ? MAIN_CURRENCY : null) // converted into anything else was a mistake: correcting removes it
+      : from.currency !== MAIN_CURRENCY ? MAIN_CURRENCY : null;
   const toCurrency = kind === 'transfer' ? to?.currency ?? null : expenseTo;
   const cross = !!from && !!toCurrency && from.currency !== toCurrency;
   const expenseCross = cross && kind === 'expense';

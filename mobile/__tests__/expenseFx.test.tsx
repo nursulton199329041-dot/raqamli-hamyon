@@ -1,6 +1,7 @@
 import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
 import { loadSavedRate, officialRate, saveRate } from '@/lib/rates';
 import { OperationSheet } from '@/features/OperationSheet';
+import { api } from '@/state/runtime';
 import { History } from '@/features/History';
 import { useSettings } from '@/state/settings';
 import { useUi } from '@/state/ui';
@@ -113,6 +114,52 @@ describe('an expense from a wallet in another currency', () => {
     await save();
     await waitFor(() => expect(server.pushes.length).toBe(1));
     expect(server.pushes[0]!.payload).toMatchObject({ toAmount: 121000, rateSource: 'last_used' });
+  });
+
+  describe('in a profile opened in dollars', () => {
+    beforeEach(() => {
+      server.profiles = [{ id: 'p1', name: 'Dollar profil', color: '#4D8DFF', icon: 'person', baseCurrency: 'USD', sortOrder: 0, isArchived: false, revision: 1, isCurrent: true }];
+    });
+
+    it('a sum wallet stays a plain expense in sums: it is never turned into dollars', async () => {
+      await openExpense('uzs');
+      await typeKeys('10000');
+      await act(async () => { await new Promise((r) => setTimeout(r, 50)); });
+      expect(screen.queryByTestId('amount-to-display')).toBeNull();
+      await save();
+      await waitFor(() => expect(server.pushes.length).toBe(1));
+      expect(server.pushes[0]!.payload).toMatchObject({ walletId: 'uzs', amount: 10000 });
+      expect(server.pushes[0]!.payload).not.toHaveProperty('toCurrency');
+      expect(rate).not.toHaveBeenCalled();
+    });
+
+    it('a dollar wallet is still converted to sums', async () => {
+      rate.mockResolvedValue(11941.65);
+      await openExpense('usd');
+      await typeKeys('10');
+      await waitFor(() => expect(textOf('amount-to-display')).toBe('119 416,5 UZS'));
+      await save();
+      await waitFor(() => expect(server.pushes.length).toBe(1));
+      expect(server.pushes[0]!.payload).toMatchObject({ walletId: 'usd', amount: 10, toCurrency: 'UZS', toAmount: 119416.5 });
+    });
+  });
+
+  it('correcting a sum expense that was wrongly converted to dollars makes it a plain sum expense again', async () => {
+    const put = jest.spyOn(api, 'put');
+    const wrong = {
+      id: 'bad', type: 2, amount: 10000, currency: 'UZS', walletId: 'uzs', toAmount: 0.84, toCurrency: 'USD', fxRate: 0.000084,
+      categoryId: 'c1', occurredAt: '2026-11-04T10:00:00.000Z', createdAt: '2026-11-04T10:00:00.000Z',
+    } as never;
+    server.txs = [wrong];
+    await renderApp(<OperationSheet />);
+    await act(async () => { useUi.getState().openOp({ kind: 'expense', edit: wrong }); });
+    await screen.findByTestId('amount-display');
+    expect(screen.queryByTestId('amount-to-display')).toBeNull();
+    await save();
+    await waitFor(() => expect(put.mock.calls.some(([path]) => String(path).includes('bad'))).toBe(true));
+    const body = put.mock.calls.find(([path]) => String(path).includes('bad'))![1] as Record<string, unknown>;
+    expect(body).toMatchObject({ walletId: 'uzs', amount: 10000 });
+    expect(body).not.toHaveProperty('toCurrency');
   });
 
   it('a wallet in the profile currency stays a plain expense, with no second amount', async () => {
