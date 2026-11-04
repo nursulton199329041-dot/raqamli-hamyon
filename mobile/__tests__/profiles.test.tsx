@@ -91,6 +91,23 @@ describe('home avatar opens the profiles, not the settings', () => {
     await screen.findByTestId('profile-form');
   });
 
+  it('no connection: the list from last time is shown, and a switch changes nothing', async () => {
+    server.profiles = [profile('p1', 'Asosiy', true), profile('p2', 'Sultonbek')];
+    await openSheet();
+    await screen.findByText('Sultonbek');
+    await fireEvent.press(screen.getByTestId('profiles-close'));
+
+    server.offline = true;
+    await fireEvent.press(screen.getByTestId('profile-button'));
+    await screen.findByTestId('profile-p2');
+    expect(screen.queryByTestId('profiles-error')).toBeNull();
+
+    await fireEvent.press(screen.getByTestId('profile-p2'));
+    await screen.findByText(/aloqa/);
+    expect(api.getProfileId()).toBeNull();
+    expect(screen.getByTestId('profiles-sheet')).toBeTruthy();
+  });
+
   it('picking a profile: later requests carry it and the screens load again', async () => {
     server.profiles = [profile('p1', 'Asosiy', true), profile('p2', 'Sultonbek')];
     await openSheet();

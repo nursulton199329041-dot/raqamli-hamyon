@@ -6,7 +6,7 @@ import { openLocalDb } from '@/offline/sqlite';
 import { getStorage } from '@/offline/storage';
 import { currentBook, useQueue } from './queue';
 import { api, queryClient } from './runtime';
-import { PROFILE_STORE_KEY, useSession } from './session';
+import { PROFILES_CACHE_KEY, PROFILE_STORE_KEY, useSession } from './session';
 
 export interface ProfileRow { id: string; name: string; color: string; icon: string; baseCurrency: string }
 interface ServerProfile extends ProfileRow { sortOrder: number; isArchived: boolean; isCurrent: boolean }
@@ -17,9 +17,20 @@ async function loadProfiles(): Promise<ProfileList> {
   const opening = currentBook();
   const book = opening && (await opening);
   if (!book) {
-    const rows = await api.get<ServerProfile[]>('/api/profiles');
+    const store = await getStorage();
+    let rows: ServerProfile[];
+    try {
+      rows = await api.get<ServerProfile[]>('/api/profiles');
+      await store.set(PROFILES_CACHE_KEY, JSON.stringify(rows));
+    } catch (e) {
+      // no connection: the list from the last time, like the rest of the screens
+      const cached = e instanceof ApiError && e.isNetwork ? await store.get(PROFILES_CACHE_KEY) : null;
+      if (!cached) throw e;
+      rows = JSON.parse(cached) as ServerProfile[];
+    }
     const items = rows.filter((r) => !r.isArchived);
-    return { items, currentId: items.find((r) => r.isCurrent)?.id ?? items[0]?.id ?? null };
+    const chosen = api.getProfileId();
+    return { items, currentId: items.find((r) => (chosen ? r.id === chosen : r.isCurrent))?.id ?? items[0]?.id ?? null };
   }
   const user = useSession.getState().user;
   if (book.engine && user) {
@@ -45,7 +56,11 @@ export function useProfiles() {
 export async function selectProfile(id: string): Promise<void> {
   const opening = currentBook();
   const book = opening && (await opening);
-  if (!book && useQueue.getState().pending.length > 0) throw new ApiError(409, 'profile.busy', 'profile.busy');
+  if (!book) {
+    if (useQueue.getState().pending.length > 0) throw new ApiError(409, 'profile.busy', 'profile.busy');
+    // the new profile can only be read from the server: with no connection nothing changes, the current one stays usable
+    await api.get('/api/profiles');
+  }
   if (book?.engine !== null) {
     // a guest (engine null) has no server to tell
     api.setProfileId(id);

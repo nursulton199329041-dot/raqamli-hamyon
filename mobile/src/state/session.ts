@@ -41,6 +41,8 @@ type Status = 'loading' | 'signedOut' | 'signedIn' | 'guest';
 const GUEST_KEY = 'guest';
 /** The profile a signed-in user last chose on this device. */
 export const PROFILE_STORE_KEY = 'current_profile';
+/** The account's profile list from the last connection (a server-only device, offline). */
+export const PROFILES_CACHE_KEY = 'profiles_cache';
 
 interface SessionState {
   status: Status;
@@ -172,6 +174,7 @@ export const useSession = create<SessionState>((set, get) => ({
     api.setTokens(null);
     api.setProfileId(null);
     await (await getStorage()).remove(PROFILE_STORE_KEY);
+    await (await getStorage()).remove(PROFILES_CACHE_KEY);
     await saveTokens(null);
     // An expired session keeps the offline queue (never lose unsent money operations); explicit sign-out wipes it
     // so one account's pending operations can't leak into another.
