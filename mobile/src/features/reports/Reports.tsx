@@ -23,6 +23,7 @@ import {
 import { useSession } from '@/state/session';
 import { useSettings } from '@/state/settings';
 import { CategoryGroups } from './CategoryGroups';
+import { FilterButton } from '../FilterSection';
 import { FilterSheet, KIND_LABEL, KindTabs, Panel, PeriodBar, StatGrid, TxList, type Stat } from './ReportControls';
 
 /** Server period key (client calendar: 2026, 2026-10, 2026-10-27) -> [year, month0, day]. */
@@ -206,9 +207,14 @@ export function Reports() {
   return (
     <View style={{ flex: 1 }}>
       <ScrollView testID="reports-scroll" contentContainerStyle={{ paddingHorizontal: L.gutter, paddingTop: space.lg, paddingBottom: L.bottomSpace + space.lg, gap: space.md }}>
-        {/* title + export */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, flexWrap: 'wrap' }}>
-          <Text accessibilityRole="header" style={[type.title, { flex: 1, minWidth: 140, color: p.text }]}>{t('reports')}</Text>
+        {/* title + filter, as in History */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', minHeight: 42 }}>
+          <Text accessibilityRole="header" style={{ color: p.text, fontSize: 17, fontWeight: '700' }}>{t('reports')}</Text>
+          <View style={{ position: 'absolute', right: 0 }}>
+            <FilterButton testID="open-filters" count={filters} onPress={() => setSheet('filters')} />
+          </View>
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: space.sm, flexWrap: 'wrap' }}>
           {busy ? <ActivityIndicator color={p.accent} /> : null}
           <Tap testID="export-xlsx" label={t('export_excel')} onPress={() => void doExport('xlsx')} disabled={busy}
             style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: space.md, minHeight: 38, borderRadius: radii.pill, backgroundColor: Ink.income }}>
@@ -229,12 +235,6 @@ export function Reports() {
           {currencies.length > 1 && !walletCur ? currencies.map((c) => (
             <Chip key={c} label={c} selected={c === currency} onPress={() => set({ currency: c })} />
           )) : currency ? <Chip label={currency} selected onPress={() => undefined} /> : null}
-          <View style={{ flex: 1 }} />
-          <Tap testID="open-filters" label={t('filters')} onPress={() => setSheet('filters')}
-            style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: space.md, minHeight: 38, borderRadius: radii.pill, borderWidth: 1, borderColor: filters ? p.accent : p.glassBorder, backgroundColor: filters ? `${p.accent}29` : p.glassFill }}>
-            <Glyph name="filter" color={filters ? p.accent : p.text} size={16} />
-            <Text style={[type.callout, { color: filters ? p.accent : p.text }]}>{t('filters')}{filters ? ` · ${filters}` : ''}</Text>
-          </Tap>
         </View>
         {named.length > 0 ? (
           <Wrap>

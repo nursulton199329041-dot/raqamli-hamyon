@@ -8,6 +8,7 @@ import { Grid } from '@/design/Grid';
 import { CircleBadge, Glyph } from '@/design/Icon';
 import { useScreenLayout } from '@/design/layout';
 import { Sheet } from '@/design/Sheet';
+import { FilterHeader, FilterSection } from '../FilterSection';
 import { Skeleton } from '@/design/States';
 import { usePalette, useT } from '@/design/theme';
 import { useMotionOff } from '@/design/look';
@@ -155,65 +156,23 @@ export function FilterSheet({ visible, onClose, customFirst }: { visible: boolea
   );
   const chips = (
     <View key="chips">
-      <Label>{t('wallet')}</Label>
-      <Wrap>
-        <Chip label={t('all')} selected={!filter.walletId} onPress={() => set({ walletId: undefined })} />
-        {cat.wallets.map((w) => (
-          <Chip key={w.id} label={w.name} icon={w.icon} color={w.color} selected={filter.walletId === w.id}
-            onPress={() => set({ walletId: filter.walletId === w.id ? undefined : w.id, currency: w.currency })} />
-        ))}
-      </Wrap>
-      <Label>{t('income_source')}</Label>
-      <Wrap>
-        <Chip label={t('all')} selected={!filter.sourceId} onPress={() => set({ sourceId: undefined })} />
-        {cat.sources.map((s) => (
-          <Chip key={s.id} label={s.name} icon={s.icon} color={s.color} selected={filter.sourceId === s.id}
-            onPress={() => set({ sourceId: filter.sourceId === s.id ? undefined : s.id })} />
-        ))}
-      </Wrap>
-      <Label>{t('category')}</Label>
-      <Wrap>
-        <Chip label={t('all')} selected={!filter.categoryId} onPress={() => set({ categoryId: undefined })} />
-        {cat.topCategories.map((c) => (
-          <Chip key={c.id} label={c.name} icon={c.icon} color={c.color} selected={filter.categoryId === c.id}
-            onPress={() => set({ categoryId: filter.categoryId === c.id ? undefined : c.id })} />
-        ))}
-      </Wrap>
-      {subs.length > 0 ? (
-        <>
-          <Label>{t('sub_category')}</Label>
-          <Wrap>
-            <Chip label={t('all')} selected={!filter.subCategoryId} onPress={() => set({ subCategoryId: undefined })} />
-            {subs.map((c) => (
-              <Chip key={c.id} label={c.name} selected={filter.subCategoryId === c.id}
-                onPress={() => set({ subCategoryId: filter.subCategoryId === c.id ? undefined : c.id })} />
-            ))}
-          </Wrap>
-        </>
-      ) : null}
-      {cat.projects.length > 0 ? (
-        <>
-          <Label>{t('project')}</Label>
-          <Wrap>
-            <Chip label={t('all')} selected={!filter.projectId} onPress={() => set({ projectId: undefined })} />
-            {cat.projects.map((pr) => (
-              <Chip key={pr.id} label={pr.name} icon={pr.icon} color={pr.color} selected={filter.projectId === pr.id}
-                onPress={() => set({ projectId: filter.projectId === pr.id ? undefined : pr.id })} />
-            ))}
-          </Wrap>
-        </>
-      ) : null}
+      <FilterSection id="source" title={t('income_sources')} items={cat.sources} selected={filter.sourceId} onChange={(id) => set({ sourceId: id })} />
+      <FilterSection id="wallet" title={t('wallets')} items={cat.wallets} selected={filter.walletId}
+        onChange={(id) => set({ walletId: id, ...(id ? { currency: cat.wallet(id)?.currency } : {}) })} />
+      <FilterSection id="category" title={t('expense_categories')} items={cat.topCategories} selected={filter.categoryId} onChange={(id) => set({ categoryId: id })} />
+      <FilterSection id="sub" title={t('sub_category')} items={subs} selected={filter.subCategoryId} onChange={(id) => set({ subCategoryId: id })} />
+      <FilterSection id="project" title={t('projects')} items={cat.projects} selected={filter.projectId} onChange={(id) => set({ projectId: id })} />
     </View>
   );
   return (
     <Sheet visible={visible} onClose={onClose} full
       footer={(
         <View style={{ flexDirection: 'row', gap: space.sm }}>
-          <Button testID="reset-filters" title={t('reset_filters')} variant="tonal" onPress={clear} style={{ flex: 1, marginTop: 0 }} />
-          <Button testID="close-filters" title={t('close')} onPress={onClose} style={{ flex: 1, marginTop: 0 }} />
+          <View style={{ flex: 1 }}><Button testID="reset-filters" title={t('reset_filters')} variant="tonal" onPress={clear} style={{ marginTop: 0 }} /></View>
+          <View style={{ flex: 1 }}><Button testID="close-filters" title={t('close')} onPress={onClose} style={{ marginTop: 0 }} /></View>
         </View>
       )}>
-      <Text style={[type.title, { color: p.text }]}>{t('filters')}</Text>
+      <FilterHeader onClose={onClose} />
       {customFirst ? [dates, chips] : [chips, dates]}
     </Sheet>
   );

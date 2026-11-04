@@ -9,6 +9,7 @@ import { CircleBadge, Glyph } from '@/design/Icon';
 import { Sheet } from '@/design/Sheet';
 import { useScreenLayout } from '@/design/layout';
 import { spent } from '@/lib/categoryGroups';
+import { FilterButton, FilterHeader, FilterSection } from './FilterSection';
 import { TX_TYPE_LABEL, flowSign, txColor } from '@/lib/txMeta';
 import { Ink, usePalette, useT } from '@/design/theme';
 import { dayKey, fmtDateTime, fmtMoney } from '@/lib/money';
@@ -40,12 +41,24 @@ export function History() {
   const [applied, setApplied] = useState('');
   const [type, setType] = useState<number | undefined>();
   const [walletId, setWalletId] = useState<string | undefined>();
+  const [sourceId, setSourceId] = useState<string | undefined>();
+  const [categoryId, setCategoryId] = useState<string | undefined>();
+  const [projectId, setProjectId] = useState<string | undefined>();
   const [filterOpen, setFilterOpen] = useState(false);
   const [detail, setDetail] = useState<Tx | null>(null);
   const [anchor, setAnchor] = useState(() => new Date());
   const range = useMemo(() => monthRange(anchor), [anchor]);
-  const list = useTransactions({ q: applied || undefined, type, walletId, from: range.from, to: range.to });
-  const summary = useSummaryRange(range.from, range.to);
+  const list = useTransactions({ q: applied || undefined, type, walletId, sourceId, categoryId, projectId, from: range.from, to: range.to });
+  // the totals follow the filter, so the header always adds up to the list under it
+  const summary = useSummaryRange(range.from, range.to, { type, walletId, sourceId, categoryId, projectId });
+  const filterCount = [type !== undefined, walletId, sourceId, categoryId, projectId].filter(Boolean).length;
+  const resetFilters = () => {
+    setType(undefined);
+    setWalletId(undefined);
+    setSourceId(undefined);
+    setCategoryId(undefined);
+    setProjectId(undefined);
+  };
 
   const label = (ty: TxTypeValue) => t(TX_TYPE_LABEL[ty]);
 
@@ -103,10 +116,7 @@ export function History() {
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
           <Text accessibilityRole="header" style={{ color: p.text, fontSize: 17, fontWeight: '700' }}>{t('history')}</Text>
           <View style={{ position: 'absolute', right: 0 }}>
-            <Tap testID="filter-button" label={t('filter')} onPress={() => setFilterOpen(true)}
-              style={{ width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', backgroundColor: p.glassFill, borderWidth: 1, borderColor: p.glassBorder }}>
-              <Glyph name="filter" color={type !== undefined || walletId ? p.accent : p.text} size={20} />
-            </Tap>
+            <FilterButton testID="filter-button" count={filterCount} onPress={() => setFilterOpen(true)} />
           </View>
         </View>
         <View style={{
@@ -248,17 +258,20 @@ export function History() {
         </Tap>
       </View>
 
-      <Sheet visible={filterOpen} onClose={() => setFilterOpen(false)}>
+      <Sheet visible={filterOpen} onClose={() => setFilterOpen(false)} full
+        footer={(
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <View style={{ flex: 1 }}><Button testID="reset-filters" title={t('reset_filters')} variant="tonal" onPress={resetFilters} style={{ marginTop: 0 }} /></View>
+            <View style={{ flex: 1 }}><Button testID="close-filters" title={t('confirm')} onPress={() => setFilterOpen(false)} style={{ marginTop: 0 }} /></View>
+          </View>
+        )}>
+        <FilterHeader onClose={() => setFilterOpen(false)} />
         <Label>{t('type')}</Label>
         <Wrap>{types.map(([v, l]) => <Chip key={l} label={l} selected={type === v} onPress={() => setType(v)} />)}</Wrap>
-        <Label>{t('wallets')}</Label>
-        <Wrap>
-          <Chip label={t('all')} selected={!walletId} onPress={() => setWalletId(undefined)} />
-          {cat.activeWallets.map((w) => (
-            <Chip key={w.id} label={w.name} color={w.color} selected={walletId === w.id} onPress={() => setWalletId(walletId === w.id ? undefined : w.id)} />
-          ))}
-        </Wrap>
-        <Button title={t('confirm')} onPress={() => setFilterOpen(false)} />
+        <FilterSection id="source" title={t('income_sources')} items={cat.sources} selected={sourceId} onChange={setSourceId} />
+        <FilterSection id="wallet" title={t('wallets')} items={cat.activeWallets} selected={walletId} onChange={setWalletId} />
+        <FilterSection id="category" title={t('expense_categories')} items={cat.topCategories} selected={categoryId} onChange={setCategoryId} />
+        <FilterSection id="project" title={t('projects')} items={cat.projects} selected={projectId} onChange={setProjectId} />
       </Sheet>
       <DetailSheet tx={detail} onClose={() => setDetail(null)} label={label} />
     </View>

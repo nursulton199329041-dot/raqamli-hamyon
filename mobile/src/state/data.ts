@@ -108,10 +108,10 @@ export function useSummary(period: Period) {
 }
 
 /** Totals for an explicit window (history header): the backend owns the arithmetic, reversed entries excluded. */
-export function useSummaryRange(from: string, to: string) {
+export function useSummaryRange(from: string, to: string, filter: Pick<TxFilter, 'type' | 'walletId' | 'categoryId' | 'sourceId' | 'projectId'> = {}) {
   return useQuery({
-    queryKey: ['summary', 'range', from, to],
-    queryFn: () => read<Summary>('/api/analytics/summary', { from, to }),
+    queryKey: ['summary', 'range', from, to, filter],
+    queryFn: () => read<Summary>('/api/analytics/summary', { from, to, ...filter }),
   });
 }
 
