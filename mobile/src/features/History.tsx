@@ -258,14 +258,8 @@ export function History() {
         </Tap>
       </View>
 
-      <Sheet visible={filterOpen} onClose={() => setFilterOpen(false)} full
-        footer={(
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <View style={{ flex: 1 }}><Button testID="reset-filters" title={t('reset_filters')} variant="tonal" onPress={resetFilters} style={{ marginTop: 0 }} /></View>
-            <View style={{ flex: 1 }}><Button testID="close-filters" title={t('confirm')} onPress={() => setFilterOpen(false)} style={{ marginTop: 0 }} /></View>
-          </View>
-        )}>
-        <FilterHeader onClose={() => setFilterOpen(false)} />
+      <Sheet visible={filterOpen} onClose={() => setFilterOpen(false)} full>
+        <FilterHeader onClose={() => setFilterOpen(false)} onReset={resetFilters} canReset={filterCount > 0} />
         <Label>{t('type')}</Label>
         <Wrap>{types.map(([v, l]) => <Chip key={l} label={l} selected={type === v} onPress={() => setType(v)} />)}</Wrap>
         <FilterSection id="source" title={t('income_sources')} items={cat.sources} selected={sourceId} onChange={setSourceId} />

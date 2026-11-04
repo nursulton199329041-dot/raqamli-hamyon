@@ -18,7 +18,7 @@ import { spent } from '@/lib/categoryGroups';
 import { longDay } from '@/lib/dates';
 import { fmtMoney } from '@/lib/money';
 import { TX_TYPE_LABEL, flowSign, txColor } from '@/lib/txMeta';
-import { REPORT_KINDS, dayString, parseDay, rangeLabel, resolveRange, shiftAnchor, type RangePreset, type ReportKind } from '@/lib/reportFilter';
+import { activeFilterCount, REPORT_KINDS, dayString, parseDay, rangeLabel, resolveRange, shiftAnchor, type RangePreset, type ReportKind } from '@/lib/reportFilter';
 import { useCatalog } from '@/state/data';
 import { useReports } from '@/state/reports';
 import { useSettings } from '@/state/settings';
@@ -167,14 +167,8 @@ export function FilterSheet({ visible, onClose, currencies, currency }: { visibl
     </View>
   );
   return (
-    <Sheet visible={visible} onClose={onClose} full
-      footer={(
-        <View style={{ flexDirection: 'row', gap: space.sm }}>
-          <View style={{ flex: 1 }}><Button testID="reset-filters" title={t('reset_filters')} variant="tonal" onPress={clear} style={{ marginTop: 0 }} /></View>
-          <View style={{ flex: 1 }}><Button testID="close-filters" title={t('close')} onPress={onClose} style={{ marginTop: 0 }} /></View>
-        </View>
-      )}>
-      <FilterHeader onClose={onClose} />
+    <Sheet visible={visible} onClose={onClose} full>
+      <FilterHeader onClose={onClose} onReset={clear} canReset={activeFilterCount(filter) > 0} />
       {/* what the Reports page shows: its type, period and currency (charts never mix currencies) */}
       <Label>{t('report_type')}</Label>
       <KindTabs value={filter.kind} onChange={(k) => set({ kind: k })} />

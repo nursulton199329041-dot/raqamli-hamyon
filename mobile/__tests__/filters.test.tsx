@@ -75,6 +75,22 @@ describe('History filter', () => {
   });
 });
 
+describe('filter header', () => {
+  it('clear and confirm are icons at the top: nothing to clear dims it, the check closes the sheet', async () => {
+    await renderApp(<History />);
+    await fireEvent.press(await screen.findByTestId('filter-button'));
+    await screen.findByTestId('filter-section-wallet');
+    expect(screen.getByLabelText('Filtrlarni tozalash').props.accessibilityState.disabled).toBe(true);
+    expect(screen.getByLabelText('Tasdiqlash')).toBeTruthy();
+
+    await fireEvent.press(screen.getByTestId('filter-wallet-w1'));
+    expect(screen.getByLabelText('Filtrlarni tozalash').props.accessibilityState.disabled).toBe(false);
+    await fireEvent.press(screen.getByTestId('close-filters'));
+    await waitFor(() => expect(screen.queryByTestId('filter-section-wallet')).toBeNull());
+    expect(textOf('filter-button-count')).toBe('1'); // the choice stays
+  });
+});
+
 describe('Reports filter', () => {
   it('opens from the same round button at the top; a wallet also fixes the currency; reset clears', async () => {
     await renderApp(<Reports />);
