@@ -1,5 +1,5 @@
 # Clicks at window-relative pixel positions (as seen in snap-window.ps1 captures). Usage: click-window.ps1 -Points "92,740;200,300"
-param([string]$Title = 'Raqamli Hamyon', [string]$Points)
+param([string]$Title = 'Raqamli Hamyon', [string]$Points, [int]$Wheel = 0)
 Add-Type @"
 using System; using System.Runtime.InteropServices;
 public static class C {
@@ -20,6 +20,7 @@ $r = New-Object C+RECT; [C]::GetWindowRect($h, [ref]$r) | Out-Null
 foreach ($pt in $Points.Split(';')) {
   $x, $y = $pt.Split(',') | ForEach-Object { [int]$_ }
   [C]::SetCursorPos($r.L + $x, $r.T + $y) | Out-Null
+  if ($Wheel -ne 0) { [C]::mouse_event(0x0800, 0, 0, [BitConverter]::ToUInt32([BitConverter]::GetBytes([int32]$Wheel), 0), [UIntPtr]::Zero); Start-Sleep -Milliseconds 400; continue }
   [C]::mouse_event(0x0002, 0, 0, 0, [UIntPtr]::Zero); Start-Sleep -Milliseconds 60
   [C]::mouse_event(0x0004, 0, 0, 0, [UIntPtr]::Zero); Start-Sleep -Milliseconds 350
 }

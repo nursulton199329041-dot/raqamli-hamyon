@@ -104,6 +104,30 @@ public sealed class LocalStore
     public IReadOnlyList<Category> Categories() =>
         Read("SELECT id, name, icon, color FROM categories ORDER BY sort, id", r => new Category(r.GetInt64(0), r.GetString(1), r.GetString(2), r.GetString(3)));
 
+    /// <summary>
+    /// Income or expense of one currency summed per day of month (byMonth = false, key 1..31) or per month (key 1..12).
+    /// </summary>
+    public Dictionary<int, decimal> Series(OpKind kind, Period p, string currency, bool byMonth)
+    {
+        // ISO dates: "yyyy-MM-dd..." -> month = chars 6-7, day = chars 9-10
+        var part = byMonth ? "substr(date, 6, 2)" : "substr(date, 9, 2)";
+        using var c = Open();
+        using var cmd = c.CreateCommand();
+        cmd.CommandText = $"""
+            SELECT CAST({part} AS INTEGER), SUM(amount_minor) FROM operations
+            WHERE kind = $k AND currency = $cur AND date >= $from AND date <= $to
+            GROUP BY 1
+            """;
+        cmd.Parameters.AddWithValue("$k", (int)kind);
+        cmd.Parameters.AddWithValue("$cur", currency);
+        cmd.Parameters.AddWithValue("$from", Iso(p.From));
+        cmd.Parameters.AddWithValue("$to", Iso(p.To));
+        var map = new Dictionary<int, decimal>();
+        using var r = cmd.ExecuteReader();
+        while (r.Read()) map[r.GetInt32(0)] = Money.FromMinor(r.GetInt64(1));
+        return map;
+    }
+
     /// <summary>Income per source (kind 1) or expense per category (kind 2) in the period: id -> currency -> amount.</summary>
     public Dictionary<long, Dictionary<string, decimal>> Totals(OpKind kind, Period p)
     {

@@ -24,6 +24,7 @@ public partial class MainViewModel : ViewModelBase
 {
     public HomeViewModel Home { get; }
     public HistoryViewModel History { get; }
+    public ReportsViewModel Reports { get; }
     public ObservableCollection<TabVm> Tabs { get; }
 
     [ObservableProperty] public partial ViewModelBase Current { get; set; }
@@ -37,6 +38,7 @@ public partial class MainViewModel : ViewModelBase
     {
         Home = new HomeViewModel(store);
         History = new HistoryViewModel(store, changed: () => Home.Refresh());
+        Reports = new ReportsViewModel(store);
         Home.OpenOperation += (kind, from, to) =>
             Sheet = new OperationViewModel(store, kind, from, to,
                 onSaved: () => { Sheet = null; Home.Refresh(); History.Refresh(); },
@@ -61,6 +63,7 @@ public partial class MainViewModel : ViewModelBase
         {
             case "home": Home.Refresh(); Current = Home; break;
             case "history": History.Refresh(); Current = History; break;
+            case "reports": Reports.Refresh(); Current = Reports; break;
             default: Current = new PlaceholderViewModel(tab.Title); break;
         }
     }

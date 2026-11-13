@@ -1,0 +1,161 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Hamyon.App.ViewModels"
+             xmlns:c="using:Hamyon.App.Controls"
+             x:Class="Hamyon.App.Views.ReportsView"
+             x:DataType="vm:ReportsViewModel">
+  <UserControl.Styles>
+    <Style Selector="Border.seg">
+      <Setter Property="CornerRadius" Value="16" />
+      <Setter Property="Padding" Value="14,8" />
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="Border.seg.on">
+      <Setter Property="Background" Value="{StaticResource AccentBrush}" />
+    </Style>
+    <Style Selector="Border.seg TextBlock">
+      <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.seg.on TextBlock">
+      <Setter Property="Foreground" Value="{StaticResource OnAccentBrush}" />
+      <Setter Property="FontWeight" Value="Bold" />
+    </Style>
+  </UserControl.Styles>
+
+  <UserControl.Resources>
+    <!-- segmented control item; the command comes from the owning list -->
+    <DataTemplate x:Key="SegBody" x:DataType="vm:OptionVm">
+      <Border Classes="seg" Classes.on="{Binding IsSelected}">
+        <TextBlock Text="{Binding Title}" />
+      </Border>
+    </DataTemplate>
+  </UserControl.Resources>
+
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Margin="16,12,16,120" Spacing="12" MaxWidth="600">
+      <TextBlock Classes="label" Text="HISOBOT" Foreground="{StaticResource TextBrush}" FontSize="13.5" HorizontalAlignment="Center" Margin="0,12,0,0" />
+
+      <!-- kind + range -->
+      <Grid ColumnDefinitions="*,10,Auto">
+        <Border CornerRadius="20" Padding="3" Background="{StaticResource GlassBrush}" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1">
+          <ItemsControl ItemsSource="{Binding Kinds}">
+            <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="1" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:OptionVm">
+                <Button Classes="flat" Command="{Binding $parent[UserControl].((vm:ReportsViewModel)DataContext).SelectKindCommand}" CommandParameter="{Binding}">
+                  <ContentControl Content="{Binding}" ContentTemplate="{StaticResource SegBody}" />
+                </Button>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </Border>
+        <Border Grid.Column="2" CornerRadius="20" Padding="3" Background="{StaticResource GlassBrush}" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1">
+          <ItemsControl ItemsSource="{Binding Ranges}">
+            <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:OptionVm">
+                <Button Classes="flat" Command="{Binding $parent[UserControl].((vm:ReportsViewModel)DataContext).SelectRangeCommand}" CommandParameter="{Binding}">
+                  <ContentControl Content="{Binding}" ContentTemplate="{StaticResource SegBody}" />
+                </Button>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </Border>
+      </Grid>
+
+      <!-- period switcher + currency -->
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <Button Classes="flat" Command="{Binding PrevCommand}">
+          <Border Width="44" Height="44" CornerRadius="22" Background="{StaticResource GlassBrush}">
+            <c:Glyph Kind="chevronLeft" Foreground="{StaticResource AccentBrush}" Width="20" Height="20" />
+          </Border>
+        </Button>
+        <TextBlock Grid.Column="1" Text="{Binding RangeTitle}" FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextBrush}"
+                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+        <Button Grid.Column="2" Classes="flat" Command="{Binding NextCommand}" IsVisible="{Binding CanGoNext}">
+          <Border Width="44" Height="44" CornerRadius="22" Background="{StaticResource GlassBrush}">
+            <c:Glyph Kind="chevronRight" Foreground="{StaticResource AccentBrush}" Width="20" Height="20" />
+          </Border>
+        </Button>
+      </Grid>
+      <ItemsControl ItemsSource="{Binding Currencies}" HorizontalAlignment="Center">
+        <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="6" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:OptionVm">
+            <Button Classes="flat" Command="{Binding $parent[UserControl].((vm:ReportsViewModel)DataContext).SelectCurrencyCommand}" CommandParameter="{Binding}">
+              <ContentControl Content="{Binding}" ContentTemplate="{StaticResource SegBody}" />
+            </Button>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+
+      <!-- bars -->
+      <Border Classes="card">
+        <StackPanel Spacing="8">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Classes="label" Text="{Binding Title}" />
+            <TextBlock Grid.Column="1" Text="{Binding Total}" FontWeight="Bold" Foreground="{Binding BarColor, Converter={StaticResource HexBrush}}" />
+          </Grid>
+          <c:BarChart Height="170" Values="{Binding Bars}" Labels="{Binding BarLabels}" BarBrush="{Binding BarColor, Converter={StaticResource HexBrush}}" />
+        </StackPanel>
+      </Border>
+
+      <!-- key numbers -->
+      <Grid ColumnDefinitions="*,10,*">
+        <Border Classes="card" CornerRadius="20" Padding="14,12">
+          <StackPanel Spacing="4">
+            <TextBlock Classes="label" Text="KUNIGA O‘RTACHA" FontSize="11" />
+            <TextBlock Text="{Binding AverageDaily}" FontWeight="Bold" Foreground="{StaticResource TextBrush}" TextWrapping="Wrap" />
+          </StackPanel>
+        </Border>
+        <Border Grid.Column="2" Classes="card" CornerRadius="20" Padding="14,12">
+          <StackPanel Spacing="4">
+            <TextBlock Classes="label" Text="{Binding TopLabel}" FontSize="11" />
+            <TextBlock Text="{Binding TopName}" FontWeight="Bold" Foreground="{StaticResource TextBrush}" TextTrimming="CharacterEllipsis" />
+            <TextBlock Text="{Binding TopDetail}" FontSize="11.5" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap" />
+          </StackPanel>
+        </Border>
+      </Grid>
+
+      <!-- ring + breakdown -->
+      <Border Classes="card">
+        <StackPanel Spacing="14">
+          <TextBlock Classes="label" Text="TAQSIMOT" />
+          <TextBlock Text="Bu davr uchun ma’lumot yo‘q" IsVisible="{Binding IsEmpty}" HorizontalAlignment="Center" Margin="0,24"
+                     Foreground="{StaticResource TextSecondaryBrush}" />
+          <Panel Width="190" Height="190" HorizontalAlignment="Center" IsVisible="{Binding !IsEmpty}">
+            <c:DonutChart Slices="{Binding Slices}" Ring="24" />
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+              <TextBlock Classes="label" Text="{Binding Currency}" HorizontalAlignment="Center" FontSize="11" />
+              <TextBlock Text="{Binding TotalShort}" FontSize="20" FontWeight="Bold" Foreground="{StaticResource TextBrush}" HorizontalAlignment="Center" />
+            </StackPanel>
+          </Panel>
+          <ItemsControl ItemsSource="{Binding Breakdown}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:BreakdownRowVm">
+                <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,6">
+                  <Border Width="34" Height="34" CornerRadius="17" Background="{Binding Color, Converter={StaticResource BadgeBrush}}" VerticalAlignment="Top">
+                    <c:Glyph Kind="{Binding Icon}" Foreground="White" Width="16" Height="16" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                  </Border>
+                  <StackPanel Grid.Column="1" Margin="10,0" Spacing="5">
+                    <Grid ColumnDefinitions="*,Auto">
+                      <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Grid.Column="1" Text="{Binding Amount}" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" />
+                    </Grid>
+                    <Border Height="6" CornerRadius="3" Background="#14FFECE4">
+                      <Border HorizontalAlignment="Left" CornerRadius="3" Background="{Binding Color, Converter={StaticResource HexBrush}}"
+                              Width="{Binding Share, Converter={StaticResource ShareWidth}, ConverterParameter=240}" />
+                    </Border>
+                  </StackPanel>
+                  <TextBlock Grid.Column="2" Text="{Binding Percent}" FontWeight="Bold" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Top" MinWidth="40" TextAlignment="Right" />
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

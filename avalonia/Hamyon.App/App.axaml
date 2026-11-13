@@ -9,6 +9,8 @@
   <Application.Resources>
     <conv:BadgeBrushConverter x:Key="BadgeBrush" />
     <conv:GlowConverter x:Key="Glow" />
+    <conv:HexBrushConverter x:Key="HexBrush" />
+    <conv:ShareWidthConverter x:Key="ShareWidth" />
   </Application.Resources>
 
   <Application.DataTemplates>
@@ -16,6 +18,7 @@
     <DataTemplate DataType="vm:PlaceholderViewModel"><views:PlaceholderView /></DataTemplate>
     <DataTemplate DataType="vm:OperationViewModel"><views:OperationView /></DataTemplate>
     <DataTemplate DataType="vm:HistoryViewModel"><views:HistoryView /></DataTemplate>
+    <DataTemplate DataType="vm:ReportsViewModel"><views:ReportsView /></DataTemplate>
   </Application.DataTemplates>
 
   <Application.Styles>

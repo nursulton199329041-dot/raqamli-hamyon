@@ -20,6 +20,17 @@ public static class Money
         return $"{s} {currency}";
     }
 
+    /// <summary>Short axis label: 10,5 mln · 380 ming · 950 · 1,2 mlrd.</summary>
+    public static string Compact(decimal v)
+    {
+        var a = Math.Abs(v);
+        static string N(decimal x) => decimal.Round(x, Math.Abs(x) < 10 ? 1 : 0, MidpointRounding.AwayFromZero).ToString("0.#", CultureInfo.InvariantCulture).Replace('.', ',');
+        return a >= 1_000_000_000 ? $"{N(v / 1_000_000_000)} mlrd"
+             : a >= 1_000_000 ? $"{N(v / 1_000_000)} mln"
+             : a >= 1_000 ? $"{N(v / 1_000)} ming"
+             : N(v);
+    }
+
     /// <summary>Several currencies are never added together: one entry per currency, joined with a dot.</summary>
     public static string Format(IReadOnlyDictionary<string, decimal> byCurrency) =>
         byCurrency.Count == 0 ? "0" : string.Join(" · ", byCurrency.OrderBy(k => k.Key).Select(k => Format(k.Value, k.Key)));

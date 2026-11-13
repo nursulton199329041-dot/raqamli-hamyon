@@ -26,6 +26,26 @@ public sealed class BadgeBrushConverter : IValueConverter
         Color.FromRgb((byte)(a.R + (b.R - a.R) * t), (byte)(a.G + (b.G - a.G) * t), (byte)(a.B + (b.B - a.B) * t));
 }
 
+/// <summary>"#1FCB8B" -> solid brush of that colour.</summary>
+public sealed class HexBrushConverter : IValueConverter
+{
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        value is string hex && Color.TryParse(hex, out var c) ? new SolidColorBrush(c) : Brushes.Gray;
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => throw new NotSupportedException();
+}
+
+/// <summary>0..1 share -> bar width in pixels of a 100% bar given as the parameter.</summary>
+public sealed class ShareWidthConverter : IValueConverter
+{
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        value is double share && double.TryParse(parameter as string, NumberStyles.Float, CultureInfo.InvariantCulture, out var full)
+            ? Math.Max(4, share * full)
+            : 4d;
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => throw new NotSupportedException();
+}
+
 /// <summary>"#1FCB8B" -> a soft glow shadow of that colour under the badge.</summary>
 public sealed class GlowConverter : IValueConverter
 {

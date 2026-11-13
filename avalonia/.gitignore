@@ -455,3 +455,4 @@ $RECYCLE.BIN/
 
 # "*.app" above is meant for macOS bundles; on Windows (case-insensitive) it also matched the shared project folder
 !Hamyon.App/
+out/
