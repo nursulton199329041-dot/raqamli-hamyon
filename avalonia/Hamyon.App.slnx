@@ -1,0 +1,11 @@
+﻿<Solution>
+  <Project Path="Hamyon.App.Android/Hamyon.App.Android.csproj">
+    <Deploy />
+  </Project>
+  <Project Path="Hamyon.App.Desktop/Hamyon.App.Desktop.csproj" />
+  <Project Path="Hamyon.App.iOS/Hamyon.App.iOS.csproj">
+    <Deploy />
+  </Project>
+  <Project Path="Hamyon.App/Hamyon.App.csproj" />
+  <Project Path="Hamyon.App.Tests/Hamyon.App.Tests.csproj" />
+</Solution>

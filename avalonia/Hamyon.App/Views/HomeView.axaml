@@ -1,0 +1,122 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Hamyon.App.ViewModels"
+             xmlns:c="using:Hamyon.App.Controls"
+             x:Class="Hamyon.App.Views.HomeView"
+             x:DataType="vm:HomeViewModel">
+  <UserControl.Resources>
+    <!-- round coloured badge + name + period amount -->
+    <DataTemplate x:Key="Tile" x:DataType="vm:TileVm">
+      <Button Classes="flat" Command="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).OpenTileCommand}" CommandParameter="{Binding}">
+      <StackPanel Width="84" Spacing="6" Margin="0,4">
+        <Border Width="54" Height="54" CornerRadius="27" HorizontalAlignment="Center"
+                Background="{Binding Color, Converter={StaticResource BadgeBrush}}"
+                BoxShadow="{Binding Color, Converter={StaticResource Glow}}">
+          <c:Glyph Kind="{Binding Icon}" Foreground="White" Width="24" Height="24" HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </Border>
+        <TextBlock Text="{Binding Name}" TextAlignment="Center" TextWrapping="Wrap" MaxLines="2" FontSize="12.5" FontWeight="SemiBold"
+                   Foreground="{StaticResource TextBrush}" />
+        <TextBlock Text="{Binding Amount}" TextAlignment="Center" TextTrimming="CharacterEllipsis" FontSize="12" FontWeight="Bold"
+                   Classes.neg="{Binding Negative}">
+          <TextBlock.Styles>
+            <Style Selector="TextBlock"><Setter Property="Foreground" Value="{StaticResource TextBrush}" /></Style>
+            <Style Selector="TextBlock.neg"><Setter Property="Foreground" Value="{StaticResource ExpenseBrush}" /></Style>
+          </TextBlock.Styles>
+        </TextBlock>
+      </StackPanel>
+      </Button>
+    </DataTemplate>
+  </UserControl.Resources>
+
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Margin="16,12,16,120" Spacing="14" MaxWidth="560">
+
+      <!-- header: solid round profile | mono title | round glass refresh -->
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <Border Width="44" Height="44" CornerRadius="22" Background="#FBF5F2">
+          <TextBlock Text="H" FontSize="17" FontWeight="Bold" Foreground="#2B0D12" HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </Border>
+        <TextBlock Grid.Column="1" Classes="label" Text="RAQAMLI HAMYON" Foreground="{StaticResource TextBrush}" FontSize="13.5"
+                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+        <Button Grid.Column="2" Classes="flat" Command="{Binding RefreshCommand}">
+          <Border Width="44" Height="44" CornerRadius="22" Background="{StaticResource GlassBrush}"
+                  BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1">
+            <c:Glyph Kind="swap" Foreground="{StaticResource TextBrush}" Width="20" Height="20" />
+          </Border>
+        </Button>
+      </Grid>
+      <Border Height="1" Background="{StaticResource GlassBorderBrush}" />
+
+      <!-- hero -->
+      <StackPanel Spacing="14" HorizontalAlignment="Center" Margin="0,22,0,16">
+        <TextBlock Classes="label" Text="UMUMIY BALANS" HorizontalAlignment="Center" />
+        <Grid ColumnDefinitions="*,Auto" HorizontalAlignment="Center">
+          <ItemsControl ItemsSource="{Binding Balance}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:BalanceLine">
+                <TextBlock Text="{Binding Text}" HorizontalAlignment="Center" Classes.hero="{Binding Primary}" Classes.sub="{Binding !Primary}" />
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <Button Grid.Column="1" Classes="flat" Command="{Binding ToggleBalanceCommand}" VerticalAlignment="Top" Margin="12,10,0,0">
+            <Panel>
+              <c:Glyph Kind="eyeOff" Foreground="{StaticResource TextBrush}" Width="26" Height="26" IsVisible="{Binding !HideBalance}" />
+              <c:Glyph Kind="eye" Foreground="{StaticResource TextBrush}" Width="26" Height="26" IsVisible="{Binding HideBalance}" />
+            </Panel>
+          </Button>
+        </Grid>
+        <Button Classes="flat" HorizontalAlignment="Center" Command="{Binding NextPeriodCommand}">
+          <Border CornerRadius="22" Height="44" Padding="20,0" Background="{StaticResource GlassStrongBrush}">
+            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+              <TextBlock Classes="label" Text="{Binding PeriodLabel}" Foreground="{StaticResource TextBrush}" FontSize="13" VerticalAlignment="Center" />
+              <c:Glyph Kind="chevronDown" Foreground="{StaticResource TextSecondaryBrush}" Width="12" Height="12" VerticalAlignment="Center" />
+            </StackPanel>
+          </Border>
+        </Button>
+      </StackPanel>
+
+      <!-- income sources -->
+      <Border Classes="card">
+        <StackPanel Spacing="8">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Classes="label" Text="KIRIM MANBALARI" />
+            <TextBlock Grid.Column="1" Text="{Binding SourcesTotal}" FontWeight="SemiBold" Foreground="{StaticResource IncomeBrush}" />
+          </Grid>
+          <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
+            <ItemsControl ItemsSource="{Binding Sources}" ItemTemplate="{StaticResource Tile}">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            </ItemsControl>
+          </ScrollViewer>
+        </StackPanel>
+      </Border>
+
+      <!-- wallets -->
+      <Border Classes="card">
+        <StackPanel Spacing="8">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Classes="label" Text="HAMYONLAR" />
+            <TextBlock Grid.Column="1" Text="{Binding WalletsTotal}" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" />
+          </Grid>
+          <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
+            <ItemsControl ItemsSource="{Binding Wallets}" ItemTemplate="{StaticResource Tile}">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            </ItemsControl>
+          </ScrollViewer>
+        </StackPanel>
+      </Border>
+
+      <!-- expense categories (wrapping grid) -->
+      <Border Classes="card">
+        <StackPanel Spacing="8">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Classes="label" Text="XARAJAT TOIFALARI" />
+            <TextBlock Grid.Column="1" Text="{Binding CategoriesTotal}" FontWeight="SemiBold" Foreground="{StaticResource ExpenseBrush}" />
+          </Grid>
+          <ItemsControl ItemsSource="{Binding Categories}" ItemTemplate="{StaticResource Tile}">
+            <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel HorizontalAlignment="Center" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

@@ -1,0 +1,9 @@
+<Project>
+  <!-- Local Android toolchain (installed with Visual Studio); CI can override with -p:AndroidSdkDirectory=... -->
+  <PropertyGroup Condition="'$(AndroidSdkDirectory)' == '' And Exists('C:\Program Files (x86)\Android\android-sdk')">
+    <AndroidSdkDirectory>C:\Program Files (x86)\Android\android-sdk</AndroidSdkDirectory>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(JavaSdkDirectory)' == '' And Exists('C:\Program Files\Android\openjdk\jdk-21.0.8')">
+    <JavaSdkDirectory>C:\Program Files\Android\openjdk\jdk-21.0.8</JavaSdkDirectory>
+  </PropertyGroup>
+</Project>

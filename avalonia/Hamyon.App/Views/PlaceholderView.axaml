@@ -1,0 +1,10 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Hamyon.App.ViewModels"
+             x:Class="Hamyon.App.Views.PlaceholderView"
+             x:DataType="vm:PlaceholderViewModel">
+  <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="10">
+    <TextBlock Classes="label" Text="{Binding Title}" HorizontalAlignment="Center" />
+    <TextBlock Text="Tez orada" FontSize="22" FontWeight="Bold" Foreground="{StaticResource TextBrush}" HorizontalAlignment="Center" />
+  </StackPanel>
+</UserControl>

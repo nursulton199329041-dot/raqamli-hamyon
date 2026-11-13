@@ -1,0 +1,25 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Hamyon.App.ViewModels"
+             xmlns:views="using:Hamyon.App.Views"
+             xmlns:conv="using:Hamyon.App.Converters"
+             x:Class="Hamyon.App.App"
+             RequestedThemeVariant="Dark">
+
+  <Application.Resources>
+    <conv:BadgeBrushConverter x:Key="BadgeBrush" />
+    <conv:GlowConverter x:Key="Glow" />
+  </Application.Resources>
+
+  <Application.DataTemplates>
+    <DataTemplate DataType="vm:HomeViewModel"><views:HomeView /></DataTemplate>
+    <DataTemplate DataType="vm:PlaceholderViewModel"><views:PlaceholderView /></DataTemplate>
+    <DataTemplate DataType="vm:OperationViewModel"><views:OperationView /></DataTemplate>
+    <DataTemplate DataType="vm:HistoryViewModel"><views:HistoryView /></DataTemplate>
+  </Application.DataTemplates>
+
+  <Application.Styles>
+    <FluentTheme />
+    <StyleInclude Source="avares://Hamyon.App/Styles/Theme.axaml" />
+  </Application.Styles>
+</Application>

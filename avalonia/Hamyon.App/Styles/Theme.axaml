@@ -1,0 +1,75 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- Garnet noir: same palette as the React Native app (mobile/src/design/theme.ts). -->
+  <Styles.Resources>
+    <Color x:Key="BgTop">#2B0D12</Color>
+    <Color x:Key="BgBottom">#0A0607</Color>
+    <SolidColorBrush x:Key="BgBrush" Color="#0A0607" />
+    <SolidColorBrush x:Key="GlassBrush" Color="#12FFECE4" />
+    <SolidColorBrush x:Key="GlassStrongBrush" Color="#21FFECE4" />
+    <SolidColorBrush x:Key="GlassBorderBrush" Color="#1AFFECE4" />
+    <SolidColorBrush x:Key="TextBrush" Color="#FBF5F2" />
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#BFAEA9" />
+    <SolidColorBrush x:Key="AccentBrush" Color="#F2C14E" />
+    <SolidColorBrush x:Key="OnAccentBrush" Color="#1A0B0D" />
+    <SolidColorBrush x:Key="IncomeBrush" Color="#1FCB8B" />
+    <SolidColorBrush x:Key="ExpenseBrush" Color="#FF6B6B" />
+    <SolidColorBrush x:Key="SolidCardBrush" Color="#E6160A0D" />
+    <FontFamily x:Key="MonoFont">Menlo, Consolas, Cascadia Mono, monospace</FontFamily>
+  </Styles.Resources>
+
+  <!-- uppercase monospace eyebrow, e.g. "UMUMIY BALANS" -->
+  <Style Selector="TextBlock.label">
+    <Setter Property="FontFamily" Value="{StaticResource MonoFont}" />
+    <Setter Property="FontSize" Value="12.5" />
+    <Setter Property="LetterSpacing" Value="1.2" />
+    <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+  </Style>
+  <Style Selector="TextBlock.hero">
+    <Setter Property="FontSize" Value="42" />
+    <Setter Property="FontWeight" Value="Bold" />
+    <Setter Property="LetterSpacing" Value="-1" />
+    <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+  </Style>
+  <Style Selector="TextBlock.sub">
+    <Setter Property="FontSize" Value="22" />
+    <Setter Property="FontWeight" Value="Bold" />
+    <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+  </Style>
+
+  <!-- frosted card -->
+  <Style Selector="Border.card">
+    <Setter Property="Background" Value="{StaticResource GlassBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource GlassBorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="28" />
+    <Setter Property="Padding" Value="14" />
+  </Style>
+
+  <!-- plain tappable surface: no Fluent chrome, slight press feedback -->
+  <Style Selector="Button.flat">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="VerticalContentAlignment" Value="Stretch" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="VerticalAlignment" Value="Stretch" />
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="RenderTransform" Value="scale(1)" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.12" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Button.flat:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="Button.flat:pressed">
+    <Setter Property="RenderTransform" Value="scale(0.96)" />
+  </Style>
+  <Style Selector="Button.flat:pressed /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+</Styles>

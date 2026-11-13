@@ -1,0 +1,154 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Hamyon.App.ViewModels"
+             xmlns:c="using:Hamyon.App.Controls"
+             x:Class="Hamyon.App.Views.OperationView"
+             x:DataType="vm:OperationViewModel">
+  <UserControl.Styles>
+    <Style Selector="Border.chip">
+      <Setter Property="Background" Value="{StaticResource GlassBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource GlassBorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="18" />
+      <Setter Property="Padding" Value="8,8,14,8" />
+    </Style>
+    <Style Selector="Border.chip.on">
+      <Setter Property="Background" Value="#33F2C14E" />
+      <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+      <Setter Property="BorderThickness" Value="1.5" />
+    </Style>
+    <Style Selector="Border.key">
+      <Setter Property="Height" Value="56" />
+      <Setter Property="Margin" Value="3" />
+      <Setter Property="CornerRadius" Value="16" />
+      <Setter Property="Background" Value="#14FFECE4" />
+    </Style>
+  </UserControl.Styles>
+
+  <UserControl.Resources>
+    <DataTemplate x:Key="ChoiceBody" x:DataType="vm:ChoiceVm">
+      <Border Classes="chip" Classes.on="{Binding IsSelected}">
+        <StackPanel Orientation="Horizontal" Spacing="10">
+          <Border Width="38" Height="38" CornerRadius="19" Background="{Binding Color, Converter={StaticResource BadgeBrush}}">
+            <c:Glyph Kind="{Binding Icon}" Foreground="White" Width="18" Height="18" HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+          <StackPanel VerticalAlignment="Center">
+            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" />
+            <TextBlock Text="{Binding Hint}" FontSize="11.5" Foreground="{StaticResource TextSecondaryBrush}" IsVisible="{Binding Hint, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </DataTemplate>
+  </UserControl.Resources>
+
+  <Border Background="#F7140709" CornerRadius="30,30,0,0" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1,1,1,0"
+          BoxShadow="0 -12 40 0 #80000000">
+    <DockPanel>
+      <!-- header: grabber, kind pill, close -->
+      <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="18,10,14,6" RowDefinitions="Auto,Auto">
+        <Border Grid.ColumnSpan="2" Width="40" Height="5" CornerRadius="3" Background="#33FFECE4" HorizontalAlignment="Center" Margin="0,0,0,10" />
+        <Border Grid.Row="1" CornerRadius="16" Padding="14,6" HorizontalAlignment="Left"
+                Background="{Binding Color, Converter={StaticResource BadgeBrush}}">
+          <TextBlock Classes="label" Text="{Binding Title}" Foreground="White" FontWeight="Bold" />
+        </Border>
+        <Button Grid.Row="1" Grid.Column="1" Classes="flat" Command="{Binding CloseCommand}">
+          <Border Width="40" Height="40" CornerRadius="20" Background="{StaticResource GlassStrongBrush}">
+            <c:Glyph Kind="close" Foreground="{StaticResource TextBrush}" Width="18" Height="18" />
+          </Border>
+        </Button>
+      </Grid>
+
+      <!-- keypad -->
+      <ItemsControl DockPanel.Dock="Bottom" ItemsSource="{Binding KeyList}" Margin="10,4,10,14">
+        <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="4" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="x:String">
+            <Button Classes="flat" IsVisible="{Binding Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                    Command="{Binding $parent[UserControl].((vm:OperationViewModel)DataContext).PressCommand}" CommandParameter="{Binding}">
+              <Border Classes="key">
+                <TextBlock Text="{Binding}" FontSize="22" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+              </Border>
+            </Button>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+
+      <!-- save -->
+      <Button DockPanel.Dock="Bottom" Classes="flat" Command="{Binding SaveCommand}" Margin="16,6,16,6">
+        <Border Height="54" CornerRadius="27" Background="{Binding Color, Converter={StaticResource BadgeBrush}}">
+          <TextBlock Classes="label" Text="SAQLASH" Foreground="White" FontWeight="Bold" FontSize="15"
+                     HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </Border>
+      </Button>
+
+      <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="18,4,18,8" Spacing="12">
+          <!-- amount -->
+          <StackPanel HorizontalAlignment="Center" Spacing="2">
+            <TextBlock Classes="label" Text="SUMMA" HorizontalAlignment="Center" />
+            <TextBlock Classes="hero" Text="{Binding AmountText}" HorizontalAlignment="Center" FontSize="38" />
+            <TextBlock Text="{Binding Expression}" IsVisible="{Binding ShowExpression}" HorizontalAlignment="Center"
+                       Foreground="{StaticResource TextSecondaryBrush}" FontFamily="{StaticResource MonoFont}" />
+          </StackPanel>
+
+          <TextBlock Classes="label" Text="{Binding FromLabel}" />
+          <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
+            <ItemsControl ItemsSource="{Binding From}">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="8" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:ChoiceVm">
+                  <Button Classes="flat" Command="{Binding $parent[UserControl].((vm:OperationViewModel)DataContext).SelectFromCommand}" CommandParameter="{Binding}">
+                    <ContentControl Content="{Binding}" ContentTemplate="{StaticResource ChoiceBody}" />
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+
+          <TextBlock Classes="label" Text="{Binding ToLabel}" />
+          <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
+            <ItemsControl ItemsSource="{Binding To}">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="8" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:ChoiceVm">
+                  <Button Classes="flat" Command="{Binding $parent[UserControl].((vm:OperationViewModel)DataContext).SelectToCommand}" CommandParameter="{Binding}">
+                    <ContentControl Content="{Binding}" ContentTemplate="{StaticResource ChoiceBody}" />
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+
+          <!-- received amount when currencies differ -->
+          <StackPanel Spacing="6" IsVisible="{Binding NeedsToAmount}">
+            <TextBlock Classes="label" Text="QABUL QILINADIGAN SUMMA" />
+            <TextBox Text="{Binding ToAmountText}" Watermark="{Binding ToCurrency}" CornerRadius="14" />
+          </StackPanel>
+
+          <!-- date strip -->
+          <TextBlock Classes="label" Text="SANA" />
+          <ItemsControl ItemsSource="{Binding Days}">
+            <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="7" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:DayVm">
+                <Button Classes="flat" Margin="2" Command="{Binding $parent[UserControl].((vm:OperationViewModel)DataContext).SelectDayCommand}" CommandParameter="{Binding}">
+                  <Border Classes="chip" Classes.on="{Binding IsSelected}" Padding="2,8" CornerRadius="14">
+                    <StackPanel HorizontalAlignment="Center">
+                      <TextBlock Text="{Binding Day}" FontSize="17" FontWeight="Bold" Foreground="{StaticResource TextBrush}" HorizontalAlignment="Center" />
+                      <TextBlock Text="{Binding Caption}" FontSize="9.5" Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                  </Border>
+                </Button>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+
+          <TextBox Text="{Binding Note}" Watermark="Izoh (ixtiyoriy)" CornerRadius="14" />
+          <TextBlock Text="{Binding Error}" IsVisible="{Binding Error, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                     Foreground="{StaticResource ExpenseBrush}" FontWeight="SemiBold" TextWrapping="Wrap" />
+        </StackPanel>
+      </ScrollViewer>
+    </DockPanel>
+  </Border>
+</UserControl>
