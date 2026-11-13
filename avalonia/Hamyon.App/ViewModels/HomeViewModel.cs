@@ -69,6 +69,27 @@ public partial class HomeViewModel : ViewModelBase
         }
     }
 
+    /// <summary>
+    /// Drag &amp; drop: which operation dropping <paramref name="from"/> on <paramref name="to"/> means, or null if it means nothing.
+    /// Source → wallet: income. Wallet → category: expense. Wallet → another wallet: transfer.
+    /// </summary>
+    public static OpKind? DropKind(TileVm from, TileVm to) => (from.Kind, to.Kind) switch
+    {
+        (TileKind.Source, TileKind.Wallet) => OpKind.Income,
+        (TileKind.Wallet, TileKind.Category) => OpKind.Expense,
+        (TileKind.Wallet, TileKind.Wallet) when from.Id != to.Id => OpKind.Transfer,
+        _ => null,
+    };
+
+    /// <summary>Opens the operation sheet with both ends already chosen. Returns false for a meaningless drop.</summary>
+    public bool Drop(TileVm from, TileVm to)
+    {
+        if (DropKind(from, to) is not { } kind) return false;
+        // the sheet takes (from, to) in its own terms: income = (source, wallet), expense = (wallet, category), transfer = (wallet, wallet)
+        OpenOperation?.Invoke(kind, from.Id, to.Id);
+        return true;
+    }
+
     public event Action? OpenDebts;
 
     [RelayCommand] private void ShowDebts() => OpenDebts?.Invoke();

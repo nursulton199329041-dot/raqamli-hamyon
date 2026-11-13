@@ -5,16 +5,33 @@
              xmlns:c="using:Hamyon.App.Controls"
              x:Class="Hamyon.App.Views.HomeView"
              x:DataType="vm:HomeViewModel">
+  <UserControl.Styles>
+    <!-- drag & drop feedback: the dragged tile fades, a valid target grows with a ring -->
+    <Style Selector="Button.tile">
+      <Setter Property="Transitions">
+        <Transitions>
+          <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.15" />
+          <DoubleTransition Property="Opacity" Duration="0:0:0.15" />
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="Button.tile.dragSource"><Setter Property="Opacity" Value="0.35" /></Style>
+    <Style Selector="Button.tile.dropTarget"><Setter Property="RenderTransform" Value="scale(1.14)" /></Style>
+    <Style Selector="Button.tile.dropTarget Border.ring"><Setter Property="IsVisible" Value="True" /></Style>
+  </UserControl.Styles>
   <UserControl.Resources>
     <!-- round coloured badge + name + period amount -->
     <DataTemplate x:Key="Tile" x:DataType="vm:TileVm">
-      <Button Classes="flat" Command="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).OpenTileCommand}" CommandParameter="{Binding}">
+      <Button Classes="flat tile" Command="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).OpenTileCommand}" CommandParameter="{Binding}">
       <StackPanel Width="84" Spacing="6" Margin="0,4">
-        <Border Width="54" Height="54" CornerRadius="27" HorizontalAlignment="Center"
-                Background="{Binding Color, Converter={StaticResource BadgeBrush}}"
-                BoxShadow="{Binding Color, Converter={StaticResource Glow}}">
-          <c:Glyph Kind="{Binding Icon}" Foreground="White" Width="24" Height="24" HorizontalAlignment="Center" VerticalAlignment="Center" />
-        </Border>
+        <Panel Width="62" Height="62" HorizontalAlignment="Center">
+          <Border Width="54" Height="54" CornerRadius="27"
+                  Background="{Binding Color, Converter={StaticResource BadgeBrush}}"
+                  BoxShadow="{Binding Color, Converter={StaticResource Glow}}">
+            <c:Glyph Kind="{Binding Icon}" Foreground="White" Width="24" Height="24" HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+          <Border Classes="ring" IsVisible="False" CornerRadius="31" BorderThickness="2.5" BorderBrush="{DynamicResource AccentBrush}" />
+        </Panel>
         <TextBlock Text="{Binding Name}" TextAlignment="Center" TextWrapping="Wrap" MaxLines="2" FontSize="12.5" FontWeight="SemiBold"
                    Foreground="{StaticResource TextBrush}" />
         <TextBlock Text="{Binding Amount}" TextAlignment="Center" TextTrimming="CharacterEllipsis" FontSize="12" FontWeight="Bold"
@@ -29,7 +46,8 @@
     </DataTemplate>
   </UserControl.Resources>
 
-  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+  <Panel>
+  <ScrollViewer x:Name="Scroller" HorizontalScrollBarVisibility="Disabled">
     <StackPanel Margin="16,12,16,120" Spacing="14" MaxWidth="560">
 
       <!-- header: solid round profile | mono title | round glass refresh -->
@@ -141,4 +159,7 @@
       </Border>
     </StackPanel>
   </ScrollViewer>
+  <!-- the floating copy of the dragged tile lives here, above everything, ignoring input -->
+  <Canvas x:Name="DragLayer" IsHitTestVisible="False" />
+  </Panel>
 </UserControl>

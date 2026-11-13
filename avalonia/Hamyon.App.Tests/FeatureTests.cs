@@ -205,3 +205,66 @@ public sealed class ShellTests : IDisposable
         Assert.Equal(Lang.En, L.Current);
     }
 }
+
+public sealed class DragDropTests : IDisposable
+{
+    private readonly string _path = Path.Combine(Path.GetTempPath(), $"hamyon-dnd-{Guid.NewGuid():N}.db");
+
+    public void Dispose()
+    {
+        SqliteConnection.ClearAllPools();
+        File.Delete(_path);
+    }
+
+    private static TileVm T(TileKind k, long id) => new(k, id, "x", "cash", "#000000", "0", false);
+
+    [Theory]
+    [InlineData(TileKind.Source, TileKind.Wallet, OpKind.Income)]
+    [InlineData(TileKind.Wallet, TileKind.Category, OpKind.Expense)]
+    [InlineData(TileKind.Wallet, TileKind.Wallet, OpKind.Transfer)]
+    public void Valid_drops(TileKind from, TileKind to, OpKind expected) =>
+        Assert.Equal(expected, HomeViewModel.DropKind(T(from, 1), T(to, 2)));
+
+    [Theory]
+    [InlineData(TileKind.Category, TileKind.Wallet)]
+    [InlineData(TileKind.Source, TileKind.Category)]
+    [InlineData(TileKind.Source, TileKind.Source)]
+    [InlineData(TileKind.Category, TileKind.Category)]
+    public void Meaningless_drops_do_nothing(TileKind from, TileKind to) =>
+        Assert.Null(HomeViewModel.DropKind(T(from, 1), T(to, 2)));
+
+    [Fact]
+    public void A_wallet_dropped_on_itself_is_not_a_transfer() =>
+        Assert.Null(HomeViewModel.DropKind(T(TileKind.Wallet, 1), T(TileKind.Wallet, 1)));
+
+    [Fact]
+    public void Wallet_on_category_opens_an_expense_with_both_preselected()
+    {
+        var shell = new MainViewModel(new LocalStore(_path));
+        var card = shell.Home.Wallets.Single(w => w.Name == "Bank kartasi");
+        var food = shell.Home.Categories.Single(c => c.Name == "Oziq-ovqat");
+
+        Assert.True(shell.Home.Drop(card, food));
+
+        var sheet = Assert.IsType<OperationViewModel>(shell.Sheet);
+        Assert.Equal(OpKind.Expense, sheet.Kind);
+        Assert.Equal(card.Id, sheet.From.Single(c => c.IsSelected).Id);
+        Assert.Equal(food.Id, sheet.To.Single(c => c.IsSelected).Id);
+    }
+
+    [Fact]
+    public void Source_on_wallet_opens_income_into_that_wallet()
+    {
+        var shell = new MainViewModel(new LocalStore(_path));
+        var biz = shell.Home.Sources.Single(s => s.Name == "Biznes");
+        var usd = shell.Home.Wallets.Single(w => w.Name == "Dollar jamg'arma");
+
+        Assert.True(shell.Home.Drop(biz, usd));
+
+        var sheet = Assert.IsType<OperationViewModel>(shell.Sheet);
+        Assert.Equal(OpKind.Income, sheet.Kind);
+        Assert.Equal(biz.Id, sheet.From.Single(c => c.IsSelected).Id);
+        Assert.Equal(usd.Id, sheet.To.Single(c => c.IsSelected).Id);
+        Assert.Equal("USD", sheet.Currency);
+    }
+}
