@@ -12,17 +12,17 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "uz.raqamli.hamyon",
+      "bundleIdentifier": "uz.raqamlinazorat.hamyon",
       "buildNumber": "1",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
-      "package": "uz.raqamli.hamyon",
+      "package": "uz.raqamlinazorat.hamyon",
       "versionCode": 1,
       "adaptiveIcon": {
-        "backgroundColor": "#071328",
+        "backgroundColor": "#2B0D12",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -51,7 +51,7 @@
       "apiUrl": "http://localhost:5080",
       "storeUrls": {
         "ios": "https://apps.apple.com/app/id0000000000",
-        "android": "https://play.google.com/store/apps/details?id=uz.raqamli.hamyon"
+        "android": "https://play.google.com/store/apps/details?id=uz.raqamlinazorat.hamyon"
       },
       "router": {},
       "eas": {

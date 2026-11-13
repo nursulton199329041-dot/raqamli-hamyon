@@ -56,7 +56,10 @@
     "lint": "eslint .",
     "test": "jest",
     "update:preview": "eas update --channel preview --message",
-    "update:production": "eas update --channel production --message"
+    "update:production": "eas update --channel production --message",
+    "release:build": "eas build --platform all --profile production",
+    "release:submit": "eas submit --platform all --profile production --latest",
+    "release:update": "eas update --channel production --environment production --platform all --message"
   },
   "private": true,
   "jest": {

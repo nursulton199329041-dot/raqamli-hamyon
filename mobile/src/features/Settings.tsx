@@ -17,6 +17,7 @@ import { useSettings, type ThemeMode } from '@/state/settings';
 import { runtimeInfo, useUpdates } from '@/updates/updates';
 import { AppearanceCard, PanelCard } from './AppearanceCard';
 import { BalanceSheet } from './BalanceSheet';
+import { STORE_BUILD } from '@/lib/storeBuild';
 import { ConnectionCard } from './ConnectionCard';
 import { ExportSheet } from './ExportSheet';
 import { ProfilesSheet } from './ProfilesSheet';
@@ -115,7 +116,7 @@ export function Settings() {
         {guest ? (
           <>
             <Row first title={t('guest_title')} hint={t('guest_hint')} />
-            <Row testID="link-account" title={t('link_account')} onPress={() => setLinking(true)} />
+            {STORE_BUILD ? null : <Row testID="link-account" title={t('link_account')} onPress={() => setLinking(true)} />}
           </>
         ) : (
           <Row first testID="open-account" title={`${t('my_account')}: ${user?.email ?? ''}`} hint={syncState} onPress={() => setPage('account')} />
@@ -139,7 +140,7 @@ export function Settings() {
       <Group>
         {/* projects left the main navigation; their data, screens and APIs are unchanged */}
         <Row first testID="open-projects" title={t('projects')} onPress={() => router.push('/projects')} />
-        <Row testID="open-server" title={t('conn_title')} hint={syncState} onPress={() => setPage('server')} />
+        {STORE_BUILD ? null : <Row testID="open-server" title={t('conn_title')} hint={syncState} onPress={() => setPage('server')} />}
         <Row testID="open-updates" title={t('updates')} hint={upd.ready ? t('update_ready') : undefined} value={info.version} onPress={() => setPage('updates')} />
         {/* developer tool: not shipped in release builds */}
         {__DEV__ ? <Row testID="open-dnd-test" title={t('dnd_diag')} onPress={() => router.push('/dnd-test')} /> : null}

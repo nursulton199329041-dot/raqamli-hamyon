@@ -9,6 +9,8 @@ import { usePalette, useT } from '@/design/theme';
 import { LANGS } from '@/i18n';
 import { useSession } from '@/state/session';
 import { isLocalUrl } from '@/lib/serverUrl';
+import { STORE_BUILD } from '@/lib/storeBuild';
+import { space, type } from '@/design/tokens';
 import { useSettings } from '@/state/settings';
 import { ConnectionCard } from './ConnectionCard';
 import { DndDiagnostics } from './DndDiagnostics';
@@ -43,6 +45,31 @@ export function Auth() {
       setBusy(false);
     }
   };
+
+  if (STORE_BUILD) {
+    // store build: no server and no sign-in, only a welcome and the local account
+    return (
+      <SafeAreaView style={{ flex: 1 }}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: space.xxl, gap: space.lg }}>
+          <View style={{ width: 96, height: 96, borderRadius: 30, alignItems: 'center', justifyContent: 'center', backgroundColor: p.glassFillStrong, borderWidth: 1, borderColor: p.glassBorder }}>
+            <Glyph name="wallet" color={p.accent} size={52} />
+          </View>
+          <Text style={[type.label, { color: p.textSecondary }]}>{t('app')}</Text>
+          <Text style={{ color: p.text, fontSize: 30, fontWeight: '700', textAlign: 'center', letterSpacing: -0.6 }}>{t('store_tagline')}</Text>
+          <Text style={{ color: p.textSecondary, textAlign: 'center', fontSize: 15 }}>{t('store_private')}</Text>
+        </View>
+        <View style={{ padding: space.xl, gap: space.lg, maxWidth: 440, width: '100%', alignSelf: 'center' }}>
+          <Tap testID="store-start" label={t('store_start')} onPress={() => void startGuest()}
+            style={{ height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center', backgroundColor: p.accent }}>
+            <Text style={[type.label, { color: p.onAccent, fontSize: 15, fontWeight: '700' }]}>{t('store_start')}</Text>
+          </Tap>
+          <View style={{ flexDirection: 'row', justifyContent: 'center', gap: space.sm }}>
+            {LANGS.map((l) => <Chip key={l} label={l.toUpperCase()} selected={lang === l} onPress={() => void update({ lang: l })} />)}
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (__DEV__ && diag) {
     // works without any server or account: only tests gestures and drop zones

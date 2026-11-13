@@ -167,6 +167,17 @@ const T = {
     'Интернет и сервер не нужны. Данные хранятся на этом телефоне; позже можно подключить аккаунт и отправить их в облако.',
     'No internet or server needed. Data stays on this phone; link an account later to back it up to the cloud.',
   ],
+  store_tagline: [
+    'Pulingizni bir joyda nazorat qiling: hamyonlar, kirim, xarajat va qarzlar.',
+    'Все ваши деньги в одном месте: кошельки, доходы, расходы и долги.',
+    'All your money in one place: wallets, income, expenses and debts.',
+  ],
+  store_start: ['Boshlash', 'Начать', 'Get started'],
+  store_private: [
+    "Hisob ochish shart emas. Ma'lumotlar faqat shu telefonda saqlanadi.",
+    'Регистрация не нужна. Данные хранятся только на этом телефоне.',
+    'No sign-up needed. Your data stays only on this phone.',
+  ],
   guest_title: ['Lokal hisob', 'Локальный аккаунт', 'Local account'],
   guest_hint: [
     "Ma'lumotlar faqat shu telefonda. Telefon yo'qolsa yoki ilova o'chirilsa, ular ham yo'qoladi.",

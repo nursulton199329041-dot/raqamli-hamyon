@@ -23,7 +23,7 @@ export function Keypad({ onKey, onClose }: { onKey(k: Key): void; onClose(): voi
   const p = usePalette();
   const t = useT();
   return (
-    <View testID="keypad" style={{ borderTopWidth: 1, borderTopColor: p.glassBorder, backgroundColor: p.dark ? 'rgba(10,18,38,0.96)' : 'rgba(244,247,255,0.97)' }}>
+    <View testID="keypad" style={{ borderTopWidth: 1, borderTopColor: p.glassBorder, backgroundColor: p.dark ? 'rgba(20,8,11,0.96)' : 'rgba(252,245,242,0.97)' }}>
       {ROWS.map((row, ri) => (
         <View key={ri} style={{ flexDirection: 'row' }}>
           {row.map((c) => {
