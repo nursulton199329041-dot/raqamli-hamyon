@@ -1,0 +1,84 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="using:Hamyon.App.Localization"
+             xmlns:vm="using:Hamyon.App.ViewModels"
+             xmlns:c="using:Hamyon.App.Controls"
+             x:Class="Hamyon.App.Views.DebtsView"
+             x:DataType="vm:DebtsViewModel">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Margin="16,12,16,120" Spacing="12" MaxWidth="600">
+      <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,4,0,0">
+        <Button Classes="flat" Command="{Binding GoBackCommand}">
+          <Border Width="44" Height="44" CornerRadius="22" Background="{StaticResource GlassBrush}">
+            <c:Glyph Kind="chevronLeft" Foreground="{DynamicResource AccentBrush}" Width="20" Height="20" />
+          </Border>
+        </Button>
+        <TextBlock Grid.Column="1" Classes="label" Text="{l:T debts_card}" Foreground="{StaticResource TextBrush}" FontSize="13.5"
+                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+        <Border Grid.Column="2" Width="44" />
+      </Grid>
+
+      <!-- totals -->
+      <Grid ColumnDefinitions="*,10,*">
+        <Border Classes="card" CornerRadius="20" Padding="14,12">
+          <StackPanel Spacing="4">
+            <TextBlock Classes="label" Text="{l:T owed_to_me}" FontSize="11" />
+            <TextBlock Text="{Binding OwedToMe}" FontWeight="Bold" Foreground="{StaticResource IncomeBrush}" TextWrapping="Wrap" />
+          </StackPanel>
+        </Border>
+        <Border Grid.Column="2" Classes="card" CornerRadius="20" Padding="14,12">
+          <StackPanel Spacing="4">
+            <TextBlock Classes="label" Text="{l:T i_owe}" FontSize="11" />
+            <TextBlock Text="{Binding IOwe}" FontWeight="Bold" Foreground="{StaticResource ExpenseBrush}" TextWrapping="Wrap" />
+          </StackPanel>
+        </Border>
+      </Grid>
+
+      <!-- actions -->
+      <Grid ColumnDefinitions="*,10,*">
+        <Button Classes="flat" Command="{Binding LendCommand}">
+          <Border Height="50" CornerRadius="25" Background="{DynamicResource AccentBrush}">
+            <TextBlock Classes="label" Text="{l:T op_lend}" Foreground="{Binding $parent[Border].Background, Converter={StaticResource InkOn}}" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+        </Button>
+        <Button Grid.Column="2" Classes="flat" Command="{Binding BorrowCommand}">
+          <Border Height="50" CornerRadius="25" Background="{StaticResource GlassStrongBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1">
+            <TextBlock Classes="label" Text="{l:T op_borrow}" Foreground="{StaticResource TextBrush}" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+        </Button>
+      </Grid>
+
+      <TextBlock Text="{l:T no_debts}" IsVisible="{Binding IsEmpty}" HorizontalAlignment="Center" Margin="0,30" Foreground="{StaticResource TextSecondaryBrush}" />
+
+      <Border Classes="card" Padding="8,4" IsVisible="{Binding !IsEmpty}">
+        <ItemsControl ItemsSource="{Binding Items}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:DebtRowVm">
+              <Grid ColumnDefinitions="Auto,*,Auto" Margin="6,10">
+                <Border Width="40" Height="40" CornerRadius="20" Background="#33FFECE4">
+                  <TextBlock Text="{Binding Initial}" FontWeight="Bold" FontSize="16" Foreground="{StaticResource TextBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+                <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center">
+                  <TextBlock Text="{Binding Person}" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" TextTrimming="CharacterEllipsis" />
+                  <TextBlock FontSize="12.5" Classes.plus="{Binding TheyOwe}">
+                    <TextBlock.Styles>
+                      <Style Selector="TextBlock"><Setter Property="Foreground" Value="{StaticResource ExpenseBrush}" /></Style>
+                      <Style Selector="TextBlock.plus"><Setter Property="Foreground" Value="{StaticResource IncomeBrush}" /></Style>
+                    </TextBlock.Styles>
+                    <Run Text="{Binding Caption}" /><Run Text=" · " /><Run Text="{Binding Amount}" FontWeight="Bold" />
+                  </TextBlock>
+                </StackPanel>
+                <Button Grid.Column="2" Classes="flat" VerticalAlignment="Center"
+                        Command="{Binding $parent[UserControl].((vm:DebtsViewModel)DataContext).RepayCommand}" CommandParameter="{Binding}">
+                  <Border CornerRadius="16" Padding="12,8" Background="{DynamicResource AccentSoftBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1">
+                    <TextBlock Text="{l:T repay}" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" />
+                  </Border>
+                </Button>
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

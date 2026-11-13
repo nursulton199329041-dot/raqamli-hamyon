@@ -12,6 +12,7 @@
     <SolidColorBrush x:Key="TextSecondaryBrush" Color="#BFAEA9" />
     <SolidColorBrush x:Key="AccentBrush" Color="#F2C14E" />
     <SolidColorBrush x:Key="OnAccentBrush" Color="#1A0B0D" />
+    <SolidColorBrush x:Key="AccentSoftBrush" Color="#33F2C14E" />
     <SolidColorBrush x:Key="IncomeBrush" Color="#1FCB8B" />
     <SolidColorBrush x:Key="ExpenseBrush" Color="#FF6B6B" />
     <SolidColorBrush x:Key="SolidCardBrush" Color="#E6160A0D" />

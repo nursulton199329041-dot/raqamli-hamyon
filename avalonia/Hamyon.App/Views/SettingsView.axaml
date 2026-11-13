@@ -1,0 +1,138 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="using:Hamyon.App.Localization"
+             xmlns:vm="using:Hamyon.App.ViewModels"
+             xmlns:c="using:Hamyon.App.Controls"
+             x:Class="Hamyon.App.Views.SettingsView"
+             x:DataType="vm:SettingsViewModel">
+  <UserControl.Styles>
+    <!-- one tappable settings row: badge, title, chevron -->
+    <Style Selector="Grid.row">
+      <Setter Property="Margin" Value="6,10" />
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="Border.seg">
+      <Setter Property="CornerRadius" Value="16" />
+      <Setter Property="Padding" Value="12,9" />
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="Border.seg.on">
+      <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+    </Style>
+    <Style Selector="Border.seg TextBlock">
+      <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.seg.on TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource OnAccentBrush}" />
+      <Setter Property="FontWeight" Value="Bold" />
+    </Style>
+  </UserControl.Styles>
+
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Margin="16,12,16,120" Spacing="12" MaxWidth="600">
+      <TextBlock Classes="label" Text="{l:T tab_settings}" Foreground="{StaticResource TextBrush}" FontSize="13.5" HorizontalAlignment="Center" Margin="0,12,0,4" />
+
+      <!-- language -->
+      <TextBlock Classes="label" Text="{l:T language}" Margin="4,0" />
+      <Border CornerRadius="20" Padding="3" Background="{StaticResource GlassBrush}" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1">
+        <ItemsControl ItemsSource="{Binding Languages}">
+          <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="1" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:OptionVm">
+              <Button Classes="flat" Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).SelectLanguageCommand}" CommandParameter="{Binding}">
+                <Border Classes="seg" Classes.on="{Binding IsSelected}"><TextBlock Text="{Binding Title}" /></Border>
+              </Button>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </Border>
+
+      <!-- accent colour -->
+      <TextBlock Classes="label" Text="{l:T accent}" Margin="4,8,4,0" />
+      <Border Classes="card">
+        <ItemsControl ItemsSource="{Binding Accents}">
+          <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel HorizontalAlignment="Center" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:ChoiceVm">
+              <Button Classes="flat" Margin="5" Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).SelectAccentCommand}" CommandParameter="{Binding}">
+                <Panel Width="42" Height="42">
+                  <Border CornerRadius="21" Background="{Binding Color, Converter={StaticResource HexBrush}}" />
+                  <Border CornerRadius="21" BorderBrush="{StaticResource TextBrush}" BorderThickness="3" IsVisible="{Binding IsSelected}" />
+                  <c:Glyph Kind="check" Foreground="#1A0B0D" Width="18" Height="18" IsVisible="{Binding IsSelected}" HorizontalAlignment="Center" VerticalAlignment="Center" Thickness="2.4" />
+                </Panel>
+              </Button>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </Border>
+
+      <!-- data: catalog, debts -->
+      <TextBlock Classes="label" Text="{l:T data}" Margin="4,8,4,0" />
+      <Border Classes="card" Padding="8,4">
+        <StackPanel>
+          <Button Classes="flat" Command="{Binding OpenWalletsCommand}">
+            <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
+              <Border Width="38" Height="38" CornerRadius="19" Background="#4D8DFF"><c:Glyph Kind="wallet" Foreground="White" Width="18" Height="18" /></Border>
+              <TextBlock Grid.Column="1" Margin="12,0" Text="{l:T manage_wallets}" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
+              <c:Glyph Grid.Column="2" Kind="chevronRight" Foreground="{StaticResource TextSecondaryBrush}" Width="18" Height="18" />
+            </Grid>
+          </Button>
+          <Border Height="1" Background="{StaticResource GlassBorderBrush}" Margin="56,0,0,0" />
+          <Button Classes="flat" Command="{Binding OpenCategoriesCommand}">
+            <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
+              <Border Width="38" Height="38" CornerRadius="19" Background="#F97316"><c:Glyph Kind="food" Foreground="White" Width="18" Height="18" /></Border>
+              <TextBlock Grid.Column="1" Margin="12,0" Text="{l:T manage_categories}" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
+              <c:Glyph Grid.Column="2" Kind="chevronRight" Foreground="{StaticResource TextSecondaryBrush}" Width="18" Height="18" />
+            </Grid>
+          </Button>
+          <Border Height="1" Background="{StaticResource GlassBorderBrush}" Margin="56,0,0,0" />
+          <Button Classes="flat" Command="{Binding OpenSourcesCommand}">
+            <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
+              <Border Width="38" Height="38" CornerRadius="19" Background="#1FCB8B"><c:Glyph Kind="salary" Foreground="White" Width="18" Height="18" /></Border>
+              <TextBlock Grid.Column="1" Margin="12,0" Text="{l:T manage_sources}" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
+              <c:Glyph Grid.Column="2" Kind="chevronRight" Foreground="{StaticResource TextSecondaryBrush}" Width="18" Height="18" />
+            </Grid>
+          </Button>
+          <Border Height="1" Background="{StaticResource GlassBorderBrush}" Margin="56,0,0,0" />
+          <Button Classes="flat" Command="{Binding OpenDebtsCommand}">
+            <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
+              <Border Width="38" Height="38" CornerRadius="19" Background="#F5A524"><c:Glyph Kind="handshake" Foreground="White" Width="18" Height="18" /></Border>
+              <TextBlock Grid.Column="1" Margin="12,0" Text="{l:T debts}" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
+              <c:Glyph Grid.Column="2" Kind="chevronRight" Foreground="{StaticResource TextSecondaryBrush}" Width="18" Height="18" />
+            </Grid>
+          </Button>
+        </StackPanel>
+      </Border>
+
+      <!-- wipe: two steps -->
+      <Border Classes="card" Padding="8,4">
+        <StackPanel>
+          <Button Classes="flat" Command="{Binding ArmWipeCommand}">
+            <Grid Classes="row" ColumnDefinitions="Auto,*">
+              <Border Width="38" Height="38" CornerRadius="19" Background="#EF4444"><c:Glyph Kind="trash" Foreground="White" Width="18" Height="18" /></Border>
+              <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center">
+                <TextBlock Text="{l:T wipe}" FontWeight="SemiBold" Foreground="{StaticResource ExpenseBrush}" />
+                <TextBlock Text="{l:T wipe_hint}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap" />
+              </StackPanel>
+            </Grid>
+          </Button>
+          <StackPanel IsVisible="{Binding WipeArmed}" Spacing="8" Margin="6,0,6,10">
+            <TextBlock Text="{l:T wipe_sure}" Foreground="{StaticResource TextBrush}" TextWrapping="Wrap" />
+            <Button Classes="flat" Command="{Binding WipeCommand}">
+              <Border Height="44" CornerRadius="22" Background="#33FF6B6B" BorderBrush="{StaticResource ExpenseBrush}" BorderThickness="1">
+                <TextBlock Classes="label" Text="{l:T wipe_confirm}" Foreground="{StaticResource ExpenseBrush}" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+              </Border>
+            </Button>
+          </StackPanel>
+        </StackPanel>
+      </Border>
+
+      <StackPanel HorizontalAlignment="Center" Spacing="4" Margin="0,6">
+        <TextBlock Text="{l:T local_note}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" />
+        <TextBlock Text="{Binding Version}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Center" />
+      </StackPanel>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

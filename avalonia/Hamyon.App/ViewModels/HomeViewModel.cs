@@ -29,6 +29,9 @@ public partial class HomeViewModel : ViewModelBase
     [ObservableProperty] public partial string SourcesTotal { get; set; } = "0";
     [ObservableProperty] public partial string WalletsTotal { get; set; } = "0";
     [ObservableProperty] public partial string CategoriesTotal { get; set; } = "0";
+    [ObservableProperty] public partial bool HasDebts { get; set; }
+    [ObservableProperty] public partial string OwedToMe { get; set; } = "0";
+    [ObservableProperty] public partial string IOwe { get; set; } = "0";
 
     public ObservableCollection<BalanceLine> Balance { get; } = new();
     public ObservableCollection<TileVm> Sources { get; } = new();
@@ -66,6 +69,10 @@ public partial class HomeViewModel : ViewModelBase
         }
     }
 
+    public event Action? OpenDebts;
+
+    [RelayCommand] private void ShowDebts() => OpenDebts?.Invoke();
+
     [RelayCommand] private void ToggleBalance() => HideBalance = !HideBalance;
 
     [RelayCommand] private void NextPeriod() => Period = Period.Of(Period.Next(), DateTime.Now);
@@ -92,6 +99,13 @@ public partial class HomeViewModel : ViewModelBase
         SourcesTotal = Money.Format(Sum(income.Values));
         WalletsTotal = Money.Format(byCurrency);
         CategoriesTotal = Money.Format(Sum(expense.Values));
+
+        // debts card: shown only while something is open
+        var debts = _store.Debts();
+        HasDebts = debts.Count > 0;
+        OwedToMe = Money.Format(debts.Where(d => d.Balance > 0).GroupBy(d => d.Currency).ToDictionary(g => g.Key, g => g.Sum(d => d.Balance)));
+        IOwe = Money.Format(debts.Where(d => d.Balance < 0).GroupBy(d => d.Currency).ToDictionary(g => g.Key, g => -g.Sum(d => d.Balance)));
+        OnPropertyChanged(nameof(PeriodLabel));
     }
 
     private static TileVm Tile(TileKind kind, long id, string name, string icon, string color, Dictionary<string, decimal>? amounts) =>

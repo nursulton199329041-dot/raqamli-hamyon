@@ -35,6 +35,15 @@ public sealed class HexBrushConverter : IValueConverter
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => throw new NotSupportedException();
 }
 
+/// <summary>A solid fill brush -> readable ink on it (dark on light accents, white on deep ones).</summary>
+public sealed class InkOnConverter : IValueConverter
+{
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        value is ISolidColorBrush b ? new SolidColorBrush(Hamyon.App.Services.Appearance.OnAccent(b.Color)) : Brushes.White;
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => throw new NotSupportedException();
+}
+
 /// <summary>0..1 share -> bar width in pixels of a 100% bar given as the parameter.</summary>
 public sealed class ShareWidthConverter : IValueConverter
 {

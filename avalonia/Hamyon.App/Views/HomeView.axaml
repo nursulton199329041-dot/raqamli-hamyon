@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="using:Hamyon.App.Localization"
              xmlns:vm="using:Hamyon.App.ViewModels"
              xmlns:c="using:Hamyon.App.Controls"
              x:Class="Hamyon.App.Views.HomeView"
@@ -36,7 +37,7 @@
         <Border Width="44" Height="44" CornerRadius="22" Background="#FBF5F2">
           <TextBlock Text="H" FontSize="17" FontWeight="Bold" Foreground="#2B0D12" HorizontalAlignment="Center" VerticalAlignment="Center" />
         </Border>
-        <TextBlock Grid.Column="1" Classes="label" Text="RAQAMLI HAMYON" Foreground="{StaticResource TextBrush}" FontSize="13.5"
+        <TextBlock Grid.Column="1" Classes="label" Text="{l:T app}" Foreground="{StaticResource TextBrush}" FontSize="13.5"
                    HorizontalAlignment="Center" VerticalAlignment="Center" />
         <Button Grid.Column="2" Classes="flat" Command="{Binding RefreshCommand}">
           <Border Width="44" Height="44" CornerRadius="22" Background="{StaticResource GlassBrush}"
@@ -49,7 +50,7 @@
 
       <!-- hero -->
       <StackPanel Spacing="14" HorizontalAlignment="Center" Margin="0,22,0,16">
-        <TextBlock Classes="label" Text="UMUMIY BALANS" HorizontalAlignment="Center" />
+        <TextBlock Classes="label" Text="{l:T total_balance}" HorizontalAlignment="Center" />
         <Grid ColumnDefinitions="*,Auto" HorizontalAlignment="Center">
           <ItemsControl ItemsSource="{Binding Balance}">
             <ItemsControl.ItemTemplate>
@@ -79,7 +80,7 @@
       <Border Classes="card">
         <StackPanel Spacing="8">
           <Grid ColumnDefinitions="*,Auto">
-            <TextBlock Classes="label" Text="KIRIM MANBALARI" />
+            <TextBlock Classes="label" Text="{l:T income_sources}" />
             <TextBlock Grid.Column="1" Text="{Binding SourcesTotal}" FontWeight="SemiBold" Foreground="{StaticResource IncomeBrush}" />
           </Grid>
           <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
@@ -90,11 +91,32 @@
         </StackPanel>
       </Border>
 
+      <!-- debts (only while something is open); tap opens the debts page -->
+      <Button Classes="flat" Command="{Binding ShowDebtsCommand}" IsVisible="{Binding HasDebts}">
+        <Border Classes="card">
+          <Grid ColumnDefinitions="Auto,*,Auto">
+            <Border Width="40" Height="40" CornerRadius="20" Background="#F5A524">
+              <c:Glyph Kind="handshake" Foreground="White" Width="20" Height="20" HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
+            <StackPanel Grid.Column="1" Margin="12,0" Spacing="3" VerticalAlignment="Center">
+              <TextBlock Classes="label" Text="{l:T debts_card}" />
+              <TextBlock FontSize="12.5" TextWrapping="Wrap" Foreground="{StaticResource IncomeBrush}">
+                <Run Text="{l:T owed_to_me}" /><Run Text=": " /><Run Text="{Binding OwedToMe}" FontWeight="Bold" />
+              </TextBlock>
+              <TextBlock FontSize="12.5" TextWrapping="Wrap" Foreground="{StaticResource ExpenseBrush}">
+                <Run Text="{l:T i_owe}" /><Run Text=": " /><Run Text="{Binding IOwe}" FontWeight="Bold" />
+              </TextBlock>
+            </StackPanel>
+            <c:Glyph Grid.Column="2" Kind="chevronRight" Foreground="{StaticResource TextSecondaryBrush}" Width="18" Height="18" VerticalAlignment="Center" />
+          </Grid>
+        </Border>
+      </Button>
+
       <!-- wallets -->
       <Border Classes="card">
         <StackPanel Spacing="8">
           <Grid ColumnDefinitions="*,Auto">
-            <TextBlock Classes="label" Text="HAMYONLAR" />
+            <TextBlock Classes="label" Text="{l:T wallets}" />
             <TextBlock Grid.Column="1" Text="{Binding WalletsTotal}" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" />
           </Grid>
           <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
@@ -109,7 +131,7 @@
       <Border Classes="card">
         <StackPanel Spacing="8">
           <Grid ColumnDefinitions="*,Auto">
-            <TextBlock Classes="label" Text="XARAJAT TOIFALARI" />
+            <TextBlock Classes="label" Text="{l:T expense_categories}" />
             <TextBlock Grid.Column="1" Text="{Binding CategoriesTotal}" FontWeight="SemiBold" Foreground="{StaticResource ExpenseBrush}" />
           </Grid>
           <ItemsControl ItemsSource="{Binding Categories}" ItemTemplate="{StaticResource Tile}">

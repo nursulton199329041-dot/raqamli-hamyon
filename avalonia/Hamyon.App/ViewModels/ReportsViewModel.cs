@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Hamyon.App.Controls;
 using Hamyon.App.Data;
+using Hamyon.App.Localization;
 using Hamyon.App.Models;
 
 namespace Hamyon.App.ViewModels;
@@ -17,7 +18,7 @@ public sealed record BreakdownRowVm(string Name, string Icon, string Color, stri
 public partial class OptionVm : ObservableObject
 {
     public required string Key { get; init; }
-    public required string Title { get; init; }
+    [ObservableProperty] public partial string Title { get; set; } = "";
     [ObservableProperty] public partial bool IsSelected { get; set; }
 }
 
@@ -27,20 +28,18 @@ public partial class OptionVm : ObservableObject
 /// </summary>
 public partial class ReportsViewModel : ViewModelBase
 {
-    private static readonly string[] MonthsUz = ["yanvar", "fevral", "mart", "aprel", "may", "iyun", "iyul", "avgust", "sentabr", "oktabr", "noyabr", "dekabr"];
-    private static readonly string[] MonthsShort = ["yan", "fev", "mar", "apr", "may", "iyn", "iyl", "avg", "sen", "okt", "noy", "dek"];
 
     private readonly LocalStore _store;
 
     public ObservableCollection<OptionVm> Kinds { get; } =
     [
-        new() { Key = "expense", Title = "Xarajatlar", IsSelected = true },
-        new() { Key = "income", Title = "Kirimlar" },
+        new() { Key = "expense", Title = L.T("r_expenses"), IsSelected = true },
+        new() { Key = "income", Title = L.T("r_incomes") },
     ];
     public ObservableCollection<OptionVm> Ranges { get; } =
     [
-        new() { Key = "month", Title = "Oy", IsSelected = true },
-        new() { Key = "year", Title = "Yil" },
+        new() { Key = "month", Title = L.T("r_month"), IsSelected = true },
+        new() { Key = "year", Title = L.T("r_year") },
     ];
     public ObservableCollection<OptionVm> Currencies { get; } = new();
     public ObservableCollection<BreakdownRowVm> Breakdown { get; } = new();
@@ -59,10 +58,10 @@ public partial class ReportsViewModel : ViewModelBase
     public bool IsExpense => Kinds[0].IsSelected;
     public bool IsYear => Ranges[1].IsSelected;
     public string Currency => Currencies.FirstOrDefault(c => c.IsSelected)?.Key ?? "UZS";
-    public string Title => IsExpense ? "XARAJATLAR" : "KIRIMLAR";
+    public string Title => L.T(IsExpense ? "r_expenses" : "r_incomes").ToUpperInvariant();
     public string BarColor => IsExpense ? "#FF6B6B" : "#1FCB8B";
-    public string RangeTitle => IsYear ? $"{Anchor.Year}" : $"{MonthsUz[Anchor.Month - 1]} {Anchor.Year}";
-    public string TopLabel => IsExpense ? "ENG KATTA TOIFA" : "ENG KATTA MANBA";
+    public string RangeTitle => IsYear ? $"{Anchor.Year}" : $"{L.Month(Anchor.Month)} {Anchor.Year}";
+    public string TopLabel => L.T(IsExpense ? "top_category" : "top_source");
     public bool CanGoNext => IsYear ? Anchor.Year < DateTime.Today.Year : Anchor < new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
 
     public ReportsViewModel(LocalStore store)
@@ -88,6 +87,9 @@ public partial class ReportsViewModel : ViewModelBase
     public void Refresh()
     {
         SyncCurrencies();
+        // labels follow the current language
+        Kinds[0].Title = L.T("r_expenses"); Kinds[1].Title = L.T("r_incomes");
+        Ranges[0].Title = L.T("r_month"); Ranges[1].Title = L.T("r_year");
         var kind = IsExpense ? OpKind.Expense : OpKind.Income;
         var from = IsYear ? new DateTime(Anchor.Year, 1, 1) : Anchor;
         var to = (IsYear ? from.AddYears(1) : from.AddMonths(1)).AddTicks(-1);
@@ -98,7 +100,7 @@ public partial class ReportsViewModel : ViewModelBase
         var series = _store.Series(kind, period, cur, byMonth: IsYear);
         var buckets = IsYear ? 12 : DateTime.DaysInMonth(from.Year, from.Month);
         Bars = Enumerable.Range(1, buckets).Select(i => (double)series.GetValueOrDefault(i)).ToList();
-        BarLabels = Enumerable.Range(1, buckets).Select(i => IsYear ? MonthsShort[i - 1] : i.ToString(CultureInfo.InvariantCulture)).ToList();
+        BarLabels = Enumerable.Range(1, buckets).Select(i => IsYear ? L.MonthShort(i) : i.ToString(CultureInfo.InvariantCulture)).ToList();
 
         // breakdown by category / source in this currency
         var totals = _store.Totals(kind, period);

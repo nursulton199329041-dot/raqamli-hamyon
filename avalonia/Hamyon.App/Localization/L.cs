@@ -1,0 +1,158 @@
+using System;
+using System.Collections.Generic;
+using Avalonia.Markup.Xaml;
+
+namespace Hamyon.App.Localization;
+
+public enum Lang { Uz = 0, Ru = 1, En = 2 }
+
+/// <summary>
+/// UI strings in Uzbek, Russian and English. Views read them once when built ({l:T key}); a language change rebuilds
+/// the shell, so no per-string change tracking is needed. User data (wallet and category names) is never translated.
+/// </summary>
+public static class L
+{
+    public static Lang Current { get; set; } = Lang.Uz;
+
+    public static string T(string key) =>
+        S.TryGetValue(key, out var v) ? v[(int)Current] : key;
+
+    public static string T(string key, params object[] args) => string.Format(T(key), args);
+
+    public static string Month(int m) => MonthsFull[(int)Current][m - 1];
+    public static string MonthShort(int m) => MonthsShort[(int)Current][m - 1];
+    public static string Weekday(DayOfWeek d) => Weekdays[(int)Current][(int)d];
+
+    private static readonly string[][] MonthsFull =
+    [
+        ["yanvar", "fevral", "mart", "aprel", "may", "iyun", "iyul", "avgust", "sentabr", "oktabr", "noyabr", "dekabr"],
+        ["январь", "февраль", "март", "апрель", "май", "июнь", "июль", "август", "сентябрь", "октябрь", "ноябрь", "декабрь"],
+        ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+    ];
+    private static readonly string[][] MonthsShort =
+    [
+        ["yan", "fev", "mar", "apr", "may", "iyn", "iyl", "avg", "sen", "okt", "noy", "dek"],
+        ["янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"],
+        ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+    ];
+    private static readonly string[][] Weekdays =
+    [
+        ["yakshanba", "dushanba", "seshanba", "chorshanba", "payshanba", "juma", "shanba"],
+        ["воскресенье", "понедельник", "вторник", "среда", "четверг", "пятница", "суббота"],
+        ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+    ];
+
+    private static readonly Dictionary<string, string[]> S = new()
+    {
+        // shell
+        ["tab_home"] = ["BOSH", "ГЛАВНАЯ", "HOME"],
+        ["tab_history"] = ["TARIX", "ИСТОРИЯ", "HISTORY"],
+        ["tab_reports"] = ["HISOBOT", "ОТЧЁТЫ", "REPORTS"],
+        ["tab_settings"] = ["SOZLAMALAR", "НАСТРОЙКИ", "SETTINGS"],
+        ["app"] = ["RAQAMLI HAMYON", "ЦИФРОВОЙ КОШЕЛЁК", "DIGITAL WALLET"],
+        ["back"] = ["Orqaga", "Назад", "Back"],
+        ["cancel"] = ["Bekor qilish", "Отмена", "Cancel"],
+        ["save"] = ["SAQLASH", "СОХРАНИТЬ", "SAVE"],
+        ["delete"] = ["O‘CHIRISH", "УДАЛИТЬ", "DELETE"],
+
+        // home
+        ["total_balance"] = ["UMUMIY BALANS", "ОБЩИЙ БАЛАНС", "TOTAL BALANCE"],
+        ["income_sources"] = ["KIRIM MANBALARI", "ИСТОЧНИКИ ДОХОДА", "INCOME SOURCES"],
+        ["wallets"] = ["HAMYONLAR", "КОШЕЛЬКИ", "WALLETS"],
+        ["expense_categories"] = ["XARAJAT TOIFALARI", "КАТЕГОРИИ РАСХОДОВ", "EXPENSE CATEGORIES"],
+        ["all_time"] = ["BUTUN DAVR", "ЗА ВСЁ ВРЕМЯ", "ALL TIME"],
+        ["debts_card"] = ["QARZLAR", "ДОЛГИ", "DEBTS"],
+        ["owed_to_me"] = ["Menga qarzdor", "Мне должны", "Owed to me"],
+        ["i_owe"] = ["Men qarzdorman", "Я должен", "I owe"],
+
+        // operation sheet
+        ["op_income"] = ["Kirim", "Доход", "Income"],
+        ["op_expense"] = ["Xarajat", "Расход", "Expense"],
+        ["op_transfer"] = ["O‘tkazma", "Перевод", "Transfer"],
+        ["op_lend"] = ["Qarz berdim", "Дал в долг", "Lent"],
+        ["op_borrow"] = ["Qarz oldim", "Взял в долг", "Borrowed"],
+        ["amount"] = ["SUMMA", "СУММА", "AMOUNT"],
+        ["from_source"] = ["KIRIM MANBASI", "ИСТОЧНИК", "SOURCE"],
+        ["from_wallet"] = ["QAYSI HAMYONDAN", "ИЗ КОШЕЛЬКА", "FROM WALLET"],
+        ["to_wallet"] = ["QAYSI HAMYONGA", "В КОШЕЛЁК", "TO WALLET"],
+        ["category"] = ["TOIFA", "КАТЕГОРИЯ", "CATEGORY"],
+        ["person"] = ["KIM", "КТО", "WHO"],
+        ["person_hint"] = ["Ism (masalan, Akmal)", "Имя (например, Акмал)", "Name (e.g. Akmal)"],
+        ["received_amount"] = ["QABUL QILINADIGAN SUMMA", "СУММА ПОЛУЧЕНИЯ", "RECEIVED AMOUNT"],
+        ["date"] = ["SANA", "ДАТА", "DATE"],
+        ["note_hint"] = ["Izoh (ixtiyoriy)", "Комментарий (необязательно)", "Note (optional)"],
+        ["today"] = ["Bugun", "Сегодня", "Today"],
+        ["yesterday"] = ["Kecha", "Вчера", "Yesterday"],
+        ["err_amount"] = ["Summani kiriting", "Введите сумму", "Enter the amount"],
+        ["err_pick_expense"] = ["Hamyon va toifani tanlang", "Выберите кошелёк и категорию", "Choose a wallet and a category"],
+        ["err_pick"] = ["Ikkala tomonni tanlang", "Выберите обе стороны", "Choose both sides"],
+        ["err_funds"] = ["Hamyonda yetarli mablag‘ yo‘q ({0})", "Недостаточно средств в кошельке ({0})", "Not enough money in the wallet ({0})"],
+        ["err_other_wallet"] = ["Boshqa hamyonni tanlang", "Выберите другой кошелёк", "Choose another wallet"],
+        ["err_to_amount"] = ["Qabul qilinadigan summani kiriting ({0})", "Введите сумму получения ({0})", "Enter the received amount ({0})"],
+        ["err_person"] = ["Kimligini yozing", "Укажите, кто", "Enter who"],
+        ["err_wallet"] = ["Hamyonni tanlang", "Выберите кошелёк", "Choose a wallet"],
+
+        // history
+        ["search"] = ["Qidirish", "Поиск", "Search"],
+        ["saldo"] = ["SALDO", "САЛЬДО", "NET"],
+        ["incomes"] = ["TUSHUMLAR", "ПОСТУПЛЕНИЯ", "INCOME"],
+        ["expenses"] = ["CHIQIMLAR", "РАСХОДЫ", "EXPENSES"],
+        ["no_ops_month"] = ["Bu oyda operatsiya yo‘q", "В этом месяце операций нет", "No operations this month"],
+        ["lent_to"] = ["Qarz berildi: {0}", "Дал в долг: {0}", "Lent to {0}"],
+        ["borrowed_from"] = ["Qarz olindi: {0}", "Взял в долг: {0}", "Borrowed from {0}"],
+
+        // reports
+        ["r_expenses"] = ["Xarajatlar", "Расходы", "Expenses"],
+        ["r_incomes"] = ["Kirimlar", "Доходы", "Income"],
+        ["r_month"] = ["Oy", "Месяц", "Month"],
+        ["r_year"] = ["Yil", "Год", "Year"],
+        ["avg_daily"] = ["KUNIGA O‘RTACHA", "В СРЕДНЕМ ЗА ДЕНЬ", "DAILY AVERAGE"],
+        ["top_category"] = ["ENG KATTA TOIFA", "КРУПНЕЙШАЯ КАТЕГОРИЯ", "TOP CATEGORY"],
+        ["top_source"] = ["ENG KATTA MANBA", "КРУПНЕЙШИЙ ИСТОЧНИК", "TOP SOURCE"],
+        ["breakdown"] = ["TAQSIMOT", "РАСПРЕДЕЛЕНИЕ", "BREAKDOWN"],
+        ["no_data"] = ["Bu davr uchun ma’lumot yo‘q", "Нет данных за этот период", "No data for this period"],
+
+        // settings
+        ["language"] = ["TIL", "ЯЗЫК", "LANGUAGE"],
+        ["accent"] = ["ASOSIY RANG", "ОСНОВНОЙ ЦВЕТ", "ACCENT COLOUR"],
+        ["data"] = ["MA’LUMOTLAR", "ДАННЫЕ", "DATA"],
+        ["manage_wallets"] = ["Hamyonlar", "Кошельки", "Wallets"],
+        ["manage_categories"] = ["Xarajat toifalari", "Категории расходов", "Expense categories"],
+        ["manage_sources"] = ["Kirim manbalari", "Источники дохода", "Income sources"],
+        ["debts"] = ["Qarzlar", "Долги", "Debts"],
+        ["wipe"] = ["Ma’lumotlarni o‘chirish", "Удалить данные", "Delete all data"],
+        ["wipe_hint"] = ["Hamma yozuvlar o‘chadi, ilova boshidan boshlanadi", "Все записи удалятся, приложение начнётся заново", "All records are removed and the app starts over"],
+        ["wipe_confirm"] = ["Ha, hammasini o‘chirish", "Да, удалить всё", "Yes, delete everything"],
+        ["wipe_sure"] = ["Rostdan ham? Buni qaytarib bo‘lmaydi.", "Вы уверены? Это нельзя отменить.", "Are you sure? This cannot be undone."],
+        ["local_note"] = ["Ma’lumotlar faqat shu telefonda saqlanadi.", "Данные хранятся только на этом телефоне.", "Your data is stored only on this phone."],
+        ["version"] = ["Versiya", "Версия", "Version"],
+
+        // catalog editor
+        ["add"] = ["QO‘SHISH", "ДОБАВИТЬ", "ADD"],
+        ["new_wallet"] = ["Yangi hamyon", "Новый кошелёк", "New wallet"],
+        ["new_category"] = ["Yangi toifa", "Новая категория", "New category"],
+        ["new_source"] = ["Yangi manba", "Новый источник", "New source"],
+        ["edit"] = ["Tahrirlash", "Изменить", "Edit"],
+        ["name"] = ["NOMI", "НАЗВАНИЕ", "NAME"],
+        ["currency"] = ["VALYUTA", "ВАЛЮТА", "CURRENCY"],
+        ["opening_balance"] = ["BOSHLANG‘ICH BALANS", "НАЧАЛЬНЫЙ БАЛАНС", "OPENING BALANCE"],
+        ["icon"] = ["IKONKA", "ИКОНКА", "ICON"],
+        ["color"] = ["RANG", "ЦВЕТ", "COLOUR"],
+        ["archive"] = ["ARXIVLASH", "В АРХИВ", "ARCHIVE"],
+        ["err_name"] = ["Nomini yozing", "Введите название", "Enter a name"],
+        ["err_archive_balance"] = ["Balansi 0 bo‘lmagan hamyonni arxivlab bo‘lmaydi", "Нельзя архивировать кошелёк с ненулевым балансом", "A wallet with a non-zero balance can't be archived"],
+
+        // debts
+        ["no_debts"] = ["Ochiq qarzlar yo‘q", "Открытых долгов нет", "No open debts"],
+        ["debt_they_owe"] = ["sizga qarzdor", "должен вам", "owes you"],
+        ["debt_you_owe"] = ["siz qarzdorsiz", "вы должны", "you owe"],
+        ["repay"] = ["Qaytarildi", "Возврат", "Repaid"],
+    };
+}
+
+/// <summary>XAML: Text="{l:T total_balance}".</summary>
+public sealed class TExtension(string key) : MarkupExtension
+{
+    public string Key { get; } = key;
+    public override object ProvideValue(IServiceProvider serviceProvider) => L.T(Key);
+}

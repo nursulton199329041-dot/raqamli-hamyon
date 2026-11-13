@@ -5,6 +5,7 @@ using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Hamyon.App.Data;
+using Hamyon.App.Localization;
 using Hamyon.App.Models;
 
 namespace Hamyon.App.ViewModels;
@@ -36,8 +37,6 @@ public sealed record DayGroupVm(string Title, string Net, IReadOnlyList<HistoryR
 /// </summary>
 public partial class HistoryViewModel : ViewModelBase
 {
-    private static readonly string[] MonthsUz = ["yanvar", "fevral", "mart", "aprel", "may", "iyun", "iyul", "avgust", "sentabr", "oktabr", "noyabr", "dekabr"];
-    private static readonly string[] WeekdaysUz = ["yakshanba", "dushanba", "seshanba", "chorshanba", "payshanba", "juma", "shanba"];
 
     private readonly LocalStore _store;
     private readonly Action _changed;
@@ -50,7 +49,7 @@ public partial class HistoryViewModel : ViewModelBase
     [ObservableProperty] public partial bool IsEmpty { get; set; }
 
     public ObservableCollection<DayGroupVm> Days { get; } = new();
-    public string MonthTitle => $"{MonthsUz[Month.Month - 1]} {Month.Year}";
+    public string MonthTitle => $"{L.Month(Month.Month)} {Month.Year}";
     public bool CanGoNext => Month < new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
 
     /// <param name="changed">called after a delete, so the home screen refreshes too</param>
@@ -109,7 +108,7 @@ public partial class HistoryViewModel : ViewModelBase
         {
             var dayNet = Net(Sum(day.Where(o => o.Kind == OpKind.Income)), Sum(day.Where(o => o.Kind == OpKind.Expense)));
             Days.Add(new DayGroupVm(
-                $"{day.Key.Day}-{MonthsUz[day.Key.Month - 1]}, {WeekdaysUz[(int)day.Key.DayOfWeek]}",
+                $"{day.Key.Day} {L.Month(day.Key.Month)}, {L.Weekday(day.Key.DayOfWeek)}",
                 dayNet.Count == 0 ? "" : Money.Format(dayNet),
                 day.Select(ToRow).ToList()));
         }
@@ -121,21 +120,28 @@ public partial class HistoryViewModel : ViewModelBase
         OpKind.Income => new HistoryRowVm
         {
             Id = o.Id, Kind = o.Kind, Note = o.Note,
-            Title = o.SourceName ?? "Kirim", Subtitle = o.WalletName ?? "",
+            Title = o.SourceName ?? L.T("op_income"), Subtitle = o.WalletName ?? "",
             Icon = o.SourceIcon ?? "plus", Color = o.SourceColor ?? "#1FCB8B",
             Amount = "+" + Money.Format(o.Amount, o.Currency),
         },
         OpKind.Expense => new HistoryRowVm
         {
             Id = o.Id, Kind = o.Kind, Note = o.Note,
-            Title = o.CategoryName ?? "Xarajat", Subtitle = o.WalletName ?? "",
+            Title = o.CategoryName ?? L.T("op_expense"), Subtitle = o.WalletName ?? "",
             Icon = o.CategoryIcon ?? "other", Color = o.CategoryColor ?? "#FF6B6B",
             Amount = "−" + Money.Format(o.Amount, o.Currency),
+        },
+        OpKind.Lend or OpKind.Borrow => new HistoryRowVm
+        {
+            Id = o.Id, Kind = o.Kind, Note = o.Note,
+            Title = L.T(o.Kind == OpKind.Lend ? "lent_to" : "borrowed_from", o.Person ?? "?"), Subtitle = o.WalletName ?? "",
+            Icon = "handshake", Color = "#F5A524",
+            Amount = (o.Kind == OpKind.Lend ? "−" : "+") + Money.Format(o.Amount, o.Currency),
         },
         _ => new HistoryRowVm
         {
             Id = o.Id, Kind = o.Kind, Note = o.Note,
-            Title = "O‘tkazma", Subtitle = $"{o.WalletName} → {o.ToWalletName}",
+            Title = L.T("op_transfer"), Subtitle = $"{o.WalletName} → {o.ToWalletName}",
             Icon = "swap", Color = "#7C6CFF",
             Amount = o.ToAmount is { } ta && o.ToCurrency is { } tc && tc != o.Currency
                 ? $"{Money.Format(o.Amount, o.Currency)} → {Money.Format(ta, tc)}"
@@ -144,7 +150,7 @@ public partial class HistoryViewModel : ViewModelBase
     };
 
     private static bool Matches(OperationRow o, string q) =>
-        new[] { o.SourceName, o.CategoryName, o.WalletName, o.ToWalletName, o.Note }
+        new[] { o.SourceName, o.CategoryName, o.WalletName, o.ToWalletName, o.Note, o.Person }
             .Any(s => s?.Contains(q, StringComparison.CurrentCultureIgnoreCase) == true);
 
     private static Dictionary<string, decimal> Sum(IEnumerable<OperationRow> ops) =>

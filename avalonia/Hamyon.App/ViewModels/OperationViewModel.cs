@@ -5,11 +5,12 @@ using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Hamyon.App.Data;
+using Hamyon.App.Localization;
 using Hamyon.App.Models;
 
 namespace Hamyon.App.ViewModels;
 
-/// <summary>A selectable chip (wallet, source, category).</summary>
+/// <summary>A selectable chip (wallet, source, category, icon, colour, currency).</summary>
 public partial class ChoiceVm : ObservableObject
 {
     public required long Id { get; init; }
@@ -29,12 +30,11 @@ public partial class DayVm : ObservableObject
 }
 
 /// <summary>
-/// The operation sheet (income / expense / transfer): calculator amount, "from → to" choices, date strip, note.
-/// Validates like the React Native app: positive amount, both ends chosen, no overdraft, two amounts across currencies.
+/// The operation sheet (income / expense / transfer / lend / borrow): calculator amount, "from → to" choices,
+/// person for debts, date strip, note. Validates: positive amount, both ends chosen, no overdraft, two amounts across currencies.
 /// </summary>
 public partial class OperationViewModel : ViewModelBase
 {
-    private static readonly string[] WeekdaysUz = ["yakshanba", "dushanba", "seshanba", "chorshanba", "payshanba", "juma", "shanba"];
     public static readonly string[][] Keys =
     [
         ["C", "⌫", "÷", "×"],
@@ -50,10 +50,21 @@ public partial class OperationViewModel : ViewModelBase
     private readonly IReadOnlyList<Wallet> _wallets;
 
     public OpKind Kind { get; }
-    public string Title => Kind switch { OpKind.Income => "Kirim", OpKind.Expense => "Xarajat", _ => "O‘tkazma" };
-    public string Color => Kind switch { OpKind.Income => "#1FCB8B", OpKind.Expense => "#FF6B6B", _ => "#7C6CFF" };
-    public string FromLabel => Kind == OpKind.Income ? "KIRIM MANBASI" : "QAYSI HAMYONDAN";
-    public string ToLabel => Kind switch { OpKind.Income => "QAYSI HAMYONGA", OpKind.Expense => "TOIFA", _ => "QAYSI HAMYONGA" };
+    public bool IsDebt => Kind is OpKind.Lend or OpKind.Borrow;
+    private readonly string? _title;
+    public string Title => _title ?? L.T(Kind switch
+    {
+        OpKind.Income => "op_income", OpKind.Expense => "op_expense", OpKind.Transfer => "op_transfer",
+        OpKind.Lend => "op_lend", _ => "op_borrow",
+    });
+    public string Color => Kind switch
+    {
+        OpKind.Income => "#1FCB8B", OpKind.Expense => "#FF6B6B", OpKind.Transfer => "#7C6CFF", _ => "#F5A524",
+    };
+    public string FromLabel => L.T(Kind switch { OpKind.Income => "from_source", OpKind.Borrow => "to_wallet", _ => "from_wallet" });
+    public string ToLabel => L.T(Kind switch { OpKind.Expense => "category", _ => "to_wallet" });
+    /// <summary>debts have one list (the wallet); the other end is the person</summary>
+    public bool ShowTo => !IsDebt;
 
     public ObservableCollection<ChoiceVm> From { get; } = new();
     public ObservableCollection<ChoiceVm> To { get; } = new();
@@ -62,6 +73,7 @@ public partial class OperationViewModel : ViewModelBase
 
     [ObservableProperty] public partial string Expression { get; set; } = "";
     [ObservableProperty] public partial string? Note { get; set; }
+    [ObservableProperty] public partial string? Person { get; set; }
     [ObservableProperty] public partial string? ToAmountText { get; set; }
     [ObservableProperty] public partial string? Error { get; set; }
 
@@ -72,16 +84,19 @@ public partial class OperationViewModel : ViewModelBase
     public bool NeedsToAmount => Kind == OpKind.Transfer && TargetWallet is { } t && SourceWallet is { } s && t.Currency != s.Currency;
     public string ToCurrency => TargetWallet?.Currency ?? "";
 
+    /// <summary>the wallet whose currency the amount is in</summary>
     private Wallet? SourceWallet => Kind == OpKind.Income ? Wallet(To) : Wallet(From);
     private Wallet? TargetWallet => Kind == OpKind.Transfer ? Wallet(To) : null;
     private Wallet? Wallet(IEnumerable<ChoiceVm> list) => list.FirstOrDefault(c => c.IsSelected) is { } c ? _wallets.FirstOrDefault(w => w.Id == c.Id) : null;
 
-    public OperationViewModel(LocalStore store, OpKind kind, long? fromId, long? toId, Action onSaved, Action onClose)
+    public OperationViewModel(LocalStore store, OpKind kind, long? fromId, long? toId, Action onSaved, Action onClose, string? person = null, string? title = null)
     {
         _store = store;
         _onSaved = onSaved;
         _onClose = onClose;
         Kind = kind;
+        Person = person;
+        _title = title;
         _wallets = store.Wallets();
 
         ChoiceVm W(Wallet w) => new() { Id = w.Id, Name = w.Name, Icon = w.Icon, Color = w.Color, Hint = Money.Format(w.Balance, w.Currency) };
@@ -95,18 +110,21 @@ public partial class OperationViewModel : ViewModelBase
                 foreach (var w in _wallets) From.Add(W(w));
                 foreach (var c in store.Categories()) To.Add(new ChoiceVm { Id = c.Id, Name = c.Name, Icon = c.Icon, Color = c.Color });
                 break;
-            default:
+            case OpKind.Transfer:
                 foreach (var w in _wallets) { From.Add(W(w)); To.Add(W(w)); }
+                break;
+            default: // lend / borrow: one wallet list
+                foreach (var w in _wallets) From.Add(W(w));
                 break;
         }
         Pick(From, fromId ?? From.FirstOrDefault()?.Id);
-        Pick(To, toId ?? To.FirstOrDefault(c => kind != OpKind.Transfer || c.Id != fromId)?.Id);
+        Pick(To, toId ?? To.FirstOrDefault(c => kind != OpKind.Transfer || c.Id != (fromId ?? From.FirstOrDefault()?.Id))?.Id);
 
         var today = DateTime.Today;
         for (var i = 6; i >= 0; i--)
         {
             var d = today.AddDays(-i);
-            Days.Add(new DayVm { Date = d, Caption = i == 0 ? "Bugun" : i == 1 ? "Kecha" : WeekdaysUz[(int)d.DayOfWeek], IsSelected = i == 0 });
+            Days.Add(new DayVm { Date = d, Caption = i == 0 ? L.T("today") : i == 1 ? L.T("yesterday") : L.Weekday(d.DayOfWeek), IsSelected = i == 0 });
         }
     }
 
@@ -152,30 +170,39 @@ public partial class OperationViewModel : ViewModelBase
     {
         op = null;
         var amount = Calc.Evaluate(Expression);
-        if (amount is not > 0) return "Summani kiriting";
+        if (amount is not > 0) return L.T("err_amount");
         var from = From.FirstOrDefault(c => c.IsSelected);
         var to = To.FirstOrDefault(c => c.IsSelected);
-        if (from is null || to is null) return Kind == OpKind.Expense ? "Hamyon va toifani tanlang" : "Ikkala tomonni tanlang";
-
         var date = (Days.FirstOrDefault(d => d.IsSelected)?.Date ?? DateTime.Today) + DateTime.Now.TimeOfDay;
         var note = string.IsNullOrWhiteSpace(Note) ? null : Note.Trim();
+
+        if (IsDebt)
+        {
+            if (from is null) return L.T("err_wallet");
+            if (string.IsNullOrWhiteSpace(Person)) return L.T("err_person");
+            if (Kind == OpKind.Lend && SourceWallet is { } lw && lw.Balance < amount) return L.T("err_funds", Money.Format(lw.Balance, lw.Currency));
+            op = new Operation(0, Kind, amount.Value, Currency, from.Id, null, null, null, null, date, note, Person.Trim());
+            return null;
+        }
+
+        if (from is null || to is null) return L.T(Kind == OpKind.Expense ? "err_pick_expense" : "err_pick");
         switch (Kind)
         {
             case OpKind.Income:
                 op = new Operation(0, OpKind.Income, amount.Value, Currency, to.Id, null, null, from.Id, null, date, note);
                 return null;
             case OpKind.Expense:
-                if (SourceWallet is { } w && w.Balance < amount) return $"Hamyonda yetarli mablag‘ yo‘q ({Money.Format(w.Balance, w.Currency)})";
+                if (SourceWallet is { } w && w.Balance < amount) return L.T("err_funds", Money.Format(w.Balance, w.Currency));
                 op = new Operation(0, OpKind.Expense, amount.Value, Currency, from.Id, null, null, null, to.Id, date, note);
                 return null;
             default:
-                if (from.Id == to.Id) return "Boshqa hamyonni tanlang";
-                if (SourceWallet is { } sw && sw.Balance < amount) return $"Hamyonda yetarli mablag‘ yo‘q ({Money.Format(sw.Balance, sw.Currency)})";
+                if (from.Id == to.Id) return L.T("err_other_wallet");
+                if (SourceWallet is { } sw && sw.Balance < amount) return L.T("err_funds", Money.Format(sw.Balance, sw.Currency));
                 decimal? toAmount = null;
                 if (NeedsToAmount)
                 {
                     toAmount = Calc.Evaluate(ToAmountText ?? "");
-                    if (toAmount is not > 0) return $"Qabul qilinadigan summani kiriting ({ToCurrency})";
+                    if (toAmount is not > 0) return L.T("err_to_amount", ToCurrency);
                 }
                 op = new Operation(0, OpKind.Transfer, amount.Value, Currency, from.Id, to.Id, toAmount, null, null, date, note);
                 return null;

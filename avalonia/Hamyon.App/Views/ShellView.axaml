@@ -1,0 +1,83 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="using:Hamyon.App.Localization"
+             xmlns:vm="using:Hamyon.App.ViewModels"
+             xmlns:c="using:Hamyon.App.Controls"
+             x:Class="Hamyon.App.Views.ShellView"
+             x:DataType="vm:MainViewModel"
+             x:Name="Root">
+  <Grid>
+    <!-- background: warm vertical gradient + garnet glow top-left + amber glow lower-right -->
+    <Border>
+      <Border.Background>
+        <LinearGradientBrush StartPoint="20%,0%" EndPoint="50%,100%">
+          <GradientStop Color="{StaticResource BgTop}" Offset="0" />
+          <GradientStop Color="{StaticResource BgBottom}" Offset="0.75" />
+        </LinearGradientBrush>
+      </Border.Background>
+    </Border>
+    <Border>
+      <Border.Background>
+        <RadialGradientBrush Center="22%,14%" GradientOrigin="22%,14%" RadiusX="75%" RadiusY="45%">
+          <GradientStop Color="#D98E1F2E" Offset="0" />
+          <GradientStop Color="#008E1F2E" Offset="1" />
+        </RadialGradientBrush>
+      </Border.Background>
+    </Border>
+    <Border>
+      <Border.Background>
+        <RadialGradientBrush Center="88%,70%" GradientOrigin="88%,70%" RadiusX="60%" RadiusY="35%">
+          <GradientStop Color="#59B4561C" Offset="0" />
+          <GradientStop Color="#00B4561C" Offset="1" />
+        </RadialGradientBrush>
+      </Border.Background>
+    </Border>
+
+    <ContentControl Content="{Binding Current}" />
+
+    <!-- bottom fade so content sinks behind the buttons -->
+    <Border VerticalAlignment="Bottom" Height="140" IsHitTestVisible="False">
+      <Border.Background>
+        <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+          <GradientStop Color="#000A0607" Offset="0" />
+          <GradientStop Color="#E60A0607" Offset="0.55" />
+          <GradientStop Color="#FF0A0607" Offset="1" />
+        </LinearGradientBrush>
+      </Border.Background>
+    </Border>
+
+    <!-- iOS-style bar: round glass buttons, the active tab grows into an accent pill -->
+    <ItemsControl ItemsSource="{Binding Tabs}" VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="16,0,16,20">
+      <ItemsControl.ItemsPanel>
+        <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="8" /></ItemsPanelTemplate>
+      </ItemsControl.ItemsPanel>
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="vm:TabVm">
+          <Button Classes="flat" Command="{Binding #Root.((vm:MainViewModel)DataContext).SelectTabCommand}" CommandParameter="{Binding}">
+            <Panel>
+              <Border IsVisible="{Binding IsActive}" Height="60" MinWidth="140" CornerRadius="30" Padding="20,0"
+                      Background="{DynamicResource AccentBrush}" BoxShadow="0 10 28 0 #66000000">
+                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" HorizontalAlignment="Center">
+                  <c:Glyph Kind="{Binding Icon}" Foreground="{Binding $parent[Border].Background, Converter={StaticResource InkOn}}" Width="20" Height="20" />
+                  <TextBlock Classes="label" Text="{Binding Title}" Foreground="{Binding $parent[Border].Background, Converter={StaticResource InkOn}}" FontWeight="Bold" FontSize="13" VerticalAlignment="Center" />
+                </StackPanel>
+              </Border>
+              <Border IsVisible="{Binding !IsActive}" Width="60" Height="60" CornerRadius="30"
+                      Background="#D1160A0C" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1" BoxShadow="0 10 28 0 #66000000">
+                <c:Glyph Kind="{Binding Icon}" Foreground="{StaticResource TextBrush}" Width="24" Height="24" />
+              </Border>
+            </Panel>
+          </Button>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+
+    <!-- bottom sheet: dimmed backdrop (tap closes) + the sheet itself -->
+    <Panel IsVisible="{Binding Sheet, Converter={x:Static ObjectConverters.IsNotNull}}">
+      <Button Classes="flat" Command="{Binding CloseSheetCommand}">
+        <Border Background="#A8080304" />
+      </Button>
+      <ContentControl Content="{Binding Sheet}" VerticalAlignment="Bottom" Margin="0,36,0,0" MaxWidth="600" />
+    </Panel>
+  </Grid>
+</UserControl>

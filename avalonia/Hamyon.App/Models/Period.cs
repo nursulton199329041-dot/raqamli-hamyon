@@ -1,4 +1,5 @@
 using System;
+using Hamyon.App.Localization;
 
 namespace Hamyon.App.Models;
 
@@ -6,7 +7,6 @@ public enum PeriodKind { Week, Month, Year, All }
 
 public readonly record struct Period(PeriodKind Kind, DateTime From, DateTime To)
 {
-    private static readonly string[] MonthsUz = ["YAN", "FEV", "MAR", "APR", "MAY", "IYN", "IYL", "AVG", "SEN", "OKT", "NOY", "DEK"];
 
     public static Period Of(PeriodKind kind, DateTime now)
     {
@@ -32,8 +32,8 @@ public readonly record struct Period(PeriodKind Kind, DateTime From, DateTime To
 
     /// <summary>"01 NOY. – 30 NOY." (same shape as the React Native app's period chip).</summary>
     public string Label => Kind == PeriodKind.All
-        ? "BUTUN DAVR"
+        ? L.T("all_time")
         : $"{F(From)} – {F(To)}";
 
-    private static string F(DateTime d) => $"{d.Day:00} {MonthsUz[d.Month - 1]}.";
+    private static string F(DateTime d) => $"{d.Day:00} {L.MonthShort(d.Month).ToUpperInvariant()}.";
 }

@@ -52,7 +52,27 @@ public sealed class LocalStore
               date TEXT NOT NULL, note TEXT);
             CREATE INDEX IF NOT EXISTS ix_operations_date ON operations(date);
             """);
+
+        // additive, versioned upgrades: a book created by an older build keeps every record
+        if (Scalar(c, "PRAGMA user_version") < 1)
+        {
+            using var tx = c.BeginTransaction();
+            if (!HasColumn(c, "sources", "archived")) Exec(c, "ALTER TABLE sources ADD COLUMN archived INTEGER NOT NULL DEFAULT 0");
+            if (!HasColumn(c, "categories", "archived")) Exec(c, "ALTER TABLE categories ADD COLUMN archived INTEGER NOT NULL DEFAULT 0");
+            if (!HasColumn(c, "operations", "person")) Exec(c, "ALTER TABLE operations ADD COLUMN person TEXT");
+            Exec(c, "CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)");
+            Exec(c, "PRAGMA user_version = 1");
+            tx.Commit();
+        }
         if (Scalar(c, "SELECT COUNT(*) FROM wallets") == 0) Seed(c);
+    }
+
+    private static bool HasColumn(SqliteConnection c, string table, string column)
+    {
+        using var cmd = c.CreateCommand();
+        cmd.CommandText = $"SELECT COUNT(*) FROM pragma_table_info('{table}') WHERE name = $n";
+        cmd.Parameters.AddWithValue("$n", column);
+        return (long)cmd.ExecuteScalar()! > 0;
     }
 
     /// <summary>A fresh book starts with the same defaults as the React Native app.</summary>
@@ -82,12 +102,12 @@ public sealed class LocalStore
     {
         using var c = Open();
         using var cmd = c.CreateCommand();
-        // balance = opening + income in - expense out - transfer out + transfer in (each in the wallet's own currency)
+        // balance = opening + income and borrowed in - expense, lent and transfer out + transfer in (wallet's own currency)
         cmd.CommandText = """
             SELECT w.id, w.name, w.icon, w.color, w.currency,
               w.opening_minor
-              + COALESCE((SELECT SUM(amount_minor) FROM operations o WHERE o.kind = 1 AND o.wallet_id = w.id), 0)
-              - COALESCE((SELECT SUM(amount_minor) FROM operations o WHERE o.kind IN (2, 3) AND o.wallet_id = w.id), 0)
+              + COALESCE((SELECT SUM(amount_minor) FROM operations o WHERE o.kind IN (1, 5) AND o.wallet_id = w.id), 0)
+              - COALESCE((SELECT SUM(amount_minor) FROM operations o WHERE o.kind IN (2, 3, 4) AND o.wallet_id = w.id), 0)
               + COALESCE((SELECT SUM(COALESCE(to_amount_minor, amount_minor)) FROM operations o WHERE o.kind = 3 AND o.to_wallet_id = w.id), 0)
             FROM wallets w WHERE w.archived = 0 ORDER BY w.sort, w.id
             """;
@@ -99,10 +119,87 @@ public sealed class LocalStore
     }
 
     public IReadOnlyList<IncomeSource> Sources() =>
-        Read("SELECT id, name, icon, color FROM sources ORDER BY sort, id", r => new IncomeSource(r.GetInt64(0), r.GetString(1), r.GetString(2), r.GetString(3)));
+        Read("SELECT id, name, icon, color FROM sources WHERE archived = 0 ORDER BY sort, id", r => new IncomeSource(r.GetInt64(0), r.GetString(1), r.GetString(2), r.GetString(3)));
 
     public IReadOnlyList<Category> Categories() =>
-        Read("SELECT id, name, icon, color FROM categories ORDER BY sort, id", r => new Category(r.GetInt64(0), r.GetString(1), r.GetString(2), r.GetString(3)));
+        Read("SELECT id, name, icon, color FROM categories WHERE archived = 0 ORDER BY sort, id", r => new Category(r.GetInt64(0), r.GetString(1), r.GetString(2), r.GetString(3)));
+
+    // ---- catalog editing (archived items keep their history; nothing is hard-deleted) ----
+
+    public long AddWallet(string name, string icon, string color, string currency, decimal opening) =>
+        Insert("INSERT INTO wallets(name, icon, color, currency, opening_minor, sort) VALUES ($n, $i, $c, $cur, $o, (SELECT COALESCE(MAX(sort), 0) + 1 FROM wallets)); SELECT last_insert_rowid();",
+            ("$n", name), ("$i", icon), ("$c", color), ("$cur", currency), ("$o", Money.ToMinor(opening)));
+
+    /// <summary>Renames / recolours a wallet. The currency never changes once operations exist in it.</summary>
+    public void UpdateWallet(long id, string name, string icon, string color) =>
+        Run("UPDATE wallets SET name = $n, icon = $i, color = $c WHERE id = $id", ("$n", name), ("$i", icon), ("$c", color), ("$id", id));
+
+    public void ArchiveWallet(long id) => Run("UPDATE wallets SET archived = 1 WHERE id = $id", ("$id", id));
+
+    /// <summary>table: "categories" or "sources".</summary>
+    public long AddNamed(string table, string name, string icon, string color) =>
+        Insert($"INSERT INTO {Named(table)}(name, icon, color, sort) VALUES ($n, $i, $c, (SELECT COALESCE(MAX(sort), 0) + 1 FROM {Named(table)})); SELECT last_insert_rowid();",
+            ("$n", name), ("$i", icon), ("$c", color));
+
+    public void UpdateNamed(string table, long id, string name, string icon, string color) =>
+        Run($"UPDATE {Named(table)} SET name = $n, icon = $i, color = $c WHERE id = $id", ("$n", name), ("$i", icon), ("$c", color), ("$id", id));
+
+    public void ArchiveNamed(string table, long id) => Run($"UPDATE {Named(table)} SET archived = 1 WHERE id = $id", ("$id", id));
+
+    private static string Named(string table) => table is "categories" or "sources" ? table : throw new ArgumentException(table);
+
+    // ---- debts: kind 4 = I lent (money leaves the wallet), kind 5 = I borrowed / got it back (money comes in) ----
+
+    /// <summary>Open debts per person and currency: positive = they owe me, negative = I owe them.</summary>
+    public IReadOnlyList<(string Person, string Currency, decimal Balance)> Debts() =>
+        Read("""
+            SELECT MIN(person), currency, SUM(CASE WHEN kind = 4 THEN amount_minor ELSE -amount_minor END) AS bal
+            FROM operations WHERE kind IN (4, 5) AND person IS NOT NULL
+            GROUP BY lower(trim(person)), currency HAVING bal <> 0
+            ORDER BY abs(bal) DESC
+            """, r => (r.GetString(0), r.GetString(1), Money.FromMinor(r.GetInt64(2))));
+
+    // ---- settings ----
+
+    public string? GetSetting(string key)
+    {
+        using var c = Open();
+        using var cmd = c.CreateCommand();
+        cmd.CommandText = "SELECT value FROM settings WHERE key = $k";
+        cmd.Parameters.AddWithValue("$k", key);
+        return cmd.ExecuteScalar() as string;
+    }
+
+    public void SetSetting(string key, string value) =>
+        Run("INSERT INTO settings(key, value) VALUES ($k, $v) ON CONFLICT(key) DO UPDATE SET value = excluded.value", ("$k", key), ("$v", value));
+
+    /// <summary>Deletes every record and starts a fresh book with the default catalog. Settings (language, colour) stay.</summary>
+    public void Wipe()
+    {
+        using var c = Open();
+        using var tx = c.BeginTransaction();
+        Exec(c, "DELETE FROM operations; DELETE FROM wallets; DELETE FROM sources; DELETE FROM categories;");
+        Seed(c);
+        tx.Commit();
+    }
+
+    private void Run(string sql, params (string, object)[] args)
+    {
+        using var c = Open();
+        using var cmd = c.CreateCommand();
+        cmd.CommandText = sql;
+        foreach (var (k, v) in args) cmd.Parameters.AddWithValue(k, v);
+        cmd.ExecuteNonQuery();
+    }
+
+    private long Insert(string sql, params (string, object)[] args)
+    {
+        using var c = Open();
+        using var cmd = c.CreateCommand();
+        cmd.CommandText = sql;
+        foreach (var (k, v) in args) cmd.Parameters.AddWithValue(k, v);
+        return (long)cmd.ExecuteScalar()!;
+    }
 
     /// <summary>
     /// Income or expense of one currency summed per day of month (byMonth = false, key 1..31) or per month (key 1..12).
@@ -159,8 +256,8 @@ public sealed class LocalStore
         using var c = Open();
         using var cmd = c.CreateCommand();
         cmd.CommandText = """
-            INSERT INTO operations(kind, amount_minor, currency, wallet_id, to_wallet_id, to_amount_minor, source_id, category_id, date, note)
-            VALUES ($kind, $amount, $cur, $w, $tw, $ta, $s, $c, $d, $n);
+            INSERT INTO operations(kind, amount_minor, currency, wallet_id, to_wallet_id, to_amount_minor, source_id, category_id, date, note, person)
+            VALUES ($kind, $amount, $cur, $w, $tw, $ta, $s, $c, $d, $n, $p);
             SELECT last_insert_rowid();
             """;
         cmd.Parameters.AddWithValue("$kind", (int)op.Kind);
@@ -173,6 +270,7 @@ public sealed class LocalStore
         cmd.Parameters.AddWithValue("$c", (object?)op.CategoryId ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$d", Iso(op.Date));
         cmd.Parameters.AddWithValue("$n", (object?)op.Note ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$p", (object?)op.Person?.Trim() ?? DBNull.Value);
         return (long)cmd.ExecuteScalar()!;
     }
 
@@ -180,7 +278,7 @@ public sealed class LocalStore
     public IReadOnlyList<OperationRow> Operations(DateTime from, DateTime to) =>
         Read($"""
             SELECT o.id, o.kind, o.amount_minor, o.currency, o.to_amount_minor, o.date, o.note,
-                   w.name, tw.name, tw.currency, s.name, s.icon, s.color, c.name, c.icon, c.color
+                   w.name, tw.name, tw.currency, s.name, s.icon, s.color, c.name, c.icon, c.color, o.person
             FROM operations o
             LEFT JOIN wallets w ON w.id = o.wallet_id
             LEFT JOIN wallets tw ON tw.id = o.to_wallet_id
@@ -195,7 +293,7 @@ public sealed class LocalStore
                 DateTime.ParseExact(r.GetString(5), "yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture),
                 r.IsDBNull(6) ? null : r.GetString(6),
                 Str(r, 7), Str(r, 8), Str(r, 9),
-                Str(r, 10), Str(r, 11), Str(r, 12), Str(r, 13), Str(r, 14), Str(r, 15)));
+                Str(r, 10), Str(r, 11), Str(r, 12), Str(r, 13), Str(r, 14), Str(r, 15), Str(r, 16)));
 
     /// <summary>Removes an operation; balances are computed from operations, so they follow at once.</summary>
     public void DeleteOperation(long id)

@@ -11,14 +11,18 @@
     <conv:GlowConverter x:Key="Glow" />
     <conv:HexBrushConverter x:Key="HexBrush" />
     <conv:ShareWidthConverter x:Key="ShareWidth" />
+    <conv:InkOnConverter x:Key="InkOn" />
   </Application.Resources>
 
   <Application.DataTemplates>
     <DataTemplate DataType="vm:HomeViewModel"><views:HomeView /></DataTemplate>
-    <DataTemplate DataType="vm:PlaceholderViewModel"><views:PlaceholderView /></DataTemplate>
     <DataTemplate DataType="vm:OperationViewModel"><views:OperationView /></DataTemplate>
     <DataTemplate DataType="vm:HistoryViewModel"><views:HistoryView /></DataTemplate>
     <DataTemplate DataType="vm:ReportsViewModel"><views:ReportsView /></DataTemplate>
+    <DataTemplate DataType="vm:SettingsViewModel"><views:SettingsView /></DataTemplate>
+    <DataTemplate DataType="vm:CatalogViewModel"><views:CatalogView /></DataTemplate>
+    <DataTemplate DataType="vm:EditorViewModel"><views:EditorView /></DataTemplate>
+    <DataTemplate DataType="vm:DebtsViewModel"><views:DebtsView /></DataTemplate>
   </Application.DataTemplates>
 
   <Application.Styles>

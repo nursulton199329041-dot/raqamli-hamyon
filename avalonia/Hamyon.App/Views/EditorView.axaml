@@ -1,0 +1,112 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="using:Hamyon.App.Localization"
+             xmlns:vm="using:Hamyon.App.ViewModels"
+             xmlns:c="using:Hamyon.App.Controls"
+             x:Class="Hamyon.App.Views.EditorView"
+             x:DataType="vm:EditorViewModel">
+  <UserControl.Styles>
+    <Style Selector="Border.seg">
+      <Setter Property="CornerRadius" Value="14" />
+      <Setter Property="Padding" Value="14,8" />
+      <Setter Property="Background" Value="{StaticResource GlassBrush}" />
+    </Style>
+    <Style Selector="Border.seg.on">
+      <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+    </Style>
+    <Style Selector="Border.seg TextBlock">
+      <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Border.seg.on TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource OnAccentBrush}" />
+    </Style>
+  </UserControl.Styles>
+
+  <Border Background="#F7140709" CornerRadius="30,30,0,0" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1,1,1,0"
+          BoxShadow="0 -12 40 0 #80000000">
+    <DockPanel>
+      <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="18,10,14,6" RowDefinitions="Auto,Auto">
+        <Border Grid.ColumnSpan="2" Width="40" Height="5" CornerRadius="3" Background="#33FFECE4" HorizontalAlignment="Center" Margin="0,0,0,10" />
+        <TextBlock Grid.Row="1" Text="{Binding Title}" FontSize="20" FontWeight="Bold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
+        <Button Grid.Row="1" Grid.Column="1" Classes="flat" Command="{Binding CloseCommand}">
+          <Border Width="40" Height="40" CornerRadius="20" Background="{StaticResource GlassStrongBrush}">
+            <c:Glyph Kind="close" Foreground="{StaticResource TextBrush}" Width="18" Height="18" />
+          </Border>
+        </Button>
+      </Grid>
+
+      <StackPanel DockPanel.Dock="Bottom" Margin="16,6,16,18" Spacing="8">
+        <TextBlock Text="{Binding Error}" IsVisible="{Binding Error, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                   Foreground="{StaticResource ExpenseBrush}" FontWeight="SemiBold" TextWrapping="Wrap" />
+        <Button Classes="flat" Command="{Binding SaveCommand}">
+          <Border Height="54" CornerRadius="27" Background="{DynamicResource AccentBrush}">
+            <TextBlock Classes="label" Text="{l:T save}" Foreground="{Binding $parent[Border].Background, Converter={StaticResource InkOn}}" FontWeight="Bold" FontSize="15"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+        </Button>
+        <Button Classes="flat" Command="{Binding ArchiveCommand}" IsVisible="{Binding !IsNew}">
+          <Border Height="46" CornerRadius="23" Background="#26FF6B6B" BorderBrush="{StaticResource ExpenseBrush}" BorderThickness="1">
+            <TextBlock Classes="label" Text="{l:T archive}" Foreground="{StaticResource ExpenseBrush}" FontWeight="Bold"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+        </Button>
+      </StackPanel>
+
+      <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="18,4,18,8" Spacing="10">
+          <TextBlock Classes="label" Text="{l:T name}" />
+          <TextBox Text="{Binding Name}" CornerRadius="14" FontSize="16" />
+
+          <TextBlock Classes="label" Text="{l:T icon}" />
+          <ItemsControl ItemsSource="{Binding Icons}">
+            <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:ChoiceVm">
+                <Button Classes="flat" Margin="4" Command="{Binding $parent[UserControl].((vm:EditorViewModel)DataContext).SelectIconCommand}" CommandParameter="{Binding}">
+                  <Panel Width="48" Height="48">
+                    <Border CornerRadius="24" Background="{Binding Color, Converter={StaticResource BadgeBrush}}" />
+                    <Border CornerRadius="24" BorderBrush="{StaticResource TextBrush}" BorderThickness="3" IsVisible="{Binding IsSelected}" />
+                    <c:Glyph Kind="{Binding Icon}" Foreground="White" Width="22" Height="22" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                  </Panel>
+                </Button>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+
+          <TextBlock Classes="label" Text="{l:T color}" />
+          <ItemsControl ItemsSource="{Binding Colors}">
+            <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:ChoiceVm">
+                <Button Classes="flat" Margin="4" Command="{Binding $parent[UserControl].((vm:EditorViewModel)DataContext).SelectColorCommand}" CommandParameter="{Binding}">
+                  <Panel Width="36" Height="36">
+                    <Border CornerRadius="18" Background="{Binding Color, Converter={StaticResource HexBrush}}" />
+                    <Border CornerRadius="18" BorderBrush="{StaticResource TextBrush}" BorderThickness="3" IsVisible="{Binding IsSelected}" />
+                  </Panel>
+                </Button>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+
+          <!-- new wallet only: currency + opening balance -->
+          <StackPanel Spacing="10" IsVisible="{Binding ShowMoney}">
+            <TextBlock Classes="label" Text="{l:T currency}" />
+            <ItemsControl ItemsSource="{Binding Currencies}">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="6" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:OptionVm">
+                  <Button Classes="flat" Command="{Binding $parent[UserControl].((vm:EditorViewModel)DataContext).SelectCurrencyCommand}" CommandParameter="{Binding}">
+                    <Border Classes="seg" Classes.on="{Binding IsSelected}"><TextBlock Text="{Binding Title}" /></Border>
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Classes="label" Text="{l:T opening_balance}" />
+            <TextBox Text="{Binding Opening}" Watermark="0" CornerRadius="14" />
+          </StackPanel>
+        </StackPanel>
+      </ScrollViewer>
+    </DockPanel>
+  </Border>
+</UserControl>
