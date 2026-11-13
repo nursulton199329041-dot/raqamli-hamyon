@@ -12,7 +12,7 @@ namespace Hamyon.App.Data;
 /// The whole book lives in one SQLite file on the device (store build: no server). Money is integer minor units.
 /// Balances are always computed from operations, never stored, so they can't drift.
 /// </summary>
-public sealed class LocalStore
+public sealed partial class LocalStore
 {
     private readonly string _cs;
 
@@ -74,8 +74,74 @@ public sealed class LocalStore
             Exec(c, "PRAGMA user_version = 2");
             tx.Commit();
         }
+        if (Scalar(c, "PRAGMA user_version") < 3)
+        {
+            // sync: every row gets a stable uid, a change time and a "not yet sent" flag; deletions leave tombstones.
+            // Triggers keep these up to date for every write, so no change can be forgotten by a code path.
+            using var tx = c.BeginTransaction();
+            foreach (var (table, kind) in SyncTables)
+            {
+                if (!HasColumn(c, table, "uid")) Exec(c, $"ALTER TABLE {table} ADD COLUMN uid TEXT");
+                if (!HasColumn(c, table, "updated_at")) Exec(c, $"ALTER TABLE {table} ADD COLUMN updated_at TEXT");
+                if (!HasColumn(c, table, "dirty")) Exec(c, $"ALTER TABLE {table} ADD COLUMN dirty INTEGER NOT NULL DEFAULT 1");
+            }
+            // the default catalog gets the same uids on every device, so two phones don't end up with two "Naqd"s
+            foreach (var (table, uid, name) in SeedUids)
+                Exec(c, $"UPDATE {table} SET uid = '{uid}' WHERE id = (SELECT MIN(id) FROM {table} WHERE name = '{name.Replace("'", "''")}' AND uid IS NULL) " +
+                        $"AND NOT EXISTS (SELECT 1 FROM {table} WHERE uid = '{uid}')");
+            foreach (var (table, _) in SyncTables)
+            {
+                Exec(c, $"UPDATE {table} SET uid = lower(hex(randomblob(16))) WHERE uid IS NULL");
+                Exec(c, $"UPDATE {table} SET updated_at = {Now}, dirty = 1 WHERE updated_at IS NULL");
+                Exec(c, $"CREATE UNIQUE INDEX IF NOT EXISTS ux_{table}_uid ON {table}(uid)");
+            }
+            Exec(c, """
+                CREATE TABLE IF NOT EXISTS tombstones (kind TEXT NOT NULL, uid TEXT NOT NULL, deleted_at TEXT NOT NULL, PRIMARY KEY (kind, uid));
+                CREATE TABLE IF NOT EXISTS sync_ctl (applying INTEGER NOT NULL);
+                INSERT INTO sync_ctl SELECT 0 WHERE NOT EXISTS (SELECT 1 FROM sync_ctl);
+                """);
+            foreach (var (table, kind) in SyncTables)
+                Exec(c, $"""
+                    CREATE TRIGGER IF NOT EXISTS {table}_sync_ins AFTER INSERT ON {table} WHEN (SELECT applying FROM sync_ctl) = 0
+                    BEGIN
+                      UPDATE {table} SET uid = COALESCE(NEW.uid, lower(hex(randomblob(16)))), updated_at = COALESCE(NEW.updated_at, {Now}), dirty = 1 WHERE id = NEW.id;
+                      DELETE FROM tombstones WHERE kind = '{kind}' AND uid = NEW.uid;
+                    END;
+                    CREATE TRIGGER IF NOT EXISTS {table}_sync_upd AFTER UPDATE ON {table}
+                      WHEN (SELECT applying FROM sync_ctl) = 0 AND NEW.dirty = OLD.dirty
+                    BEGIN
+                      UPDATE {table} SET updated_at = {Now}, dirty = 1 WHERE id = NEW.id;
+                    END;
+                    CREATE TRIGGER IF NOT EXISTS {table}_sync_del AFTER DELETE ON {table} WHEN (SELECT applying FROM sync_ctl) = 0
+                    BEGIN
+                      INSERT OR REPLACE INTO tombstones(kind, uid, deleted_at) VALUES ('{kind}', OLD.uid, {Now});
+                    END;
+                    """);
+            Exec(c, "PRAGMA user_version = 3");
+            tx.Commit();
+        }
+        Exec(c, "UPDATE sync_ctl SET applying = 0"); // a crash while applying remote changes must not leave tracking off
         if (Scalar(c, "SELECT COUNT(*) FROM wallets") == 0) Seed(c);
     }
+
+    /// <summary>Synced tables and the document kind each one is sent as.</summary>
+    public static readonly (string Table, string Kind)[] SyncTables =
+        [("wallets", "wallet"), ("sources", "source"), ("categories", "category"), ("operations", "operation")];
+
+    /// <summary>UTC ISO-8601 with milliseconds — sortable as text, and what the server compares.</summary>
+    private const string Now = "strftime('%Y-%m-%dT%H:%M:%fZ', 'now')";
+
+    /// <summary>Seeded rows are dated far back, so any real edit on any device wins over a fresh default.</summary>
+    private const string SeedTime = "'2000-01-01T00:00:00.000Z'";
+
+    private static readonly (string Table, string Uid, string Name)[] SeedUids =
+    [
+        ("wallets", "seed-w-cash", "Naqd"), ("wallets", "seed-w-card", "Bank kartasi"), ("wallets", "seed-w-usd", "Dollar jamg'arma"),
+        ("sources", "seed-s-salary", "Ish haqi"), ("sources", "seed-s-business", "Biznes"), ("sources", "seed-s-other", "Boshqa kirim"),
+        ("categories", "seed-c-food", "Oziq-ovqat"), ("categories", "seed-c-transport", "Transport"), ("categories", "seed-c-utilities", "Kommunal"),
+        ("categories", "seed-c-home", "Uy"), ("categories", "seed-c-health", "Sog'liq"), ("categories", "seed-c-fun", "Ko'ngilochar"),
+        ("categories", "seed-c-other", "Boshqa"),
+    ];
 
     private static bool HasColumn(SqliteConnection c, string table, string column)
     {
@@ -88,23 +154,24 @@ public sealed class LocalStore
     /// <summary>A fresh book starts with the same defaults as the React Native app.</summary>
     private static void Seed(SqliteConnection c)
     {
-        Exec(c, """
-            INSERT INTO wallets(name, icon, color, currency, sort) VALUES
-              ('Naqd', 'cash', '#1FCB8B', 'UZS', 1),
-              ('Bank kartasi', 'card', '#4D8DFF', 'UZS', 2),
-              ('Dollar jamg''arma', 'savings', '#14B8A6', 'USD', 3);
-            INSERT INTO sources(name, icon, color, sort) VALUES
-              ('Ish haqi', 'salary', '#1FCB8B', 1),
-              ('Biznes', 'business', '#22A06B', 2),
-              ('Boshqa kirim', 'other', '#84CC16', 3);
-            INSERT INTO categories(name, icon, color, sort) VALUES
-              ('Oziq-ovqat', 'food', '#F97316', 1),
-              ('Transport', 'transport', '#3B82F6', 2),
-              ('Kommunal', 'utilities', '#14B8A6', 3),
-              ('Uy', 'home', '#8B5CF6', 4),
-              ('Sog''liq', 'health', '#EF4444', 5),
-              ('Ko''ngilochar', 'fun', '#EC4899', 6),
-              ('Boshqa', 'other', '#64748B', 7);
+        // fixed uids + an old date: the same defaults on every device merge, and never overwrite a real edit
+        Exec(c, $"""
+            INSERT INTO wallets(name, icon, color, currency, sort, uid, updated_at) VALUES
+              ('Naqd', 'cash', '#1FCB8B', 'UZS', 1, 'seed-w-cash', {SeedTime}),
+              ('Bank kartasi', 'card', '#4D8DFF', 'UZS', 2, 'seed-w-card', {SeedTime}),
+              ('Dollar jamg''arma', 'savings', '#14B8A6', 'USD', 3, 'seed-w-usd', {SeedTime});
+            INSERT INTO sources(name, icon, color, sort, uid, updated_at) VALUES
+              ('Ish haqi', 'salary', '#1FCB8B', 1, 'seed-s-salary', {SeedTime}),
+              ('Biznes', 'business', '#22A06B', 2, 'seed-s-business', {SeedTime}),
+              ('Boshqa kirim', 'other', '#84CC16', 3, 'seed-s-other', {SeedTime});
+            INSERT INTO categories(name, icon, color, sort, uid, updated_at) VALUES
+              ('Oziq-ovqat', 'food', '#F97316', 1, 'seed-c-food', {SeedTime}),
+              ('Transport', 'transport', '#3B82F6', 2, 'seed-c-transport', {SeedTime}),
+              ('Kommunal', 'utilities', '#14B8A6', 3, 'seed-c-utilities', {SeedTime}),
+              ('Uy', 'home', '#8B5CF6', 4, 'seed-c-home', {SeedTime}),
+              ('Sog''liq', 'health', '#EF4444', 5, 'seed-c-health', {SeedTime}),
+              ('Ko''ngilochar', 'fun', '#EC4899', 6, 'seed-c-fun', {SeedTime}),
+              ('Boshqa', 'other', '#64748B', 7, 'seed-c-other', {SeedTime});
             """);
     }
 

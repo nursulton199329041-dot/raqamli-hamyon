@@ -67,9 +67,18 @@ public sealed class ProfileStore
     public LocalStore OpenCurrent() => new(PathOf(CurrentId));
 
     /// <summary>A new, empty book with the default catalog.</summary>
-    public Profile Create(string name, string color)
+    public Profile Create(string name, string color) => Create(Guid.NewGuid().ToString("N")[..10], name, color, LocalStore.Iso(DateTimeOffset.UtcNow));
+
+    /// <summary>A profile that exists on the account (another device made it): same id, so the books sync together.</summary>
+    public Profile Adopt(string id, string name, string color, string changedAt) =>
+        Items().Find(p => p.Id == id) ?? Create(id, name, color, changedAt);
+
+    /// <summary>When the name / colour last changed (sync: the later change wins). The main profile counts as "never".</summary>
+    public string MetaChangedAt(string id) => GetPref("meta_at_" + id) ?? "2000-01-01T00:00:00.000Z";
+
+    private Profile Create(string id, string name, string color, string changedAt)
     {
-        var id = Guid.NewGuid().ToString("N")[..10];
+        SetPref("meta_at_" + id, changedAt);
         using (var c = Open())
         {
             using var cmd = c.CreateCommand();
@@ -83,8 +92,9 @@ public sealed class ProfileStore
         return new Profile(id, name, color);
     }
 
-    public void Update(string id, string name, string color)
+    public void Update(string id, string name, string color, string? changedAt = null)
     {
+        SetPref("meta_at_" + id, changedAt ?? LocalStore.Iso(DateTimeOffset.UtcNow));
         using var c = Open();
         using var cmd = c.CreateCommand();
         cmd.CommandText = "UPDATE profiles SET name = $n, color = $c WHERE id = $id";

@@ -57,6 +57,20 @@
       <TextBlock Text="{l:T tab_settings}" FontSize="30" FontWeight="Bold" Foreground="{StaticResource TextBrush}" Margin="4,16,0,4"
                  />
 
+      <!-- ===== account: sign in, sync state ===== -->
+      <Border Classes="card" Padding="10,2" IsVisible="{Binding HasAccount}">
+        <Button Classes="flat" Command="{Binding OpenAccountCommand}">
+          <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
+            <Border Classes="badge" Background="#0EA5E9"><c:Glyph Kind="user" Foreground="White" Width="18" Height="18" /></Border>
+            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+              <TextBlock Classes="title" Text="{Binding AccountTitle}" TextTrimming="CharacterEllipsis" />
+              <TextBlock Classes="hint" Text="{Binding AccountHint}" />
+            </StackPanel>
+            <c:Glyph Grid.Column="2" Kind="chevronRight" Foreground="{StaticResource TextSecondaryBrush}" Width="18" Height="18" />
+          </Grid>
+        </Button>
+      </Border>
+
       <!-- ===== main group: profiles … delete data ===== -->
       <Border Classes="card" Padding="10,2">
         <StackPanel>

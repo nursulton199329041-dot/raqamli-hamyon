@@ -25,6 +25,14 @@ public partial class MainViewModel : ViewModelBase
 {
     private readonly LocalStore _store;
     private readonly ProfileStore? _profiles;
+    private readonly Account? _account;
+    private readonly SyncEngine? _sync;
+    private System.Threading.CancellationTokenSource? _debounce;
+    private bool _syncing, _again, _applyingRemote;
+    private AccountViewModel? _accountSheet;
+
+    /// <summary>"Synced: 14:05" / "Syncing…" / "Offline" — shown under the account row.</summary>
+    [ObservableProperty] public partial string SyncStatus { get; set; } = "";
 
     public HomeViewModel Home { get; }
     public HistoryViewModel History { get; }
@@ -81,6 +89,17 @@ public partial class MainViewModel : ViewModelBase
         Home.OpenItem += tile => Current = new ItemViewModel(store, tile.Kind, tile.Id, back: () => { Home.Refresh(); Current = Home; }, sheet: s => Sheet = s, changed: RefreshAll);
         if (profiles is not null) { var p = profiles.Current; Home.SetProfile(p.Name, p.Color); }
 
+        // account + sync (the real app; unit tests without a profile index never touch the network)
+        if (profiles is not null)
+        {
+            _account = new Account(GetPref, SetPref);
+            _sync = new SyncEngine(_account, profiles);
+            _account.SignedOut += UpdateAccountRow;
+            Settings.ConnectAccount(OpenAccount);
+            UpdateAccountRow();
+            if (_account.SignedIn) SyncNow();
+        }
+
         Tabs =
         [
             new TabVm { Key = "home", Icon = "wallet", IsActive = true },
@@ -121,6 +140,87 @@ public partial class MainViewModel : ViewModelBase
         Home.Refresh();
         History.Refresh();
         Reports.Refresh();
+        if (!_applyingRemote) ScheduleSync(); // a change here goes up a few seconds later (several edits = one sync)
+    }
+
+    // ---- sync ----
+
+    private void ScheduleSync()
+    {
+        if (_sync is null || _account?.SignedIn != true) return;
+        _debounce?.Cancel();
+        _debounce = new System.Threading.CancellationTokenSource();
+        _ = SyncSoonAsync(_debounce.Token);
+    }
+
+    private async System.Threading.Tasks.Task SyncSoonAsync(System.Threading.CancellationToken ct)
+    {
+        try { await System.Threading.Tasks.Task.Delay(3000, ct); }
+        catch (System.Threading.Tasks.TaskCanceledException) { return; }
+        SyncNow();
+    }
+
+    /// <summary>Two-way sync of every profile now (start-up, return to the app, after edits, "sync now").</summary>
+    public async void SyncNow()
+    {
+        if (_sync is null || _account?.SignedIn != true) return;
+        if (_syncing) { _again = true; return; }
+        _syncing = true;
+        SyncStatus = L.T("sync_running");
+        UpdateAccountRow();
+        _accountSheet?.UpdateStatus();
+        try
+        {
+            var r = await _sync.SyncAllAsync();
+            SyncStatus = L.T("sync_done", DateTime.Now.ToString("HH:mm"));
+            if (r.Pulled > 0 || r.NewProfiles > 0)
+            {
+                _applyingRemote = true;
+                try { RefreshAll(); } finally { _applyingRemote = false; }
+            }
+        }
+        catch (ApiException e) when (e.Code == "auth.signed_out")
+        {
+            SyncStatus = L.T("sync_signed_out");
+        }
+        catch (Exception)
+        {
+            SyncStatus = L.T("sync_offline"); // no network / server down: the changes wait on the phone
+        }
+        finally
+        {
+            _syncing = false;
+            UpdateAccountRow();
+            _accountSheet?.UpdateStatus();
+            if (_again) { _again = false; SyncNow(); }
+        }
+    }
+
+    private string SyncStatusText() =>
+        !string.IsNullOrEmpty(SyncStatus) ? SyncStatus
+        : DateTimeOffset.TryParse(GetPref("sync_last"), out var t) ? L.T("sync_done", t.ToLocalTime().ToString("dd.MM HH:mm"))
+        : "";
+
+    private void UpdateAccountRow()
+    {
+        if (_account is null) return;
+        Settings.AccountTitle = _account.SignedIn ? _account.Email ?? L.T("acct_row") : L.T("acct_row");
+        Settings.AccountHint = _account.SignedIn ? SyncStatusText() : L.T("acct_row_hint");
+    }
+
+    private void OpenAccount()
+    {
+        if (_account is null || _sync is null) return;
+        Sheet = _accountSheet = new AccountViewModel(_account,
+            signedIn: () =>
+            {
+                _sync.ResetForNewSession(); // this phone's data goes up to the account once
+                UpdateAccountRow();
+                SyncNow();
+                return System.Threading.Tasks.Task.CompletedTask;
+            },
+            syncNow: SyncNow, status: SyncStatusText,
+            close: () => { Sheet = null; _accountSheet = null; });
     }
 
     [RelayCommand] private void CloseSheet() => Sheet = null;

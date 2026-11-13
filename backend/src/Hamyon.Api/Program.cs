@@ -153,6 +153,7 @@ app.MapOperations();
 app.MapReports();
 app.MapMeta();
 app.MapSync();
+app.MapBooks();
 app.MapAttachments();
 
 if (args.Contains("--print-schema"))

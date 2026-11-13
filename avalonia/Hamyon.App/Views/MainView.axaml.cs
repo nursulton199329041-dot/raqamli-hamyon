@@ -84,6 +84,7 @@ public partial class MainView : UserControl
     {
         if (e.Kind != ActivationKind.Background) return;
         if (DateTime.UtcNow - _hiddenAt > RelockAfter) _vm?.Relock();
+        _vm?.SyncNow(); // other devices may have changed something meanwhile
         _hiddenAt = DateTime.MaxValue;
     }
 

@@ -48,6 +48,15 @@ public partial class SettingsViewModel : ViewModelBase
         if (openExport is not null) _openExport = openExport;
     }
 
+    // ---- account (sync) ----
+
+    [ObservableProperty] public partial string AccountTitle { get; set; } = "";
+    [ObservableProperty] public partial string AccountHint { get; set; } = "";
+    [ObservableProperty] public partial bool HasAccount { get; set; }
+    private Action? _openAccount;
+    public void ConnectAccount(Action open) { _openAccount = open; HasAccount = true; }
+    [RelayCommand] private void OpenAccount() => _openAccount?.Invoke();
+
     // ---- rows that open / expand ----
 
     [ObservableProperty] public partial bool PanelOpen { get; set; }
