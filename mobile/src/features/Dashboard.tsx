@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
-import { ActivityIndicator, Text, View, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { RefreshControl, ScrollView } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -97,6 +97,7 @@ export function Dashboard() {
   const [period, setPeriod] = useState<Period>('month');
   const [periodMenu, setPeriodMenu] = useState(false);
   const [profilesOpen, setProfilesOpen] = useState(false);
+  const [hideBalance, setHideBalance] = useState(false);
   const profiles = useProfiles().data;
   const currentProfile = profiles?.items.find((x) => x.id === profiles.currentId);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
@@ -246,31 +247,48 @@ export function Dashboard() {
         >
           <UpdateBanner />
 
-          {/* compact header: profile + sync | name + sync state */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
-            <View testID="profile-pill" style={{ flexDirection: 'row', alignItems: 'center', height: 44, borderRadius: 22, padding: 3, gap: 2, backgroundColor: p.glassFill, borderWidth: 1, borderColor: p.glassBorder }}>
+          {/* iOS-style header: solid round profile button | mono title | round glass sync button, hairline under it */}
+          <View style={{ gap: space.md }}>
+            <View testID="profile-pill" style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
               <Tap testID="profile-button" label={t('profiles')} onPress={() => setProfilesOpen(true)}
-                style={{ width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: p.textSecondary }}>
-                <Text style={[type.callout, { color: p.text }]}>{(currentProfile?.name ?? user?.displayName ?? '?').slice(0, 1).toUpperCase()}</Text>
+                style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: p.dark ? '#FBF5F2' : p.text }}>
+                <Text style={[type.headline, { color: p.dark ? '#2B0D12' : p.bgTop }]}>{(currentProfile?.name ?? user?.displayName ?? '?').slice(0, 1).toUpperCase()}</Text>
               </Tap>
-              <Tap testID="sync-button" label={t('sync_now')} onPress={() => void refreshAll()} style={{ width: 40, height: 36, alignItems: 'center', justifyContent: 'center' }}>
-                {snap.isFetching || queue.syncing ? <ActivityIndicator size="small" color={p.textSecondary} /> : <Glyph name="sync" color={p.text} size={22} />}
+              <Text numberOfLines={1} style={[type.label, { flex: 1, textAlign: 'center', color: p.text, fontSize: 13.5 * look.fontScale }]}>{t('app')}</Text>
+              <Tap testID="sync-button" label={t('sync_now')} onPress={() => void refreshAll()}
+                style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: p.glassFill, borderWidth: 1, borderColor: p.glassBorder }}>
+                {snap.isFetching || queue.syncing ? <ActivityIndicator size="small" color={p.textSecondary} /> : <Glyph name="sync" color={p.text} size={20} />}
               </Tap>
             </View>
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <Text numberOfLines={1} style={[type.headline, { color: p.text, fontSize: 17 * look.fontScale }]}>{t('app')}</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs }}>
-                <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: statusColor }} />
-                <Text testID="sync-status" numberOfLines={1} style={[type.caption, { color: p.textSecondary, flexShrink: 1 }]}>{status}</Text>
+            <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: p.glassBorder }} />
+          </View>
+
+          {/* hero: eyebrow, big centred balance with hide toggle, mono period pill, sync state */}
+          <View testID="home-hero" style={{ alignItems: 'center', gap: space.md, paddingTop: space.xl, paddingBottom: space.lg }}>
+            <Text style={[type.label, { color: p.textSecondary }]}>{t('balance')}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, maxWidth: '100%' }}>
+              <View testID="home-balance" style={{ alignItems: 'center', flexShrink: 1 }}>
+                {(walletTotals.length ? walletTotals : [{ currency: currentProfile?.baseCurrency ?? 'UZS', total: 0 }]).map((b, i) => (
+                  <Text key={b.currency} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}
+                    style={[i === 0 ? type.hero : type.title, { color: i === 0 ? p.text : p.textSecondary }]}>
+                    {hideBalance ? `•••• ${b.currency}` : fmtMoney(b.total, b.currency)}
+                  </Text>
+                ))}
               </View>
+              <Tap testID="balance-eye" label={t('balance')} onPress={() => setHideBalance((v) => !v)} style={{ padding: space.xs }}>
+                <Glyph name={hideBalance ? 'eye' : 'eyeOff'} color={p.text} size={26} />
+              </Tap>
+            </View>
+            <Tap testID="period-button" label={periodLabel(lang, period, () => t('all'))} onPress={() => setPeriodMenu(true)}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingHorizontal: space.lg, minHeight: 44, borderRadius: radii.pill, backgroundColor: p.glassFillStrong }}>
+              <Text numberOfLines={1} style={[type.label, { color: p.text, fontSize: 13 }]}>{periodLabel(lang, period, () => t('all'))}</Text>
+              <Glyph name="chevronDown" color={p.textSecondary} size={12} />
+            </Tap>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs }}>
+              <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: statusColor }} />
+              <Text testID="sync-status" numberOfLines={1} style={[type.label, { color: p.textSecondary, fontSize: 11.5, letterSpacing: 0.4, textTransform: 'none' }]}>{status}</Text>
             </View>
           </View>
-          <Tap testID="period-button" label={periodLabel(lang, period, () => t('all'))} onPress={() => setPeriodMenu(true)} containerStyle={{ alignSelf: 'flex-start' }}
-            style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs, paddingHorizontal: space.md, minHeight: 34, borderRadius: radii.pill, backgroundColor: p.glassFill, borderWidth: 1, borderColor: p.glassBorder }}>
-            <Glyph name="calendar" color={p.textSecondary} size={14} />
-            <Text numberOfLines={1} style={[type.footnote, { color: p.text, fontWeight: '700' }]}>{periodLabel(lang, period, () => t('all'))}</Text>
-            <Glyph name="chevronDown" color={p.textSecondary} size={12} />
-          </Tap>
 
           {snap.isError && !cat.loaded ? (
             <GlassCard radius={radii.lg} padding={space.sm}>
@@ -329,7 +347,7 @@ function Section({ kind, title, total, totalColor, collapsed, onToggle, children
     <GlassCard radius={radii.xl} padding={space.md} tint={look.tintSections ? SECTION_COLOR[kind] : undefined}>
       <Tap testID={`${testID}-header`} label={title} onPress={onToggle} haptic={false}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, minHeight: 30, paddingBottom: collapsed ? 0 : space.sm }}>
-          <Text accessibilityRole="header" numberOfLines={1} style={[type.headline, { color: p.text, flexShrink: 1, fontSize: 17 * look.fontScale }]}>{title}</Text>
+          <Text accessibilityRole="header" numberOfLines={1} style={[type.label, { color: p.textSecondary, flexShrink: 1, fontSize: 13 * look.fontScale }]}>{title}</Text>
           <Text testID={`${testID}-total`} numberOfLines={1}
             style={[type.callout, { flex: 1, textAlign: 'right', color: totalColor ?? p.textSecondary, fontVariant: ['tabular-nums'] }]}>{total}</Text>
           <View style={{ transform: [{ rotate: collapsed ? '-90deg' : '0deg' }] }}><Glyph name="chevronDown" color={p.textSecondary} size={14} /></View>

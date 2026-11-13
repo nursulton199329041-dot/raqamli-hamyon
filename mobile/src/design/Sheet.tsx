@@ -28,7 +28,7 @@ export function Sheet({ visible, onClose, children, full, footer }: {
           <GlassCard
             radius={30}
             padding={0}
-            style={{ flexShrink: 1, backgroundColor: p.dark ? 'rgba(14,24,48,0.92)' : 'rgba(250,251,255,0.95)' }}
+            style={{ flexShrink: 1, backgroundColor: p.dark ? 'rgba(26,11,14,0.94)' : 'rgba(255,250,248,0.96)' }}
             innerStyle={{ flexShrink: 1 }}
           >
             <View style={{ alignItems: 'center', paddingTop: 10 }}>

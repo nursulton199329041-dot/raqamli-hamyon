@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { ActivityIndicator, Text, TextInput, View, type StyleProp, type TextInputProps, type TextStyle, type ViewStyle } from 'react-native';
 import { Glyph } from './Icon';
 import { Tap } from './Glass';
-import { usePalette } from './theme';
+import { onAccentOf, usePalette } from './theme';
 
 export function Label({ children }: { children: ReactNode }) {
   const p = usePalette();
@@ -62,8 +62,8 @@ export function Button({ title, onPress, color, busy, disabled, style, variant =
       backgroundColor: solid ? base : `${base}2E`, borderWidth: solid ? 0 : 1, borderColor: `${base}80`,
       opacity: disabled ? 0.5 : 1, marginTop: 14,
     }, style]}>
-      {busy ? <ActivityIndicator color="#fff" /> : (
-        <Text style={{ color: solid ? '#fff' : base, fontWeight: '800', fontSize: 16 }}>{title}</Text>
+      {busy ? <ActivityIndicator color={solid ? onAccentOf(base) : base} /> : (
+        <Text style={{ color: solid ? onAccentOf(base) : base, fontWeight: '800', fontSize: 16 }}>{title}</Text>
       )}
     </Tap>
   );
@@ -81,7 +81,7 @@ export function Segmented<T extends string | number>({ options, value, onChange 
           <Tap key={String(o.value)} label={o.label} onPress={() => onChange(o.value)} style={{
             paddingVertical: 8, borderRadius: 11, alignItems: 'center', backgroundColor: on ? p.accent : 'transparent',
           }}>
-            <Text numberOfLines={1} style={{ color: on ? '#fff' : p.text, fontWeight: '700', fontSize: 13 }}>{o.label}</Text>
+            <Text numberOfLines={1} style={{ color: on ? p.onAccent : p.text, fontWeight: '700', fontSize: 13 }}>{o.label}</Text>
           </Tap>
         );
       }).map((el, i) => (<View key={i} style={{ flex: 1 }}>{el}</View>))}

@@ -65,6 +65,8 @@ const GLYPHS: Record<string, GlyphFn> = {
   edit: (c) => (<Path {...stroke(c)} d="M4 20l1-4.5L16.5 4a2.1 2.1 0 0 1 3 0l.5.5a2.1 2.1 0 0 1 0 3L8.5 19 4 20zM14.5 6l3.5 3.5" />),
   sync: (c) => (<><Path {...stroke(c)} strokeWidth={2.2} d="M4.2 12a7.8 7.8 0 0 1 12.6-6.15M19.8 12a7.8 7.8 0 0 1-12.6 6.15" /><Path fill={c} d="M20.3 3.2v6.6h-6.6zM3.7 20.8v-6.6h6.6z" /></>),
   more: (c) => (<><Circle cx="5.5" cy="12" r="1.7" fill={c} /><Circle cx="12" cy="12" r="1.7" fill={c} /><Circle cx="18.5" cy="12" r="1.7" fill={c} /></>),
+  eye: (c) => (<><Path {...stroke(c)} d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" /><Circle {...stroke(c)} cx="12" cy="12" r="3" /></>),
+  eyeOff: (c) => (<><Path {...stroke(c)} d="M10 6a9.6 9.6 0 0 1 2-.5c6 0 9.5 6.5 9.5 6.5a17 17 0 0 1-2.6 3.4M6.6 6.8C3.9 8.6 2.5 12 2.5 12S6 18.5 12 18.5a9 9 0 0 0 4.6-1.3M9.9 9.9a3 3 0 0 0 4.2 4.2M3.5 3.5l17 17" /></>),
 };
 
 const UI_GLYPHS = ['plus', 'settings', 'history', 'chart', 'arrowIn', 'arrowOut', 'swap', 'handshake', 'check', 'close', 'clock', 'share', 'undo', 'search', 'refresh',

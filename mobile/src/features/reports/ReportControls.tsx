@@ -70,7 +70,7 @@ export function KindTabs({ value, onChange }: { value: ReportKind; onChange(k: R
               <Tap testID={`kind-${k}`} label={t(KIND_LABEL[k])} onPress={() => onChange(k)}
                 style={{ paddingHorizontal: space.md, minHeight: 38, justifyContent: 'center', borderRadius: radii.pill, borderWidth: 1, borderColor: on ? 'transparent' : p.glassBorder }}>
                 <Text accessibilityState={{ selected: on }} numberOfLines={1}
-                  style={[type.callout, { color: on ? '#fff' : p.text, fontWeight: on ? '800' : '600' }]}>{t(KIND_LABEL[k])}</Text>
+                  style={[type.callout, { color: on ? p.onAccent : p.text, fontWeight: on ? '800' : '600' }]}>{t(KIND_LABEL[k])}</Text>
               </Tap>
             </View>
           );

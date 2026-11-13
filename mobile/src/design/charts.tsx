@@ -313,7 +313,7 @@ export function LineChart({ points, width, height = 200, color, tip, testID }: {
         {pt ? (
           <G>
             <SvgLine x1={pt.x} x2={pt.x} y1={TOP} y2={height - LABEL_H} stroke={p.textSecondary} strokeWidth={1} strokeDasharray="3 3" />
-            <Circle cx={pt.x} cy={pt.y} r={5} fill={col} stroke={p.dark ? '#0B1220' : '#fff'} strokeWidth={2} />
+            <Circle cx={pt.x} cy={pt.y} r={5} fill={col} stroke={p.dark ? p.bgBottom : '#fff'} strokeWidth={2} />
           </G>
         ) : null}
       </Svg>

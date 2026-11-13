@@ -254,7 +254,7 @@ export function History() {
       <View pointerEvents="box-none" style={{ position: 'absolute', right: 18, bottom: L.sidebar ? 24 : 100 }}>
         <Tap testID="fab-add" label={t('expense')} onPress={() => openOp({ kind: 'expense' })}
           style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: p.accent, alignItems: 'center', justifyContent: 'center', elevation: 6 }}>
-          <Glyph name="plus" color="#fff" size={28} />
+          <Glyph name="plus" color={p.onAccent} size={28} />
         </Tap>
       </View>
 

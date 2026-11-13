@@ -20,7 +20,7 @@ export function FilterButton({ testID, count, onPress }: { testID: string; count
       <Glyph name="filter" color={count ? p.accent : p.text} size={20} />
       {count ? (
         <View style={{ position: 'absolute', top: -4, right: -4, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, alignItems: 'center', justifyContent: 'center', backgroundColor: p.accent }}>
-          <Text testID={`${testID}-count`} style={{ color: '#fff', fontSize: 11, fontWeight: '800' }}>{count}</Text>
+          <Text testID={`${testID}-count`} style={{ color: p.onAccent, fontSize: 11, fontWeight: '800' }}>{count}</Text>
         </View>
       ) : null}
     </Tap>
@@ -47,7 +47,7 @@ export function FilterHeader({ onClose, onExit, title, onReset, canReset }: { on
             <Glyph name="filterOff" color={p.text} size={21} />
           </Tap>
           <Tap testID="close-filters" label={t('confirm')} onPress={onClose} style={[round(p, false), { backgroundColor: p.accent, borderColor: p.accent }]}>
-            <Glyph name="check" color="#fff" size={22} />
+            <Glyph name="check" color={p.onAccent} size={22} />
           </Tap>
         </>
       ) : null}

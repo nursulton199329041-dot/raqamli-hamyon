@@ -3,7 +3,7 @@ import { Button, Chip, Label, Segmented, Wrap } from '@/design/Controls';
 import { GlassCard, Tap } from '@/design/Glass';
 import { CircleBadge, Glyph } from '@/design/Icon';
 import { useLook } from '@/design/look';
-import { Ink, usePalette, useT } from '@/design/theme';
+import { Ink, onAccentOf, usePalette, useT } from '@/design/theme';
 import { space, type } from '@/design/tokens';
 import type { I18nKey } from '@/i18n';
 import { DEFAULT_APPEARANCE, EXPENSE_ROWS, useSettings, type ExpenseRows, type HomeSection, type IconShape, type Size3, type UiStyle } from '@/state/settings';
@@ -13,7 +13,8 @@ const STYLE_KEY: Record<UiStyle, I18nKey> = {
 };
 const SECTION_KEY: Record<HomeSection, I18nKey> = { income: 'income_sources', wallets: 'wallets', expense: 'expense_categories' };
 const SECTION_ICON: Record<HomeSection, string> = { income: 'salary', wallets: 'wallet', expense: 'food' };
-const ACCENTS = ['#4D8DFF', '#7C6CFF', '#1FCB8B', '#F5A524', '#FF6B6B', '#EC4899', '#14B8A6'];
+// Gold (theme default) first, then jewel and metal tones that sit well on the garnet background.
+const ACCENTS = ['#F2C14E', '#E9D3A1', '#E8A598', '#D9844A', '#C9CED6', '#E0475B', '#EC4899', '#9B7BFF', '#4D8DFF', '#14B8A6', '#1FCB8B'];
 
 /**
  * Appearance studio: theme, style preset, icon shape / size, accent, font size, corner radius, glass, animations and the
@@ -62,8 +63,8 @@ export function AppearanceCard() {
         </Tap>
         {ACCENTS.map((c) => (
           <Tap key={c} testID={`accent-${c}`} label={c} onPress={() => void setA({ accent: c })}
-            style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: c, borderWidth: a.accent === c ? 3 : 0, borderColor: p.text }}>
-            {null}
+            style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: c, alignItems: 'center', justifyContent: 'center', borderWidth: a.accent === c ? 3 : 0, borderColor: p.text }}>
+            {a.accent === c ? <Glyph name="check" color={onAccentOf(c)} size={18} /> : null}
           </Tap>
         ))}
       </View>

@@ -1,3 +1,4 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { Tabs } from 'expo-router';
 import { Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -24,28 +25,40 @@ function FloatingBar({ state, navigation }: BarProps) {
   const p = usePalette();
   const t = useT();
   const insets = useSafeAreaInsets();
+  // iOS-style: separate round glass buttons; the active tab grows into a solid honey-gold pill with a mono label.
+  const H = 60;
   return (
-    <View pointerEvents="box-none" style={{ position: 'absolute', left: space.md, right: space.md, bottom: Math.max(insets.bottom, space.sm), alignItems: 'center' }}>
-      <GlassCard radius={radii.xl} padding={space.xs} style={[elevation.float, { width: '100%', maxWidth: 560 }]}>
-        <View accessibilityRole="tablist" style={{ flexDirection: 'row', alignItems: 'center' }}>
-          {ITEMS.map((it) => {
-            const on = activeName(state) === it.name;
-            return (
-              <Tap key={it.name} testID={`tab-${it.name}`} label={t(it.key)} containerStyle={{ flex: 1 }} onPress={() => { if (!on) navigation.navigate(it.name); }}>
-                <View accessibilityState={{ selected: on }} style={{
-                  alignItems: 'center', justifyContent: 'center', minHeight: 54, paddingVertical: space.xs, paddingHorizontal: space.xxs, borderRadius: radii.lg,
-                  backgroundColor: on ? `${p.accent}2E` : 'transparent',
+    <>
+    {/* bottom fade so scrolled content sinks into the background behind the buttons */}
+    <LinearGradient pointerEvents="none" colors={[`${p.bgBottom}00`, `${p.bgBottom}E6`, p.bgBottom]} locations={[0, 0.55, 1]}
+      style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: H + Math.max(insets.bottom, space.sm) + space.xxl * 2 }} />
+    <View pointerEvents="box-none" style={{ position: 'absolute', left: space.lg, right: space.lg, bottom: Math.max(insets.bottom, space.sm), alignItems: 'center' }}>
+      <View accessibilityRole="tablist" style={[elevation.float, { flexDirection: 'row', alignItems: 'center', gap: space.sm, width: '100%', maxWidth: 560 }]}>
+        {ITEMS.map((it) => {
+          const on = activeName(state) === it.name;
+          return (
+            <Tap key={it.name} testID={`tab-${it.name}`} label={t(it.key)} containerStyle={on ? { flex: 1 } : undefined} onPress={() => { if (!on) navigation.navigate(it.name); }}>
+              {on ? (
+                <View accessibilityState={{ selected: true }} style={{
+                  height: H, borderRadius: H / 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.sm,
+                  paddingHorizontal: space.lg, backgroundColor: p.accent,
                 }}>
-                  <Glyph name={it.icon} color={on ? p.accent : p.textSecondary} size={iconSize.lg - 2} />
-                  <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}
-                    style={[type.caption, { color: on ? p.accent : p.textSecondary, marginTop: 2, maxWidth: '100%', fontWeight: on ? '700' : '600' }]}>{t(it.key)}</Text>
+                  <Glyph name={it.icon} color={p.onAccent} size={iconSize.md} />
+                  <Text numberOfLines={1} style={[type.label, { color: p.onAccent, fontSize: 13, fontWeight: '700', flexShrink: 1 }]}>{t(it.key)}</Text>
                 </View>
-              </Tap>
-            );
-          })}
-        </View>
-      </GlassCard>
+              ) : (
+                <GlassCard radius={H / 2} padding={0} style={{ width: H, height: H, backgroundColor: p.dark ? 'rgba(22,10,12,0.82)' : 'rgba(255,255,255,0.85)' }} innerStyle={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                  <View accessibilityState={{ selected: false }}>
+                    <Glyph name={it.icon} color={p.text} size={iconSize.lg} />
+                  </View>
+                </GlassCard>
+              )}
+            </Tap>
+          );
+        })}
+      </View>
     </View>
+    </>
   );
 }
 

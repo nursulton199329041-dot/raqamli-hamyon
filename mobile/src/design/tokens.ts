@@ -12,8 +12,15 @@ export const space = { xxs: 2, xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 28 } a
 
 export const radii = { sm: 12, md: 16, lg: 22, xl: 28, pill: 999 } as const;
 
+/** System monospace face for the uppercase "terminal" labels (section titles, eyebrows, chips). */
+export const MONO = Platform.select({ ios: 'Menlo', android: 'monospace', default: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace' });
+
 /** Text roles. Smallest readable size is 11 (captions); body copy never goes below 13. */
 export const type = {
+  /** big centred balance on the home screen */
+  hero: { fontSize: 44, fontWeight: '700', letterSpacing: -1.2, fontVariant: ['tabular-nums'] },
+  /** uppercase monospace eyebrow: "KARTALAR BALANSI" */
+  label: { fontSize: 12.5, fontWeight: '500', letterSpacing: 1.1, textTransform: 'uppercase', fontFamily: MONO },
   display: { fontSize: 32, fontWeight: '800', letterSpacing: -0.6 },
   title: { fontSize: 22, fontWeight: '800', letterSpacing: -0.3 },
   headline: { fontSize: 17, fontWeight: '700', letterSpacing: -0.2 },
