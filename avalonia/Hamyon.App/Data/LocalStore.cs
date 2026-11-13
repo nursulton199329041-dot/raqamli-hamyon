@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using Hamyon.App.Models;
 using Microsoft.Data.Sqlite;
 
@@ -289,7 +290,8 @@ public sealed class LocalStore
     public IReadOnlyList<OperationRow> Operations(DateTime from, DateTime to) =>
         Read($"""
             SELECT o.id, o.kind, o.amount_minor, o.currency, o.to_amount_minor, o.date, o.note,
-                   w.name, tw.name, tw.currency, s.name, s.icon, s.color, c.name, c.icon, c.color, o.person, o.base_minor, o.fx_rate
+                   w.name, tw.name, tw.currency, s.name, s.icon, s.color, c.name, c.icon, c.color, o.person, o.base_minor, o.fx_rate,
+                   o.wallet_id, o.to_wallet_id, o.source_id, o.category_id
             FROM operations o
             LEFT JOIN wallets w ON w.id = o.wallet_id
             LEFT JOIN wallets tw ON tw.id = o.to_wallet_id
@@ -306,7 +308,8 @@ public sealed class LocalStore
                 Str(r, 7), Str(r, 8), Str(r, 9),
                 Str(r, 10), Str(r, 11), Str(r, 12), Str(r, 13), Str(r, 14), Str(r, 15), Str(r, 16),
                 r.IsDBNull(17) ? null : Money.FromMinor(r.GetInt64(17)),
-                r.IsDBNull(18) ? null : decimal.Parse(r.GetString(18), CultureInfo.InvariantCulture)));
+                r.IsDBNull(18) ? null : decimal.Parse(r.GetString(18), CultureInfo.InvariantCulture),
+                Id(r, 19), Id(r, 20), Id(r, 21), Id(r, 22)));
 
     /// <summary>The rate of the latest converted operation in that currency (fallback when no official rate is known).</summary>
     public decimal? LastUsedRate(string currency)
@@ -326,6 +329,15 @@ public sealed class LocalStore
         cmd.CommandText = "DELETE FROM operations WHERE id = $id";
         cmd.Parameters.AddWithValue("$id", id);
         cmd.ExecuteNonQuery();
+    }
+
+    private static long? Id(SqliteDataReader r, int i) => r.IsDBNull(i) ? null : r.GetInt64(i);
+
+    /// <summary>Sets a wallet's current balance by moving its opening balance: history stays untouched.</summary>
+    public void SetWalletBalance(long id, decimal balance)
+    {
+        var current = Wallets().FirstOrDefault(w => w.Id == id) ?? throw new ArgumentException("no wallet", nameof(id));
+        Run("UPDATE wallets SET opening_minor = opening_minor + $d WHERE id = $id", ("$d", Money.ToMinor(balance - current.Balance)), ("$id", id));
     }
 
     private static string? Str(SqliteDataReader r, int i) => r.IsDBNull(i) ? null : r.GetString(i);

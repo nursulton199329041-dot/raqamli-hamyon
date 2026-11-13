@@ -34,6 +34,20 @@
     <StackPanel Margin="16,12,16,120" Spacing="12" MaxWidth="600">
       <TextBlock Classes="label" Text="{l:T tab_settings}" Foreground="{StaticResource TextBrush}" FontSize="13.5" HorizontalAlignment="Center" Margin="0,12,0,4" />
 
+      <!-- profiles -->
+      <Border Classes="card" Padding="8,4">
+        <Button Classes="flat" Command="{Binding OpenProfilesCommand}">
+          <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
+            <Border Width="38" Height="38" CornerRadius="19" Background="#8B5CF6"><c:Glyph Kind="users" Foreground="White" Width="18" Height="18" /></Border>
+            <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center">
+              <TextBlock Text="{l:T profiles_row}" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" />
+              <TextBlock Text="{l:T profiles_hint}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap" />
+            </StackPanel>
+            <c:Glyph Grid.Column="2" Kind="chevronRight" Foreground="{StaticResource TextSecondaryBrush}" Width="18" Height="18" />
+          </Grid>
+        </Button>
+      </Border>
+
       <!-- language -->
       <TextBlock Classes="label" Text="{l:T language}" Margin="4,0" />
       <Border CornerRadius="20" Padding="3" Background="{StaticResource GlassBrush}" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1">
@@ -66,6 +80,36 @@
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>
+      </Border>
+
+      <!-- home screen: tick = shown -->
+      <TextBlock Classes="label" Text="{l:T home_screen}" Margin="4,8,4,0" />
+      <Border Classes="card" Padding="8,4">
+        <StackPanel>
+          <TextBlock Text="{l:T home_screen_hint}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="6,8,6,2" />
+          <ItemsControl ItemsSource="{Binding HomeBlocks}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:ToggleVm">
+                <Button Classes="flat" Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).ToggleBlockCommand}" CommandParameter="{Binding}">
+                  <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
+                    <Border Width="38" Height="38" CornerRadius="19" Background="{StaticResource GlassStrongBrush}">
+                      <c:Glyph Kind="{Binding Icon}" Foreground="{StaticResource TextBrush}" Width="18" Height="18" />
+                    </Border>
+                    <TextBlock Grid.Column="1" Margin="12,0" Text="{Binding Title}" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
+                    <!-- tick box -->
+                    <Panel Grid.Column="2" Width="28" Height="28">
+                      <Border CornerRadius="8" BorderThickness="2" BorderBrush="{StaticResource TextSecondaryBrush}" IsVisible="{Binding !IsOn}" />
+                      <Border CornerRadius="8" Background="{DynamicResource AccentBrush}" IsVisible="{Binding IsOn}">
+                        <c:Glyph Kind="check" Width="16" Height="16" Thickness="2.6"
+                                 Foreground="{Binding $parent[Border].Background, Converter={StaticResource InkOn}}" />
+                      </Border>
+                    </Panel>
+                  </Grid>
+                </Button>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
       </Border>
 
       <!-- data: catalog, debts -->

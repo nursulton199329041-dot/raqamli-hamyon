@@ -10,7 +10,15 @@ using Hamyon.App.Services;
 
 namespace Hamyon.App.ViewModels;
 
-/// <summary>Settings: language, accent colour, catalog and debts pages, wipe (two-step), version.</summary>
+public partial class ToggleVm : ObservableObject
+{
+    public required string Key { get; init; }
+    public required string Title { get; init; }
+    public required string Icon { get; init; }
+    [ObservableProperty] public partial bool IsOn { get; set; }
+}
+
+/// <summary>Settings: profiles, language, accent colour, home screen blocks, catalog and debts pages, wipe (two-step), version.</summary>
 public partial class SettingsViewModel : ViewModelBase
 {
     private readonly LocalStore _store;
@@ -24,6 +32,17 @@ public partial class SettingsViewModel : ViewModelBase
 
     public ObservableCollection<OptionVm> Languages { get; } = new();
     public ObservableCollection<ChoiceVm> Accents { get; } = new();
+    /// <summary>Home screen blocks with a tick: shown / hidden.</summary>
+    public ObservableCollection<ToggleVm> HomeBlocks { get; } = new();
+    private Action _homeChanged = () => { };
+    private Action _openProfiles = () => { };
+
+    /// <summary>Hooks set by the shell after construction.</summary>
+    public void Connect(Action homeChanged, Action openProfiles)
+    {
+        _homeChanged = homeChanged;
+        _openProfiles = openProfiles;
+    }
     [ObservableProperty] public partial bool WipeArmed { get; set; }
 
     public string Version => $"{L.T("version")} {Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.0.0"}";
@@ -44,6 +63,9 @@ public partial class SettingsViewModel : ViewModelBase
 
         foreach (var (lang, title) in new[] { (Lang.Uz, "O‘zbekcha"), (Lang.Ru, "Русский"), (Lang.En, "English") })
             Languages.Add(new OptionVm { Key = lang.ToString(), Title = title, IsSelected = L.Current == lang });
+
+        foreach (var key in HomeViewModel.Blocks)
+            HomeBlocks.Add(new ToggleVm { Key = key, Title = L.T("show_" + key), Icon = BlockIcon(key), IsOn = _getPref("home_" + key) != "0" });
 
         var accent = _getPref("accent") ?? Appearance.DefaultAccent;
         var i = 0;
@@ -68,6 +90,21 @@ public partial class SettingsViewModel : ViewModelBase
         _setPref("accent", c.Color);
         Appearance.ApplyAccent(c.Color);
     }
+
+    private static string BlockIcon(string key) => key switch
+    {
+        "balance" => "eye", "sources" => "salary", "wallets" => "wallet", "categories" => "food", _ => "handshake",
+    };
+
+    [RelayCommand]
+    private void ToggleBlock(ToggleVm t)
+    {
+        t.IsOn = !t.IsOn;
+        _setPref("home_" + t.Key, t.IsOn ? "1" : "0");
+        _homeChanged();
+    }
+
+    [RelayCommand] private void OpenProfiles() => _openProfiles();
 
     [RelayCommand] private void OpenWallets() => _navigate(_catalog(CatalogKind.Wallets));
     [RelayCommand] private void OpenCategories() => _navigate(_catalog(CatalogKind.Categories));

@@ -82,6 +82,9 @@ public partial class EditorViewModel : ViewModelBase
     public bool IsNew => _id is null;
     public bool IsWallet => _kind == CatalogKind.Wallets;
     public bool ShowMoney => IsNew && IsWallet;
+    /// <summary>an existing wallet: its current balance can be corrected (the difference goes into the opening balance)</summary>
+    public bool ShowBalance => !IsNew && IsWallet;
+    public string BalanceCurrency { get; private set; } = "";
     public string Title => IsNew
         ? L.T(_kind switch { CatalogKind.Wallets => "new_wallet", CatalogKind.Categories => "new_category", _ => "new_source" })
         : L.T("edit");
@@ -92,6 +95,7 @@ public partial class EditorViewModel : ViewModelBase
 
     [ObservableProperty] public partial string? Name { get; set; }
     [ObservableProperty] public partial string? Opening { get; set; }
+    [ObservableProperty] public partial string? BalanceText { get; set; }
     [ObservableProperty] public partial string? Error { get; set; }
 
     public string SelectedColor => Colors.FirstOrDefault(c => c.IsSelected)?.Color ?? Palette[0];
@@ -104,6 +108,11 @@ public partial class EditorViewModel : ViewModelBase
         _done = done;
         _close = close;
         Name = existing?.Name;
+        if (kind == CatalogKind.Wallets && existing is not null && store.Wallets().FirstOrDefault(w => w.Id == existing.Id) is { } wallet)
+        {
+            BalanceText = Calc.Plain(wallet.Balance);
+            BalanceCurrency = wallet.Currency;
+        }
 
         var icons = kind switch { CatalogKind.Wallets => WalletIcons, CatalogKind.Categories => CategoryIcons, _ => SourceIcons };
         var i = 0;
@@ -157,7 +166,19 @@ public partial class EditorViewModel : ViewModelBase
                 if (opening < 0) { Error = L.T("err_amount"); return; }
                 _store.AddWallet(name, icon, color, Currencies.First(c => c.IsSelected).Key, opening);
             }
-            else _store.UpdateWallet(_id!.Value, name, icon, color);
+            else
+            {
+                decimal? balance = null;
+                if (!string.IsNullOrWhiteSpace(BalanceText))
+                {
+                    var raw = BalanceText.Trim();
+                    var negative = raw.StartsWith("-") || raw.StartsWith("−");
+                    if (Calc.Evaluate(raw.TrimStart('-', '−')) is not { } b) { Error = L.T("err_amount"); return; }
+                    balance = negative ? -b : b;
+                }
+                _store.UpdateWallet(_id!.Value, name, icon, color);
+                if (balance is { } nb) _store.SetWalletBalance(_id.Value, nb);
+            }
         }
         else if (IsNew) _store.AddNamed(table, name, icon, color);
         else _store.UpdateNamed(table, _id!.Value, name, icon, color);

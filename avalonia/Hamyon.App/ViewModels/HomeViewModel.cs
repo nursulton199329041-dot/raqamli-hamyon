@@ -57,17 +57,10 @@ public partial class HomeViewModel : ViewModelBase
     /// <summary>Asks the shell to open the operation sheet: (kind, from id, to id).</summary>
     public event Action<OpKind, long?, long?>? OpenOperation;
 
-    /// <summary>Source -> income into it; category -> expense from the first wallet; wallet -> transfer from it.</summary>
-    [RelayCommand]
-    private void OpenTile(TileVm tile)
-    {
-        switch (tile.Kind)
-        {
-            case TileKind.Source: OpenOperation?.Invoke(OpKind.Income, tile.Id, null); break;
-            case TileKind.Category: OpenOperation?.Invoke(OpKind.Expense, null, tile.Id); break;
-            default: OpenOperation?.Invoke(OpKind.Transfer, tile.Id, null); break;
-        }
-    }
+    /// <summary>Asks the shell to open a tile's own page (its operations, edit, filter, "+").</summary>
+    public event Action<TileVm>? OpenItem;
+
+    [RelayCommand] private void OpenTile(TileVm tile) => OpenItem?.Invoke(tile);
 
     /// <summary>
     /// Drag &amp; drop: which operation dropping <paramref name="from"/> on <paramref name="to"/> means, or null if it means nothing.
@@ -93,6 +86,32 @@ public partial class HomeViewModel : ViewModelBase
     public event Action? OpenDebts;
 
     [RelayCommand] private void ShowDebts() => OpenDebts?.Invoke();
+
+    // ---- what the home screen shows (Settings → Home screen) ----
+
+    /// <summary>Keys of the home blocks that can be hidden, in screen order.</summary>
+    public static readonly string[] Blocks = ["balance", "sources", "wallets", "categories", "debts"];
+
+    [ObservableProperty] public partial bool ShowBalance { get; set; } = true;
+    [ObservableProperty] public partial bool ShowSources { get; set; } = true;
+    [ObservableProperty] public partial bool ShowWallets { get; set; } = true;
+    [ObservableProperty] public partial bool ShowCategories { get; set; } = true;
+    [ObservableProperty] public partial bool ShowDebtsCard { get; set; } = true;
+    public bool DebtsVisible => HasDebts && ShowDebtsCard;
+
+    partial void OnShowDebtsCardChanged(bool value) => OnPropertyChanged(nameof(DebtsVisible));
+    partial void OnHasDebtsChanged(bool value) => OnPropertyChanged(nameof(DebtsVisible));
+
+    /// <summary>Reads the switches (missing = shown).</summary>
+    public void ApplyBlocks(Func<string, string?> pref)
+    {
+        bool On(string key) => pref("home_" + key) != "0";
+        ShowBalance = On("balance");
+        ShowSources = On("sources");
+        ShowWallets = On("wallets");
+        ShowCategories = On("categories");
+        ShowDebtsCard = On("debts");
+    }
 
     // ---- current profile (header avatar + top-right switcher) ----
 

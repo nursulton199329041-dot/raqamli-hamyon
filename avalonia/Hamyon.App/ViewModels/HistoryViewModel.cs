@@ -108,14 +108,16 @@ public partial class HistoryViewModel : ViewModelBase
         {
             var dayNet = Net(Sum(day.Where(o => o.Kind == OpKind.Income)), Sum(day.Where(o => o.Kind == OpKind.Expense)));
             Days.Add(new DayGroupVm(
-                $"{day.Key.Day} {L.Month(day.Key.Month)}, {L.Weekday(day.Key.DayOfWeek)}",
+                DayTitle(day.Key),
                 dayNet.Count == 0 ? "" : Money.Format(dayNet),
                 day.Select(ToRow).ToList()));
         }
         IsEmpty = Days.Count == 0;
     }
 
-    private static HistoryRowVm ToRow(OperationRow o) => o.Kind switch
+    internal static string DayTitle(DateTime d) => $"{d.Day} {L.Month(d.Month)}, {L.Weekday(d.DayOfWeek)}";
+
+    internal static HistoryRowVm ToRow(OperationRow o) => o.Kind switch
     {
         OpKind.Income => new HistoryRowVm
         {
@@ -151,7 +153,7 @@ public partial class HistoryViewModel : ViewModelBase
         },
     };
 
-    private static bool Matches(OperationRow o, string q) =>
+    internal static bool Matches(OperationRow o, string q) =>
         new[] { o.SourceName, o.CategoryName, o.WalletName, o.ToWalletName, o.Note, o.Person }
             .Any(s => s?.Contains(q, StringComparison.CurrentCultureIgnoreCase) == true);
 

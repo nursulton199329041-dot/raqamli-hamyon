@@ -29,4 +29,5 @@ public sealed record OperationRow(
     string? WalletName, string? ToWalletName, string? ToCurrency,
     string? SourceName, string? SourceIcon, string? SourceColor,
     string? CategoryName, string? CategoryIcon, string? CategoryColor, string? Person = null,
-    decimal? BaseAmount = null, decimal? Rate = null);
+    decimal? BaseAmount = null, decimal? Rate = null,
+    long? WalletId = null, long? ToWalletId = null, long? SourceId = null, long? CategoryId = null);

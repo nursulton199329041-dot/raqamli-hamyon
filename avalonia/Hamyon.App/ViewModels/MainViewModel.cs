@@ -71,6 +71,9 @@ public partial class MainViewModel : ViewModelBase
             Sheet = new OperationViewModel(store, kind, from, to, onSaved: () => { Sheet = null; RefreshAll(); }, onClose: () => Sheet = null);
         Home.OpenDebts += () => Current = NewDebts();
         Home.OpenProfiles += OpenProfiles;
+        Home.ApplyBlocks(GetPref);
+        Settings.Connect(homeChanged: () => Home.ApplyBlocks(GetPref), openProfiles: OpenProfiles);
+        Home.OpenItem += tile => Current = new ItemViewModel(store, tile.Kind, tile.Id, back: () => { Home.Refresh(); Current = Home; }, sheet: s => Sheet = s, changed: RefreshAll);
         if (profiles is not null) { var p = profiles.Current; Home.SetProfile(p.Name, p.Color); }
 
         Tabs =
@@ -116,6 +119,13 @@ public partial class MainViewModel : ViewModelBase
     public bool HandleBack()
     {
         if (Sheet is not null) { Sheet = null; return true; }
+        if (Current is ItemViewModel item)
+        {
+            if (item.FilterOpen) item.CloseFilterCommand.Execute(null);
+            else if (item.MenuOpen) item.MenuOpen = false;
+            else { Home.Refresh(); Current = Home; }
+            return true;
+        }
         if (Current is CatalogViewModel or DebtsViewModel) { Current = Settings; return true; }
         if (Current != Home) { SelectTab(Tabs[0]); return true; }
         return false;

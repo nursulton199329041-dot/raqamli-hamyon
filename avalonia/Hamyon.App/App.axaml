@@ -24,6 +24,7 @@
     <DataTemplate DataType="vm:EditorViewModel"><views:EditorView /></DataTemplate>
     <DataTemplate DataType="vm:DebtsViewModel"><views:DebtsView /></DataTemplate>
     <DataTemplate DataType="vm:ProfilesViewModel"><views:ProfilesView /></DataTemplate>
+    <DataTemplate DataType="vm:ItemViewModel"><views:ItemView /></DataTemplate>
   </Application.DataTemplates>
 
   <Application.Styles>

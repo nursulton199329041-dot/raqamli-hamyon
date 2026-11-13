@@ -73,7 +73,7 @@
       <Border Height="1" Background="{StaticResource GlassBorderBrush}" />
 
       <!-- hero -->
-      <StackPanel Spacing="14" HorizontalAlignment="Center" Margin="0,22,0,16">
+      <StackPanel Spacing="14" HorizontalAlignment="Center" Margin="0,22,0,16" IsVisible="{Binding ShowBalance}">
         <TextBlock Classes="label" Text="{l:T total_balance}" HorizontalAlignment="Center" />
         <Grid ColumnDefinitions="*,Auto" HorizontalAlignment="Center">
           <ItemsControl ItemsSource="{Binding Balance}">
@@ -101,7 +101,7 @@
       </StackPanel>
 
       <!-- income sources -->
-      <Border Classes="card">
+      <Border Classes="card" IsVisible="{Binding ShowSources}">
         <StackPanel Spacing="8">
           <Grid ColumnDefinitions="*,Auto">
             <TextBlock Classes="label" Text="{l:T income_sources}" />
@@ -116,7 +116,7 @@
       </Border>
 
       <!-- debts (only while something is open); tap opens the debts page -->
-      <Button Classes="flat" Command="{Binding ShowDebtsCommand}" IsVisible="{Binding HasDebts}">
+      <Button Classes="flat" Command="{Binding ShowDebtsCommand}" IsVisible="{Binding DebtsVisible}">
         <Border Classes="card">
           <Grid ColumnDefinitions="Auto,*,Auto">
             <Border Width="40" Height="40" CornerRadius="20" Background="#F5A524">
@@ -137,7 +137,7 @@
       </Button>
 
       <!-- wallets -->
-      <Border Classes="card">
+      <Border Classes="card" IsVisible="{Binding ShowWallets}">
         <StackPanel Spacing="8">
           <Grid ColumnDefinitions="*,Auto">
             <TextBlock Classes="label" Text="{l:T wallets}" />
@@ -152,7 +152,7 @@
       </Border>
 
       <!-- expense categories (wrapping grid) -->
-      <Border Classes="card">
+      <Border Classes="card" IsVisible="{Binding ShowCategories}">
         <StackPanel Spacing="8">
           <Grid ColumnDefinitions="*,Auto">
             <TextBlock Classes="label" Text="{l:T expense_categories}" />

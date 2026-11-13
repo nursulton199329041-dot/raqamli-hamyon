@@ -1,0 +1,251 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="using:Hamyon.App.Localization"
+             xmlns:vm="using:Hamyon.App.ViewModels"
+             xmlns:c="using:Hamyon.App.Controls"
+             x:Class="Hamyon.App.Views.ItemView"
+             x:DataType="vm:ItemViewModel">
+  <UserControl.Styles>
+    <Style Selector="Button.filterTile Panel.badge"><Setter Property="Opacity" Value="0.3" /></Style>
+    <Style Selector="Button.filterTile.on Panel.badge"><Setter Property="Opacity" Value="1" /></Style>
+  </UserControl.Styles>
+
+  <UserControl.Resources>
+    <!-- a tile in the filter grid: name above, badge below, faded when excluded -->
+    <DataTemplate x:Key="FilterTile" x:DataType="vm:ChoiceVm">
+      <Button Classes="flat filterTile" Classes.on="{Binding IsSelected}" Margin="2,6"
+              Command="{Binding $parent[UserControl].((vm:ItemViewModel)DataContext).ToggleFilterItemCommand}" CommandParameter="{Binding}">
+        <StackPanel Width="78" Spacing="6">
+          <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}"
+                     TextAlignment="Center" TextTrimming="CharacterEllipsis" />
+          <Panel Classes="badge" Width="54" Height="54" HorizontalAlignment="Center">
+            <Border CornerRadius="27" Background="{Binding Color, Converter={StaticResource BadgeBrush}}">
+              <c:Glyph Kind="{Binding Icon}" Foreground="White" Width="24" Height="24" HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
+          </Panel>
+        </StackPanel>
+      </Button>
+    </DataTemplate>
+  </UserControl.Resources>
+
+  <Panel>
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+      <StackPanel Margin="16,12,16,190" Spacing="14" MaxWidth="600">
+        <!-- back | pencil + filter -->
+        <Grid ColumnDefinitions="Auto,*,Auto">
+          <Button Classes="flat" Command="{Binding GoBackCommand}">
+            <Border Width="46" Height="46" CornerRadius="23" Background="{StaticResource GlassBrush}" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1">
+              <c:Glyph Kind="chevronLeft" Foreground="{StaticResource TextBrush}" Width="22" Height="22" />
+            </Border>
+          </Button>
+          <Border Grid.Column="2" CornerRadius="23" Height="46" Background="{StaticResource GlassBrush}" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1" Padding="4,0">
+            <StackPanel Orientation="Horizontal">
+              <Button Classes="flat" Command="{Binding EditItemCommand}">
+                <Border Width="46" Height="44" Background="Transparent">
+                  <c:Glyph Kind="edit" Foreground="{StaticResource TextBrush}" Width="21" Height="21" />
+                </Border>
+              </Button>
+              <Button Classes="flat" Command="{Binding OpenFilterCommand}" IsVisible="{Binding CanFilter}">
+                <Panel Width="46" Height="44" Background="Transparent">
+                  <c:Glyph Kind="filter" Foreground="{StaticResource TextBrush}" Width="21" Height="21" />
+                  <Border Width="9" Height="9" CornerRadius="5" Background="{DynamicResource AccentBrush}" HorizontalAlignment="Right" VerticalAlignment="Top"
+                          Margin="0,9,8,0" IsVisible="{Binding HasFilter}" />
+                </Panel>
+              </Button>
+            </StackPanel>
+          </Border>
+        </Grid>
+
+        <!-- title -->
+        <Grid ColumnDefinitions="Auto,*">
+          <Border Width="44" Height="44" CornerRadius="22" Background="{Binding Color, Converter={StaticResource BadgeBrush}}" VerticalAlignment="Center">
+            <c:Glyph Kind="{Binding Icon}" Foreground="White" Width="21" Height="21" HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+          <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+            <TextBlock Text="{Binding Name}" FontSize="26" FontWeight="Bold" Foreground="{StaticResource TextBrush}" TextTrimming="CharacterEllipsis" />
+            <TextBlock Text="{Binding Balance}" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" IsVisible="{Binding IsWallet}" />
+          </StackPanel>
+        </Grid>
+
+        <!-- note search -->
+        <Border CornerRadius="22" Background="{StaticResource GlassBrush}" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1" Padding="14,0">
+          <Grid ColumnDefinitions="Auto,*">
+            <c:Glyph Kind="search" Foreground="{StaticResource TextSecondaryBrush}" Width="18" Height="18" VerticalAlignment="Center" />
+            <TextBox Grid.Column="1" Text="{Binding Search}" Watermark="{l:T search_notes}" Background="Transparent" BorderThickness="0" Margin="6,0,0,0" />
+          </Grid>
+        </Border>
+
+        <!-- period: ‹ 01 okt. – 31 dek., 2026 ▾ › (tap the dates: month → quarter → year) -->
+        <Grid ColumnDefinitions="Auto,*,Auto">
+          <Button Classes="flat" Command="{Binding PrevCommand}">
+            <Border Width="40" Height="40" CornerRadius="20" Background="Transparent">
+              <c:Glyph Kind="chevronLeft" Foreground="{DynamicResource AccentBrush}" Width="22" Height="22" Thickness="2.2" />
+            </Border>
+          </Button>
+          <Button Grid.Column="1" Classes="flat" Command="{Binding CycleRangeCommand}" HorizontalAlignment="Center">
+            <StackPanel HorizontalAlignment="Center" Spacing="1" Background="Transparent">
+              <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                <TextBlock Text="{Binding RangeTitle}" FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" />
+                <c:Glyph Kind="chevronDown" Foreground="{StaticResource TextSecondaryBrush}" Width="13" Height="13" VerticalAlignment="Center" />
+              </StackPanel>
+              <TextBlock Classes="label" Text="{Binding RangeName}" FontSize="10.5" HorizontalAlignment="Center" />
+            </StackPanel>
+          </Button>
+          <Button Grid.Column="2" Classes="flat" Command="{Binding NextCommand}">
+            <Border Width="40" Height="40" CornerRadius="20" Background="Transparent">
+              <c:Glyph Kind="chevronRight" Foreground="{DynamicResource AccentBrush}" Width="22" Height="22" Thickness="2.2" />
+            </Border>
+          </Button>
+        </Grid>
+
+        <!-- saldo -->
+        <StackPanel HorizontalAlignment="Center" Spacing="2" Margin="0,4">
+          <TextBlock Classes="label" Text="{l:T saldo}" HorizontalAlignment="Center" />
+          <TextBlock Classes="hero" Text="{Binding Saldo}" FontSize="36" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" />
+        </StackPanel>
+
+        <!-- empty -->
+        <StackPanel IsVisible="{Binding IsEmpty}" Spacing="6" Margin="0,50,0,0" HorizontalAlignment="Center">
+          <TextBlock Text="{l:T no_data}" FontSize="17" FontWeight="Bold" Foreground="{StaticResource TextBrush}" HorizontalAlignment="Center" />
+          <TextBlock Text="{l:T no_data_hint}" FontSize="12.5" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="300" />
+        </StackPanel>
+
+        <!-- operations by day -->
+        <ItemsControl ItemsSource="{Binding Days}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:DayGroupVm">
+              <StackPanel Spacing="6" Margin="0,6">
+                <TextBlock Classes="label" Text="{Binding Title}" Margin="4,0" />
+                <Border Classes="card" Padding="6" CornerRadius="22">
+                  <ItemsControl ItemsSource="{Binding Rows}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:HistoryRowVm">
+                        <StackPanel>
+                          <Button Classes="flat" Command="{Binding $parent[UserControl].((vm:ItemViewModel)DataContext).ToggleCommand}" CommandParameter="{Binding}">
+                            <Grid ColumnDefinitions="Auto,*,Auto" Margin="6,8" Background="Transparent">
+                              <Border Width="40" Height="40" CornerRadius="20" Background="{Binding Color, Converter={StaticResource BadgeBrush}}">
+                                <c:Glyph Kind="{Binding Icon}" Foreground="White" Width="18" Height="18" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                              </Border>
+                              <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Text="{Binding Subtitle}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Text="{Binding Note}" IsVisible="{Binding HasNote}" FontSize="12" FontStyle="Italic" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap" />
+                              </StackPanel>
+                              <TextBlock Grid.Column="2" Text="{Binding Amount}" FontWeight="Bold" VerticalAlignment="Center" Classes.inc="{Binding IsIncome}" Classes.exp="{Binding IsExpense}">
+                                <TextBlock.Styles>
+                                  <Style Selector="TextBlock"><Setter Property="Foreground" Value="{StaticResource TextBrush}" /></Style>
+                                  <Style Selector="TextBlock.inc"><Setter Property="Foreground" Value="{StaticResource IncomeBrush}" /></Style>
+                                  <Style Selector="TextBlock.exp"><Setter Property="Foreground" Value="{StaticResource ExpenseBrush}" /></Style>
+                                </TextBlock.Styles>
+                              </TextBlock>
+                            </Grid>
+                          </Button>
+                          <Button Classes="flat" IsVisible="{Binding IsOpen}" Margin="6,0,6,8"
+                                  Command="{Binding $parent[UserControl].((vm:ItemViewModel)DataContext).DeleteCommand}" CommandParameter="{Binding}">
+                            <Border Height="42" CornerRadius="21" Background="#33FF6B6B" BorderBrush="{StaticResource ExpenseBrush}" BorderThickness="1">
+                              <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <c:Glyph Kind="trash" Foreground="{StaticResource ExpenseBrush}" Width="18" Height="18" />
+                                <TextBlock Classes="label" Text="{l:T delete}" Foreground="{StaticResource ExpenseBrush}" FontWeight="Bold" VerticalAlignment="Center" />
+                              </StackPanel>
+                            </Border>
+                          </Button>
+                        </StackPanel>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </Border>
+              </StackPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </ScrollViewer>
+
+    <!-- "+" menu: dimmed page, three labelled round actions above the button -->
+    <Button Classes="flat" Command="{Binding CloseMenuCommand}" IsVisible="{Binding MenuOpen}">
+      <Border Background="#B3080304" />
+    </Button>
+    <StackPanel HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,20,100" Spacing="14">
+      <StackPanel Spacing="14" IsVisible="{Binding MenuOpen}">
+        <Button Classes="flat" Command="{Binding NewTransferCommand}" HorizontalAlignment="Right">
+          <StackPanel Orientation="Horizontal" Spacing="14">
+            <TextBlock Text="{l:T op_transfer}" FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
+            <Border Width="52" Height="52" CornerRadius="26" Background="#FBF5F2"><c:Glyph Kind="swap" Foreground="#7C6CFF" Width="22" Height="22" Thickness="2.2" /></Border>
+          </StackPanel>
+        </Button>
+        <Button Classes="flat" Command="{Binding NewIncomeCommand}" HorizontalAlignment="Right">
+          <StackPanel Orientation="Horizontal" Spacing="14">
+            <TextBlock Text="{l:T op_income}" FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
+            <Border Width="52" Height="52" CornerRadius="26" Background="#FBF5F2"><c:Glyph Kind="plus" Foreground="#1FCB8B" Width="22" Height="22" Thickness="2.4" /></Border>
+          </StackPanel>
+        </Button>
+        <Button Classes="flat" Command="{Binding NewExpenseCommand}" HorizontalAlignment="Right">
+          <StackPanel Orientation="Horizontal" Spacing="14">
+            <TextBlock Text="{l:T op_expense}" FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
+            <Border Width="52" Height="52" CornerRadius="26" Background="#FBF5F2"><c:Glyph Kind="minus" Foreground="#FF6B6B" Width="22" Height="22" Thickness="2.4" /></Border>
+          </StackPanel>
+        </Button>
+      </StackPanel>
+      <Button Classes="flat" Command="{Binding PlusCommand}" HorizontalAlignment="Right">
+        <Border Width="62" Height="62" CornerRadius="31" Background="{DynamicResource AccentBrush}" BoxShadow="0 10 28 0 #80000000">
+          <Panel>
+            <c:Glyph Kind="plus" Width="26" Height="26" Thickness="2.4" IsVisible="{Binding !MenuOpen}"
+                     Foreground="{Binding $parent[Border].Background, Converter={StaticResource InkOn}}" />
+            <c:Glyph Kind="close" Width="24" Height="24" Thickness="2.4" IsVisible="{Binding MenuOpen}"
+                     Foreground="{Binding $parent[Border].Background, Converter={StaticResource InkOn}}" />
+          </Panel>
+        </Border>
+      </Button>
+    </StackPanel>
+
+    <!-- filter: which incomes and expenses this wallet page shows -->
+    <Border IsVisible="{Binding FilterOpen}" Background="#FA140709">
+      <DockPanel Margin="18,14,18,110">
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,10">
+          <Border Width="44" />
+          <TextBlock Grid.Column="1" Text="{l:T filter}" FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+          <Button Grid.Column="2" Classes="flat" Command="{Binding CloseFilterCommand}">
+            <Border Width="44" Height="44" CornerRadius="22" Background="{StaticResource GlassStrongBrush}">
+              <c:Glyph Kind="close" Foreground="{StaticResource TextBrush}" Width="18" Height="18" />
+            </Border>
+          </Button>
+        </Grid>
+        <Button DockPanel.Dock="Bottom" Classes="flat" Command="{Binding ApplyFilterCommand}" Margin="0,10,0,0">
+          <Border Height="54" CornerRadius="27" Background="{DynamicResource AccentBrush}">
+            <TextBlock Classes="label" Text="{l:T apply_filter}" FontWeight="Bold" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"
+                       Foreground="{Binding $parent[Border].Background, Converter={StaticResource InkOn}}" />
+          </Border>
+        </Button>
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+          <StackPanel Spacing="10">
+            <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+              <TextBlock Text="{l:T incomes_title}" FontSize="20" FontWeight="Bold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
+              <Border Grid.Column="1" Margin="10,0" CornerRadius="10" Padding="10,3" Background="{DynamicResource AccentSoftBrush}" VerticalAlignment="Center">
+                <TextBlock Text="{Binding SourcesCount}" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" />
+              </Border>
+              <Button Grid.Column="3" Classes="flat" Command="{Binding ToggleAllSourcesCommand}" VerticalAlignment="Center">
+                <TextBlock Text="{Binding SourcesToggleText}" Foreground="{DynamicResource AccentBrush}" FontSize="15" Background="Transparent" Padding="4" />
+              </Button>
+            </Grid>
+            <ItemsControl ItemsSource="{Binding FilterSources}" ItemTemplate="{StaticResource FilterTile}">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            </ItemsControl>
+
+            <Grid ColumnDefinitions="Auto,Auto,*,Auto" Margin="0,14,0,0">
+              <TextBlock Text="{l:T expenses_title}" FontSize="20" FontWeight="Bold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
+              <Border Grid.Column="1" Margin="10,0" CornerRadius="10" Padding="10,3" Background="{DynamicResource AccentSoftBrush}" VerticalAlignment="Center">
+                <TextBlock Text="{Binding CategoriesCount}" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" />
+              </Border>
+              <Button Grid.Column="3" Classes="flat" Command="{Binding ToggleAllCategoriesCommand}" VerticalAlignment="Center">
+                <TextBlock Text="{Binding CategoriesToggleText}" Foreground="{DynamicResource AccentBrush}" FontSize="15" Background="Transparent" Padding="4" />
+              </Button>
+            </Grid>
+            <ItemsControl ItemsSource="{Binding FilterCategories}" ItemTemplate="{StaticResource FilterTile}">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            </ItemsControl>
+          </StackPanel>
+        </ScrollViewer>
+      </DockPanel>
+    </Border>
+  </Panel>
+</UserControl>

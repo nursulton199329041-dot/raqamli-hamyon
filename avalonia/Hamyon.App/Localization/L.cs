@@ -113,6 +113,7 @@ public static class L
         ["r_incomes"] = ["Kirimlar", "Доходы", "Income"],
         ["r_month"] = ["Oy", "Месяц", "Month"],
         ["r_year"] = ["Yil", "Год", "Year"],
+        ["r_quarter"] = ["Chorak", "Квартал", "Quarter"],
         ["avg_daily"] = ["KUNIGA O‘RTACHA", "В СРЕДНЕМ ЗА ДЕНЬ", "DAILY AVERAGE"],
         ["top_category"] = ["ENG KATTA TOIFA", "КРУПНЕЙШАЯ КАТЕГОРИЯ", "TOP CATEGORY"],
         ["top_source"] = ["ENG KATTA MANBA", "КРУПНЕЙШИЙ ИСТОЧНИК", "TOP SOURCE"],
@@ -134,6 +135,15 @@ public static class L
         ["local_note"] = ["Ma’lumotlar faqat shu telefonda saqlanadi.", "Данные хранятся только на этом телефоне.", "Your data is stored only on this phone."],
         ["version"] = ["Versiya", "Версия", "Version"],
 
+        ["home_screen"] = ["BOSH SAHIFA", "ГЛАВНЫЙ ЭКРАН", "HOME SCREEN"],
+        ["home_screen_hint"] = ["Belgilanganlari bosh sahifada ko‘rinadi", "Отмеченное показывается на главной", "Ticked blocks are shown on Home"],
+        ["show_balance"] = ["Umumiy balans", "Общий баланс", "Total balance"],
+        ["show_sources"] = ["Kirim manbalari", "Источники дохода", "Income sources"],
+        ["show_wallets"] = ["Hamyonlar", "Кошельки", "Wallets"],
+        ["show_categories"] = ["Xarajat toifalari", "Категории расходов", "Expense categories"],
+        ["show_debts"] = ["Qarzlar kartasi", "Карточка долгов", "Debts card"],
+        ["profiles_row"] = ["Profillar", "Профили", "Profiles"],
+
         // catalog editor
         ["add"] = ["QO‘SHISH", "ДОБАВИТЬ", "ADD"],
         ["new_wallet"] = ["Yangi hamyon", "Новый кошелёк", "New wallet"],
@@ -148,6 +158,17 @@ public static class L
         ["archive"] = ["ARXIVLASH", "В АРХИВ", "ARCHIVE"],
         ["err_name"] = ["Nomini yozing", "Введите название", "Enter a name"],
         ["err_archive_balance"] = ["Balansi 0 bo‘lmagan hamyonni arxivlab bo‘lmaydi", "Нельзя архивировать кошелёк с ненулевым балансом", "A wallet with a non-zero balance can't be archived"],
+
+        // item page
+        ["current_balance"] = ["JORIY BALANS", "ТЕКУЩИЙ БАЛАНС", "CURRENT BALANCE"],
+        ["search_notes"] = ["Izohlar bo‘yicha qidirish", "Поиск по примечаниям", "Search notes"],
+        ["no_data_hint"] = ["Operatsiyani pastdagi ＋ tugmasi yoki bosh sahifada surib qo‘shing", "Добавьте операцию кнопкой ＋ внизу или перетаскиванием на главной", "Add an operation with ＋ below or by dragging on Home"],
+        ["filter"] = ["Filtr", "Фильтр", "Filter"],
+        ["select_all"] = ["Hammasi", "Выбрать все", "Select all"],
+        ["clear_all"] = ["Olib tashlash", "Снять все", "Clear all"],
+        ["apply_filter"] = ["Filtrni qo‘llash", "Применить фильтр", "Apply filter"],
+        ["incomes_title"] = ["Kirimlar", "Доходы", "Income"],
+        ["expenses_title"] = ["Xarajatlar", "Расходы", "Expenses"],
 
         // profiles
         ["profiles"] = ["PROFILLAR", "ПРОФИЛИ", "PROFILES"],
