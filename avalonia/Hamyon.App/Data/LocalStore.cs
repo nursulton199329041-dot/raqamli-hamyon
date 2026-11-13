@@ -64,6 +64,15 @@ public sealed class LocalStore
             Exec(c, "PRAGMA user_version = 1");
             tx.Commit();
         }
+        if (Scalar(c, "PRAGMA user_version") < 2)
+        {
+            // foreign-currency income / expense: the so'm equivalent and the rate used (kept as decimal text)
+            using var tx = c.BeginTransaction();
+            if (!HasColumn(c, "operations", "base_minor")) Exec(c, "ALTER TABLE operations ADD COLUMN base_minor INTEGER");
+            if (!HasColumn(c, "operations", "fx_rate")) Exec(c, "ALTER TABLE operations ADD COLUMN fx_rate TEXT");
+            Exec(c, "PRAGMA user_version = 2");
+            tx.Commit();
+        }
         if (Scalar(c, "SELECT COUNT(*) FROM wallets") == 0) Seed(c);
     }
 
@@ -211,8 +220,8 @@ public sealed class LocalStore
         using var c = Open();
         using var cmd = c.CreateCommand();
         cmd.CommandText = $"""
-            SELECT CAST({part} AS INTEGER), SUM(amount_minor) FROM operations
-            WHERE kind = $k AND currency = $cur AND date >= $from AND date <= $to
+            SELECT CAST({part} AS INTEGER), SUM(COALESCE(base_minor, amount_minor)) FROM operations
+            WHERE kind = $k AND (CASE WHEN base_minor IS NOT NULL THEN 'UZS' ELSE currency END) = $cur AND date >= $from AND date <= $to
             GROUP BY 1
             """;
         cmd.Parameters.AddWithValue("$k", (int)kind);
@@ -232,9 +241,9 @@ public sealed class LocalStore
         using var c = Open();
         using var cmd = c.CreateCommand();
         cmd.CommandText = $"""
-            SELECT {column}, currency, SUM(amount_minor) FROM operations
+            SELECT {column}, CASE WHEN base_minor IS NOT NULL THEN 'UZS' ELSE currency END AS cur, SUM(COALESCE(base_minor, amount_minor)) FROM operations
             WHERE kind = $k AND {column} IS NOT NULL AND date >= $from AND date <= $to
-            GROUP BY {column}, currency
+            GROUP BY {column}, cur
             """;
         cmd.Parameters.AddWithValue("$k", (int)kind);
         cmd.Parameters.AddWithValue("$from", Iso(p.From));
@@ -256,8 +265,8 @@ public sealed class LocalStore
         using var c = Open();
         using var cmd = c.CreateCommand();
         cmd.CommandText = """
-            INSERT INTO operations(kind, amount_minor, currency, wallet_id, to_wallet_id, to_amount_minor, source_id, category_id, date, note, person)
-            VALUES ($kind, $amount, $cur, $w, $tw, $ta, $s, $c, $d, $n, $p);
+            INSERT INTO operations(kind, amount_minor, currency, wallet_id, to_wallet_id, to_amount_minor, source_id, category_id, date, note, person, base_minor, fx_rate)
+            VALUES ($kind, $amount, $cur, $w, $tw, $ta, $s, $c, $d, $n, $p, $base, $rate);
             SELECT last_insert_rowid();
             """;
         cmd.Parameters.AddWithValue("$kind", (int)op.Kind);
@@ -271,6 +280,8 @@ public sealed class LocalStore
         cmd.Parameters.AddWithValue("$d", Iso(op.Date));
         cmd.Parameters.AddWithValue("$n", (object?)op.Note ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$p", (object?)op.Person?.Trim() ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$base", op.BaseAmount is { } b ? Money.ToMinor(b) : DBNull.Value);
+        cmd.Parameters.AddWithValue("$rate", op.Rate is { } rt ? rt.ToString(CultureInfo.InvariantCulture) : DBNull.Value);
         return (long)cmd.ExecuteScalar()!;
     }
 
@@ -278,7 +289,7 @@ public sealed class LocalStore
     public IReadOnlyList<OperationRow> Operations(DateTime from, DateTime to) =>
         Read($"""
             SELECT o.id, o.kind, o.amount_minor, o.currency, o.to_amount_minor, o.date, o.note,
-                   w.name, tw.name, tw.currency, s.name, s.icon, s.color, c.name, c.icon, c.color, o.person
+                   w.name, tw.name, tw.currency, s.name, s.icon, s.color, c.name, c.icon, c.color, o.person, o.base_minor, o.fx_rate
             FROM operations o
             LEFT JOIN wallets w ON w.id = o.wallet_id
             LEFT JOIN wallets tw ON tw.id = o.to_wallet_id
@@ -293,7 +304,19 @@ public sealed class LocalStore
                 DateTime.ParseExact(r.GetString(5), "yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture),
                 r.IsDBNull(6) ? null : r.GetString(6),
                 Str(r, 7), Str(r, 8), Str(r, 9),
-                Str(r, 10), Str(r, 11), Str(r, 12), Str(r, 13), Str(r, 14), Str(r, 15), Str(r, 16)));
+                Str(r, 10), Str(r, 11), Str(r, 12), Str(r, 13), Str(r, 14), Str(r, 15), Str(r, 16),
+                r.IsDBNull(17) ? null : Money.FromMinor(r.GetInt64(17)),
+                r.IsDBNull(18) ? null : decimal.Parse(r.GetString(18), CultureInfo.InvariantCulture)));
+
+    /// <summary>The rate of the latest converted operation in that currency (fallback when no official rate is known).</summary>
+    public decimal? LastUsedRate(string currency)
+    {
+        using var c = Open();
+        using var cmd = c.CreateCommand();
+        cmd.CommandText = "SELECT fx_rate FROM operations WHERE currency = $cur AND fx_rate IS NOT NULL ORDER BY date DESC, id DESC LIMIT 1";
+        cmd.Parameters.AddWithValue("$cur", currency);
+        return cmd.ExecuteScalar() is string v ? decimal.Parse(v, CultureInfo.InvariantCulture) : null;
+    }
 
     /// <summary>Removes an operation; balances are computed from operations, so they follow at once.</summary>
     public void DeleteOperation(long id)

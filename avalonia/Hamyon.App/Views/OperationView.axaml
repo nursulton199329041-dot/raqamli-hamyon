@@ -127,6 +127,22 @@
             </ItemsControl>
           </ScrollViewer>
 
+          <!-- expense from a dollar (non-so'm) wallet: rate, and what the category is charged in so'm -->
+          <Border IsVisible="{Binding NeedsRate}" CornerRadius="18" Padding="12" Background="{StaticResource GlassBrush}"
+                  BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1">
+            <StackPanel Spacing="8">
+              <TextBlock Classes="label" Text="{Binding RateLabel}" />
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBox Text="{Binding RateText}" CornerRadius="14" FontSize="17" FontWeight="SemiBold" />
+                <TextBlock Grid.Column="1" Text="UZS" Margin="10,0,4,0" VerticalAlignment="Center" FontWeight="Bold" Foreground="{StaticResource TextSecondaryBrush}" />
+              </Grid>
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Text="{Binding RateHint}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Text="{Binding BaseText}" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" />
+              </Grid>
+            </StackPanel>
+          </Border>
+
           <!-- received amount when currencies differ -->
           <StackPanel Spacing="6" IsVisible="{Binding NeedsToAmount}">
             <TextBlock Classes="label" Text="{l:T received_amount}" />

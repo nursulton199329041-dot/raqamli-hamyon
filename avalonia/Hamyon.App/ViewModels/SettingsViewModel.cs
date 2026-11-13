@@ -19,6 +19,8 @@ public partial class SettingsViewModel : ViewModelBase
     private readonly Func<ViewModelBase> _debts;
     private readonly Action _languageChanged;
     private readonly Action _wiped;
+    private readonly Func<string, string?> _getPref;
+    private readonly Action<string, string> _setPref;
 
     public ObservableCollection<OptionVm> Languages { get; } = new();
     public ObservableCollection<ChoiceVm> Accents { get; } = new();
@@ -27,8 +29,12 @@ public partial class SettingsViewModel : ViewModelBase
     public string Version => $"{L.T("version")} {Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.0.0"}";
 
     public SettingsViewModel(LocalStore store, Action<ViewModelBase> navigate, Func<CatalogKind, ViewModelBase> catalog,
-        Func<ViewModelBase> debts, Action languageChanged, Action wiped)
+        Func<ViewModelBase> debts, Action languageChanged, Action wiped,
+        Func<string, string?>? getPref = null, Action<string, string>? setPref = null)
     {
+        // app-wide preferences (language, accent) live in the profile index; tests may keep them in the book
+        _getPref = getPref ?? store.GetSetting;
+        _setPref = setPref ?? store.SetSetting;
         _store = store;
         _navigate = navigate;
         _catalog = catalog;
@@ -39,7 +45,7 @@ public partial class SettingsViewModel : ViewModelBase
         foreach (var (lang, title) in new[] { (Lang.Uz, "O‘zbekcha"), (Lang.Ru, "Русский"), (Lang.En, "English") })
             Languages.Add(new OptionVm { Key = lang.ToString(), Title = title, IsSelected = L.Current == lang });
 
-        var accent = store.GetSetting("accent") ?? Appearance.DefaultAccent;
+        var accent = _getPref("accent") ?? Appearance.DefaultAccent;
         var i = 0;
         foreach (var hex in Appearance.Accents)
             Accents.Add(new ChoiceVm { Id = i++, Name = hex, Icon = "check", Color = hex, IsSelected = string.Equals(hex, accent, StringComparison.OrdinalIgnoreCase) });
@@ -51,7 +57,7 @@ public partial class SettingsViewModel : ViewModelBase
         if (o.IsSelected) return;
         foreach (var x in Languages) x.IsSelected = x == o;
         L.Current = Enum.Parse<Lang>(o.Key);
-        _store.SetSetting("lang", o.Key);
+        _setPref("lang", o.Key);
         _languageChanged();
     }
 
@@ -59,7 +65,7 @@ public partial class SettingsViewModel : ViewModelBase
     private void SelectAccent(ChoiceVm c)
     {
         foreach (var x in Accents) x.IsSelected = x == c;
-        _store.SetSetting("accent", c.Color);
+        _setPref("accent", c.Color);
         Appearance.ApplyAccent(c.Color);
     }
 

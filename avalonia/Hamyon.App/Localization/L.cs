@@ -92,6 +92,13 @@ public static class L
         ["err_person"] = ["Kimligini yozing", "Укажите, кто", "Enter who"],
         ["err_wallet"] = ["Hamyonni tanlang", "Выберите кошелёк", "Choose a wallet"],
 
+        // exchange rate (expense from a non-so'm wallet)
+        ["rate_label"] = ["KURS: 1 {0} =", "КУРС: 1 {0} =", "RATE: 1 {0} ="],
+        ["rate_hint_cbu"] = ["Markaziy bank kursi", "Курс Центробанка", "Central Bank rate"],
+        ["rate_hint_last"] = ["Oxirgi ma’lum kurs", "Последний известный курс", "Last known rate"],
+        ["rate_hint_manual"] = ["Kursni kiriting", "Введите курс", "Enter the rate"],
+        ["err_rate"] = ["{0} kursini kiriting", "Введите курс {0}", "Enter the {0} rate"],
+
         // history
         ["search"] = ["Qidirish", "Поиск", "Search"],
         ["saldo"] = ["SALDO", "САЛЬДО", "NET"],
@@ -141,6 +148,12 @@ public static class L
         ["archive"] = ["ARXIVLASH", "В АРХИВ", "ARCHIVE"],
         ["err_name"] = ["Nomini yozing", "Введите название", "Enter a name"],
         ["err_archive_balance"] = ["Balansi 0 bo‘lmagan hamyonni arxivlab bo‘lmaydi", "Нельзя архивировать кошелёк с ненулевым балансом", "A wallet with a non-zero balance can't be archived"],
+
+        // profiles
+        ["profiles"] = ["PROFILLAR", "ПРОФИЛИ", "PROFILES"],
+        ["profiles_hint"] = ["Har bir profilning o‘z hamyonlari, toifalari va yozuvlari bor.", "У каждого профиля свои кошельки, категории и записи.", "Each profile has its own wallets, categories and records."],
+        ["new_profile"] = ["YANGI PROFIL", "НОВЫЙ ПРОФИЛЬ", "NEW PROFILE"],
+        ["profile_hint"] = ["Masalan: Oila, Biznes", "Например: Семья, Бизнес", "e.g. Family, Business"],
 
         // debts
         ["no_debts"] = ["Ochiq qarzlar yo‘q", "Открытых долгов нет", "No open debts"],

@@ -1,0 +1,98 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="using:Hamyon.App.Localization"
+             xmlns:vm="using:Hamyon.App.ViewModels"
+             xmlns:c="using:Hamyon.App.Controls"
+             x:Class="Hamyon.App.Views.ProfilesView"
+             x:DataType="vm:ProfilesViewModel">
+  <Border Background="#F7140709" CornerRadius="30,30,0,0" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1,1,1,0"
+          BoxShadow="0 -12 40 0 #80000000">
+    <StackPanel Margin="18,10,18,20" Spacing="12">
+      <Border Width="40" Height="5" CornerRadius="3" Background="#33FFECE4" HorizontalAlignment="Center" />
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBlock Classes="label" Text="{l:T profiles}" Foreground="{StaticResource TextBrush}" FontSize="13.5" VerticalAlignment="Center" />
+        <Button Grid.Column="1" Classes="flat" Command="{Binding CloseCommand}">
+          <Border Width="40" Height="40" CornerRadius="20" Background="{StaticResource GlassStrongBrush}">
+            <c:Glyph Kind="close" Foreground="{StaticResource TextBrush}" Width="18" Height="18" />
+          </Border>
+        </Button>
+      </Grid>
+      <TextBlock Text="{l:T profiles_hint}" FontSize="12.5" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap" />
+
+      <!-- list -->
+      <Border Classes="card" Padding="8,4" IsVisible="{Binding !IsEditing}">
+        <ItemsControl ItemsSource="{Binding Items}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:ProfileItemVm">
+              <Grid ColumnDefinitions="*,Auto">
+                <Button Classes="flat" Command="{Binding $parent[UserControl].((vm:ProfilesViewModel)DataContext).SelectCommand}" CommandParameter="{Binding}">
+                  <Grid ColumnDefinitions="Auto,*,Auto" Margin="6,10" Background="Transparent">
+                    <Border Width="42" Height="42" CornerRadius="21" Background="{Binding Color, Converter={StaticResource HexBrush}}">
+                      <TextBlock Text="{Binding Initial}" FontWeight="Bold" FontSize="17" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                 Foreground="{Binding $parent[Border].Background, Converter={StaticResource InkOn}}" />
+                    </Border>
+                    <TextBlock Grid.Column="1" Margin="12,0" Text="{Binding Name}" FontWeight="SemiBold" FontSize="16"
+                               Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                    <c:Glyph Grid.Column="2" Kind="check" Foreground="{DynamicResource AccentBrush}" Width="20" Height="20" Thickness="2.4"
+                             IsVisible="{Binding IsCurrent}" VerticalAlignment="Center" />
+                  </Grid>
+                </Button>
+                <Button Grid.Column="1" Classes="flat" VerticalAlignment="Center" Margin="6,0"
+                        Command="{Binding $parent[UserControl].((vm:ProfilesViewModel)DataContext).EditCommand}" CommandParameter="{Binding}">
+                  <Border Width="38" Height="38" CornerRadius="19" Background="{StaticResource GlassBrush}">
+                    <c:Glyph Kind="edit" Foreground="{StaticResource TextSecondaryBrush}" Width="17" Height="17" />
+                  </Border>
+                </Button>
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </Border>
+      <Button Classes="flat" Command="{Binding NewCommand}" IsVisible="{Binding !IsEditing}">
+        <Border Height="52" CornerRadius="26" Background="{DynamicResource AccentBrush}">
+          <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <c:Glyph Kind="plus" Foreground="{Binding $parent[Border].Background, Converter={StaticResource InkOn}}" Width="18" Height="18" Thickness="2.2" />
+            <TextBlock Classes="label" Text="{l:T new_profile}" FontWeight="Bold" FontSize="14"
+                       Foreground="{Binding $parent[Border].Background, Converter={StaticResource InkOn}}" />
+          </StackPanel>
+        </Border>
+      </Button>
+
+      <!-- create / edit -->
+      <StackPanel Spacing="10" IsVisible="{Binding IsEditing}">
+        <TextBlock Text="{Binding EditTitle}" FontSize="20" FontWeight="Bold" Foreground="{StaticResource TextBrush}" />
+        <TextBlock Classes="label" Text="{l:T name}" />
+        <TextBox Text="{Binding EditName}" Watermark="{l:T profile_hint}" CornerRadius="14" FontSize="16" />
+        <TextBlock Classes="label" Text="{l:T color}" />
+        <ItemsControl ItemsSource="{Binding Colors}">
+          <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:ChoiceVm">
+              <Button Classes="flat" Margin="4" Command="{Binding $parent[UserControl].((vm:ProfilesViewModel)DataContext).SelectColorCommand}" CommandParameter="{Binding}">
+                <Panel Width="36" Height="36">
+                  <Border CornerRadius="18" Background="{Binding Color, Converter={StaticResource HexBrush}}" />
+                  <Border CornerRadius="18" BorderBrush="{StaticResource TextBrush}" BorderThickness="3" IsVisible="{Binding IsSelected}" />
+                </Panel>
+              </Button>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <TextBlock Text="{Binding Error}" IsVisible="{Binding Error, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                   Foreground="{StaticResource ExpenseBrush}" FontWeight="SemiBold" />
+        <Grid ColumnDefinitions="*,10,*">
+          <Button Classes="flat" Command="{Binding CancelEditCommand}">
+            <Border Height="50" CornerRadius="25" Background="{StaticResource GlassStrongBrush}">
+              <TextBlock Text="{l:T cancel}" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
+          </Button>
+          <Button Grid.Column="2" Classes="flat" Command="{Binding SaveEditCommand}">
+            <Border Height="50" CornerRadius="25" Background="{DynamicResource AccentBrush}">
+              <TextBlock Classes="label" Text="{l:T save}" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"
+                         Foreground="{Binding $parent[Border].Background, Converter={StaticResource InkOn}}" />
+            </Border>
+          </Button>
+        </Grid>
+      </StackPanel>
+    </StackPanel>
+  </Border>
+</UserControl>

@@ -24,6 +24,7 @@ public partial class TabVm : ObservableObject
 public partial class MainViewModel : ViewModelBase
 {
     private readonly LocalStore _store;
+    private readonly ProfileStore? _profiles;
 
     public HomeViewModel Home { get; }
     public HistoryViewModel History { get; }
@@ -39,13 +40,21 @@ public partial class MainViewModel : ViewModelBase
     /// <summary>Raised after a language change: the view tree is rebuilt so every {l:T} string is read again.</summary>
     public event Action? LanguageChanged;
 
-    public MainViewModel() : this(new LocalStore()) { }
+    /// <summary>Raised after switching profile: the root view starts a fresh shell on the chosen book.</summary>
+    public event Action? ProfileSwitched;
 
-    public MainViewModel(LocalStore store)
+    public ProfileStore? Profiles => _profiles;
+
+    public MainViewModel() : this(new ProfileStore()) { }
+
+    public MainViewModel(ProfileStore profiles) : this(profiles.OpenCurrent(), profiles) { }
+
+    public MainViewModel(LocalStore store, ProfileStore? profiles = null)
     {
         _store = store;
-        if (Enum.TryParse<Lang>(store.GetSetting("lang"), out var lang)) L.Current = lang;
-        Appearance.ApplyAccent(store.GetSetting("accent"));
+        _profiles = profiles;
+        if (Enum.TryParse<Lang>(GetPref("lang"), out var lang)) L.Current = lang;
+        Appearance.ApplyAccent(GetPref("accent"));
 
         Home = new HomeViewModel(store);
         History = new HistoryViewModel(store, changed: RefreshAll);
@@ -55,11 +64,14 @@ public partial class MainViewModel : ViewModelBase
             catalog: kind => new CatalogViewModel(store, kind, back: () => Current = Settings, sheet: s => Sheet = s, changed: RefreshAll),
             debts: NewDebts,
             languageChanged: () => { RefreshAll(); LanguageChanged?.Invoke(); },
-            wiped: RefreshAll);
+            wiped: RefreshAll,
+            getPref: GetPref, setPref: SetPref);
 
         Home.OpenOperation += (kind, from, to) =>
             Sheet = new OperationViewModel(store, kind, from, to, onSaved: () => { Sheet = null; RefreshAll(); }, onClose: () => Sheet = null);
         Home.OpenDebts += () => Current = NewDebts();
+        Home.OpenProfiles += OpenProfiles;
+        if (profiles is not null) { var p = profiles.Current; Home.SetProfile(p.Name, p.Color); }
 
         Tabs =
         [
@@ -69,6 +81,20 @@ public partial class MainViewModel : ViewModelBase
             new TabVm { Key = "settings", Icon = "settings" },
         ];
         Current = Home;
+    }
+
+    private string? GetPref(string key) => _profiles is not null ? _profiles.GetPref(key) : _store.GetSetting(key);
+
+    private void SetPref(string key, string value)
+    {
+        if (_profiles is not null) _profiles.SetPref(key, value);
+        else _store.SetSetting(key, value);
+    }
+
+    private void OpenProfiles()
+    {
+        if (_profiles is null) return;
+        Sheet = new ProfilesViewModel(_profiles, switchTo: id => { _profiles.CurrentId = id; Sheet = null; ProfileSwitched?.Invoke(); }, close: () => Sheet = null);
     }
 
     private DebtsViewModel NewDebts() =>

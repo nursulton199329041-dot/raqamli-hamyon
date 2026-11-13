@@ -20,10 +20,16 @@ public partial class MainView : UserControl
 
     private void OnDataContextChanged(object? sender, EventArgs e)
     {
-        if (_vm is not null) _vm.LanguageChanged -= Rebuild;
+        if (_vm is not null) { _vm.LanguageChanged -= Rebuild; _vm.ProfileSwitched -= SwitchProfile; }
         _vm = DataContext as MainViewModel;
-        if (_vm is not null) _vm.LanguageChanged += Rebuild;
+        if (_vm is not null) { _vm.LanguageChanged += Rebuild; _vm.ProfileSwitched += SwitchProfile; }
         Rebuild();
+    }
+
+    /// <summary>Another profile = another book: start a fresh shell on it.</summary>
+    private void SwitchProfile()
+    {
+        if (_vm?.Profiles is { } profiles) DataContext = new MainViewModel(profiles);
     }
 
     private void Rebuild() => Host.Content = _vm is null ? null : new ShellView { DataContext = _vm };

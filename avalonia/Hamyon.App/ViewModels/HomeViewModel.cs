@@ -94,6 +94,23 @@ public partial class HomeViewModel : ViewModelBase
 
     [RelayCommand] private void ShowDebts() => OpenDebts?.Invoke();
 
+    // ---- current profile (header avatar + top-right switcher) ----
+
+    [ObservableProperty] public partial string ProfileName { get; set; } = "";
+    [ObservableProperty] public partial string ProfileColor { get; set; } = "#FBF5F2";
+    public string ProfileInitial => ProfileName.Length > 0 ? ProfileName[..1].ToUpperInvariant() : "H";
+
+    public void SetProfile(string name, string color)
+    {
+        ProfileName = name;
+        ProfileColor = color;
+        OnPropertyChanged(nameof(ProfileInitial));
+    }
+
+    public event Action? OpenProfiles;
+
+    [RelayCommand] private void ShowProfiles() => OpenProfiles?.Invoke();
+
     [RelayCommand] private void ToggleBalance() => HideBalance = !HideBalance;
 
     [RelayCommand] private void NextPeriod() => Period = Period.Of(Period.Next(), DateTime.Now);

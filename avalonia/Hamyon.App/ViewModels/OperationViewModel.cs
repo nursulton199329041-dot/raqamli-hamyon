@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.Input;
 using Hamyon.App.Data;
 using Hamyon.App.Localization;
 using Hamyon.App.Models;
+using Hamyon.App.Services;
 
 namespace Hamyon.App.ViewModels;
 
@@ -84,6 +85,52 @@ public partial class OperationViewModel : ViewModelBase
     public bool NeedsToAmount => Kind == OpKind.Transfer && TargetWallet is { } t && SourceWallet is { } s && t.Currency != s.Currency;
     public string ToCurrency => TargetWallet?.Currency ?? "";
 
+    // ---- expense from a wallet that is not in so'm: the category gets the so'm amount at a rate ----
+
+    /// <summary>The main currency of the book: reports and categories are kept in it.</summary>
+    public const string BaseCurrency = "UZS";
+
+    [ObservableProperty] public partial string? RateText { get; set; }
+    [ObservableProperty] public partial string RateHint { get; set; } = "";
+    /// <summary>true once the user typed a rate: a late official rate must not overwrite it</summary>
+    private bool _rateTyped;
+    private bool _settingRate;
+
+    public bool NeedsRate => Kind == OpKind.Expense && SourceWallet is { } w && w.Currency != BaseCurrency;
+    public string RateLabel => L.T("rate_label", Currency);
+    public decimal? Rate => Calc.Evaluate((RateText ?? "").Trim());
+    public string BaseText => Calc.Evaluate(Expression) is { } a && Rate is { } r && r > 0
+        ? "≈ " + Money.Format(decimal.Round(a * r, 2, MidpointRounding.AwayFromZero), BaseCurrency)
+        : "";
+
+    partial void OnRateTextChanged(string? value)
+    {
+        if (!_settingRate) _rateTyped = true;
+        Error = null;
+        OnPropertyChanged(nameof(BaseText));
+    }
+
+    private void SetRate(decimal? rate, string hintKey)
+    {
+        _settingRate = true;
+        RateText = rate is { } r ? Calc.Plain(r) : "";
+        _settingRate = false;
+        RateHint = L.T(rate is null ? "rate_hint_manual" : hintKey);
+    }
+
+    /// <summary>Known rate at once, then the Central Bank's rate for the chosen day when it arrives.</summary>
+    private async void LoadRate()
+    {
+        if (!NeedsRate) return;
+        var cur = Currency;
+        if (!_rateTyped) SetRate(Rates.Known(_store, cur), "rate_hint_last");
+        var day = Days.FirstOrDefault(d => d.IsSelected)?.Date ?? DateTime.Today;
+        var official = await Rates.Fetch(cur, day);
+        if (official is not { } r || cur != Currency || !NeedsRate) return;
+        if (day.Date == DateTime.Today) Rates.Save(_store, cur, r);
+        if (!_rateTyped) SetRate(r, "rate_hint_cbu");
+    }
+
     /// <summary>the wallet whose currency the amount is in</summary>
     private Wallet? SourceWallet => Kind == OpKind.Income ? Wallet(To) : Wallet(From);
     private Wallet? TargetWallet => Kind == OpKind.Transfer ? Wallet(To) : null;
@@ -126,6 +173,7 @@ public partial class OperationViewModel : ViewModelBase
             var d = today.AddDays(-i);
             Days.Add(new DayVm { Date = d, Caption = i == 0 ? L.T("today") : i == 1 ? L.T("yesterday") : L.Weekday(d.DayOfWeek), IsSelected = i == 0 });
         }
+        LoadRate();
     }
 
     private static void Pick(IEnumerable<ChoiceVm> list, long? id)
@@ -138,13 +186,19 @@ public partial class OperationViewModel : ViewModelBase
         Error = null;
         OnPropertyChanged(nameof(AmountText));
         OnPropertyChanged(nameof(ShowExpression));
+        OnPropertyChanged(nameof(BaseText));
     }
 
     [RelayCommand] private void Press(string key) { if (key.Length > 0) Expression = Calc.Press(Expression, key); }
 
     [RelayCommand] private void SelectFrom(ChoiceVm c) { Pick(From, c.Id); Changed(); }
     [RelayCommand] private void SelectTo(ChoiceVm c) { Pick(To, c.Id); Changed(); }
-    [RelayCommand] private void SelectDay(DayVm d) { foreach (var x in Days) x.IsSelected = x == d; }
+    [RelayCommand]
+    private void SelectDay(DayVm d)
+    {
+        foreach (var x in Days) x.IsSelected = x == d;
+        LoadRate(); // the official rate is per day
+    }
     [RelayCommand] private void Close() => _onClose();
 
     private void Changed()
@@ -154,6 +208,11 @@ public partial class OperationViewModel : ViewModelBase
         OnPropertyChanged(nameof(AmountText));
         OnPropertyChanged(nameof(NeedsToAmount));
         OnPropertyChanged(nameof(ToCurrency));
+        OnPropertyChanged(nameof(NeedsRate));
+        OnPropertyChanged(nameof(RateLabel));
+        OnPropertyChanged(nameof(BaseText));
+        _rateTyped = false; // another wallet may be in another currency
+        LoadRate();
     }
 
     [RelayCommand]
@@ -193,7 +252,16 @@ public partial class OperationViewModel : ViewModelBase
                 return null;
             case OpKind.Expense:
                 if (SourceWallet is { } w && w.Balance < amount) return L.T("err_funds", Money.Format(w.Balance, w.Currency));
-                op = new Operation(0, OpKind.Expense, amount.Value, Currency, from.Id, null, null, null, to.Id, date, note);
+                decimal? rate = null, baseAmount = null;
+                if (NeedsRate)
+                {
+                    // wallet loses its own currency; the category is charged in so'm at this rate
+                    if (Rate is not { } r || r <= 0) return L.T("err_rate", Currency);
+                    rate = r;
+                    baseAmount = decimal.Round(amount.Value * r, 2, MidpointRounding.AwayFromZero);
+                }
+                op = new Operation(0, OpKind.Expense, amount.Value, Currency, from.Id, null, null, null, to.Id, date, note,
+                    BaseAmount: baseAmount, Rate: rate);
                 return null;
             default:
                 if (from.Id == to.Id) return L.T("err_other_wallet");

@@ -15,16 +15,18 @@ public sealed record Category(long Id, string Name, string Icon, string Color);
 /// <summary>
 /// One money movement. Amounts are stored as integer minor units (tiyin / cent) so no floating point ever touches money.
 /// Income: SourceId -> WalletId. Expense: WalletId -> CategoryId. Transfer: WalletId -> ToWalletId (ToAmount in the target currency).
-/// Lend / Borrow: WalletId and Person.
+/// Lend / Borrow: WalletId and Person. Income / expense in a wallet that is not in so'm also keep BaseAmount (UZS) and Rate.
 /// </summary>
 public sealed record Operation(
     long Id, OpKind Kind, decimal Amount, string Currency,
     long? WalletId, long? ToWalletId, decimal? ToAmount,
-    long? SourceId, long? CategoryId, DateTime Date, string? Note, string? Person = null);
+    long? SourceId, long? CategoryId, DateTime Date, string? Note, string? Person = null,
+    decimal? BaseAmount = null, decimal? Rate = null);
 
 /// <summary>History list row: the operation plus display names of its wallet(s), source and category.</summary>
 public sealed record OperationRow(
     long Id, OpKind Kind, decimal Amount, string Currency, decimal? ToAmount, DateTime Date, string? Note,
     string? WalletName, string? ToWalletName, string? ToCurrency,
     string? SourceName, string? SourceIcon, string? SourceColor,
-    string? CategoryName, string? CategoryIcon, string? CategoryColor, string? Person = null);
+    string? CategoryName, string? CategoryIcon, string? CategoryColor, string? Person = null,
+    decimal? BaseAmount = null, decimal? Rate = null);

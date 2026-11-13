@@ -127,9 +127,11 @@ public partial class HistoryViewModel : ViewModelBase
         OpKind.Expense => new HistoryRowVm
         {
             Id = o.Id, Kind = o.Kind, Note = o.Note,
-            Title = o.CategoryName ?? L.T("op_expense"), Subtitle = o.WalletName ?? "",
+            // a converted expense shows the so'm charged; the wallet's own amount and the rate go underneath
+            Title = o.CategoryName ?? L.T("op_expense"),
+            Subtitle = o.BaseAmount is null ? o.WalletName ?? "" : $"{o.WalletName} · {Money.Format(o.Amount, o.Currency)} × {Calc.Plain(o.Rate ?? 0)}",
             Icon = o.CategoryIcon ?? "other", Color = o.CategoryColor ?? "#FF6B6B",
-            Amount = "−" + Money.Format(o.Amount, o.Currency),
+            Amount = "−" + (o.BaseAmount is { } b ? Money.Format(b, OperationViewModel.BaseCurrency) : Money.Format(o.Amount, o.Currency)),
         },
         OpKind.Lend or OpKind.Borrow => new HistoryRowVm
         {
@@ -154,7 +156,9 @@ public partial class HistoryViewModel : ViewModelBase
             .Any(s => s?.Contains(q, StringComparison.CurrentCultureIgnoreCase) == true);
 
     private static Dictionary<string, decimal> Sum(IEnumerable<OperationRow> ops) =>
-        ops.GroupBy(o => o.Currency).ToDictionary(g => g.Key, g => g.Sum(o => o.Amount));
+        // converted operations count in so'm, like in the reports
+        ops.GroupBy(o => o.BaseAmount is null ? o.Currency : OperationViewModel.BaseCurrency)
+           .ToDictionary(g => g.Key, g => g.Sum(o => o.BaseAmount ?? o.Amount));
 
     private static Dictionary<string, decimal> Net(Dictionary<string, decimal> inc, Dictionary<string, decimal> exp)
     {
