@@ -12,6 +12,7 @@
     <conv:HexBrushConverter x:Key="HexBrush" />
     <conv:ShareWidthConverter x:Key="ShareWidth" />
     <conv:InkOnConverter x:Key="InkOn" />
+    <conv:InkOnHexConverter x:Key="InkOnHex" />
   </Application.Resources>
 
   <Application.DataTemplates>
@@ -25,6 +26,8 @@
     <DataTemplate DataType="vm:DebtsViewModel"><views:DebtsView /></DataTemplate>
     <DataTemplate DataType="vm:ProfilesViewModel"><views:ProfilesView /></DataTemplate>
     <DataTemplate DataType="vm:ItemViewModel"><views:ItemView /></DataTemplate>
+    <DataTemplate DataType="vm:LockViewModel"><views:LockView /></DataTemplate>
+    <DataTemplate DataType="vm:ExportViewModel"><views:ExportView /></DataTemplate>
   </Application.DataTemplates>
 
   <Application.Styles>

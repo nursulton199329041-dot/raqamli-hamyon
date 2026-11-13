@@ -1,0 +1,69 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="using:Hamyon.App.Localization"
+             xmlns:vm="using:Hamyon.App.ViewModels"
+             xmlns:c="using:Hamyon.App.Controls"
+             x:Class="Hamyon.App.Views.LockView"
+             x:DataType="vm:LockViewModel">
+  <UserControl.Styles>
+    <Style Selector="Border.dot">
+      <Setter Property="Width" Value="16" />
+      <Setter Property="Height" Value="16" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="BorderThickness" Value="2" />
+      <Setter Property="BorderBrush" Value="{StaticResource TextBrush}" />
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="Border.dot.on">
+      <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+    </Style>
+  </UserControl.Styles>
+
+  <!-- covers the whole app (tab bar included) -->
+  <Grid RowDefinitions="*,Auto">
+    <Grid.Background>
+      <LinearGradientBrush StartPoint="20%,0%" EndPoint="50%,100%">
+        <GradientStop Color="{StaticResource BgTop}" Offset="0" />
+        <GradientStop Color="{StaticResource BgBottom}" Offset="0.8" />
+      </LinearGradientBrush>
+    </Grid.Background>
+
+    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="18">
+      <Border Width="72" Height="72" CornerRadius="22" Background="{StaticResource GlassStrongBrush}" HorizontalAlignment="Center">
+        <c:Glyph Kind="lock" Foreground="{DynamicResource AccentBrush}" Width="34" Height="34" />
+      </Border>
+      <TextBlock Text="{Binding Title}" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" HorizontalAlignment="Center" />
+      <StackPanel Orientation="Horizontal" Spacing="18" HorizontalAlignment="Center">
+        <Border Classes="dot" Classes.on="{Binding Dot1}" />
+        <Border Classes="dot" Classes.on="{Binding Dot2}" />
+        <Border Classes="dot" Classes.on="{Binding Dot3}" />
+        <Border Classes="dot" Classes.on="{Binding Dot4}" />
+      </StackPanel>
+      <TextBlock Text="{Binding Error}" Foreground="{StaticResource ExpenseBrush}" FontWeight="SemiBold" HorizontalAlignment="Center" MinHeight="20" />
+    </StackPanel>
+
+    <StackPanel Grid.Row="1" Margin="0,0,0,40" Spacing="10" HorizontalAlignment="Center">
+      <ItemsControl ItemsSource="{Binding Keys}" Width="300">
+        <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="3" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:PinKey">
+            <Button Classes="flat" Margin="10" IsVisible="{Binding IsVisible}"
+                    Command="{Binding $parent[UserControl].((vm:LockViewModel)DataContext).PressCommand}" CommandParameter="{Binding Key}">
+              <Border Width="76" Height="76" CornerRadius="38" Background="#1AFFECE4">
+                <Panel>
+                  <TextBlock Text="{Binding Text}" FontSize="30" FontWeight="Medium" Foreground="{StaticResource TextBrush}"
+                             HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding !HasIcon}" />
+                  <c:Glyph Kind="{Binding Icon}" Foreground="{StaticResource TextBrush}" Width="30" Height="30" IsVisible="{Binding HasIcon}" />
+                </Panel>
+              </Border>
+            </Button>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+      <Button Classes="flat" Command="{Binding CancelCommand}" IsVisible="{Binding CanCancel}" HorizontalAlignment="Center">
+        <TextBlock Text="{l:T cancel}" FontSize="16" Foreground="{DynamicResource AccentBrush}" Padding="10" Background="Transparent" />
+      </Button>
+    </StackPanel>
+  </Grid>
+</UserControl>

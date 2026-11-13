@@ -6,10 +6,32 @@
              x:Class="Hamyon.App.Views.SettingsView"
              x:DataType="vm:SettingsViewModel">
   <UserControl.Styles>
-    <!-- one tappable settings row: badge, title, chevron -->
+    <!-- one settings row: badge, title (+ hint), value / chevron / switch -->
     <Style Selector="Grid.row">
-      <Setter Property="Margin" Value="6,10" />
+      <Setter Property="Margin" Value="6,11" />
       <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="Grid.row TextBlock.title">
+      <Setter Property="FontSize" Value="16" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+    </Style>
+    <Style Selector="Grid.row TextBlock.hint">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style Selector="Border.badge">
+      <Setter Property="Width" Value="36" />
+      <Setter Property="Height" Value="36" />
+      <Setter Property="CornerRadius" Value="11" />
+      <Setter Property="Margin" Value="0,0,12,0" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.sep">
+      <Setter Property="Height" Value="1" />
+      <Setter Property="Background" Value="{StaticResource GlassBorderBrush}" />
+      <Setter Property="Margin" Value="54,0,6,0" />
     </Style>
     <Style Selector="Border.seg">
       <Setter Property="CornerRadius" Value="16" />
@@ -25,86 +47,204 @@
       <Setter Property="HorizontalAlignment" Value="Center" />
     </Style>
     <Style Selector="Border.seg.on TextBlock">
-      <Setter Property="Foreground" Value="{DynamicResource OnAccentBrush}" />
+      <Setter Property="Foreground" Value="{Binding $parent[Border].Background, Converter={StaticResource InkOn}}" />
       <Setter Property="FontWeight" Value="Bold" />
     </Style>
   </UserControl.Styles>
 
   <ScrollViewer HorizontalScrollBarVisibility="Disabled">
     <StackPanel Margin="16,12,16,120" Spacing="12" MaxWidth="600">
-      <TextBlock Classes="label" Text="{l:T tab_settings}" Foreground="{StaticResource TextBrush}" FontSize="13.5" HorizontalAlignment="Center" Margin="0,12,0,4" />
+      <TextBlock Text="{l:T tab_settings}" FontSize="30" FontWeight="Bold" Foreground="{StaticResource TextBrush}" Margin="4,16,0,4"
+                 />
 
-      <!-- profiles -->
-      <Border Classes="card" Padding="8,4">
-        <Button Classes="flat" Command="{Binding OpenProfilesCommand}">
-          <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
-            <Border Width="38" Height="38" CornerRadius="19" Background="#8B5CF6"><c:Glyph Kind="users" Foreground="White" Width="18" Height="18" /></Border>
-            <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center">
-              <TextBlock Text="{l:T profiles_row}" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" />
-              <TextBlock Text="{l:T profiles_hint}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap" />
-            </StackPanel>
-            <c:Glyph Grid.Column="2" Kind="chevronRight" Foreground="{StaticResource TextSecondaryBrush}" Width="18" Height="18" />
-          </Grid>
-        </Button>
-      </Border>
-
-      <!-- language -->
-      <TextBlock Classes="label" Text="{l:T language}" Margin="4,0" />
-      <Border CornerRadius="20" Padding="3" Background="{StaticResource GlassBrush}" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1">
-        <ItemsControl ItemsSource="{Binding Languages}">
-          <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="1" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-          <ItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="vm:OptionVm">
-              <Button Classes="flat" Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).SelectLanguageCommand}" CommandParameter="{Binding}">
-                <Border Classes="seg" Classes.on="{Binding IsSelected}"><TextBlock Text="{Binding Title}" /></Border>
-              </Button>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
-      </Border>
-
-      <!-- accent colour -->
-      <TextBlock Classes="label" Text="{l:T accent}" Margin="4,8,4,0" />
-      <Border Classes="card">
-        <ItemsControl ItemsSource="{Binding Accents}">
-          <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel HorizontalAlignment="Center" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-          <ItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="vm:ChoiceVm">
-              <Button Classes="flat" Margin="5" Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).SelectAccentCommand}" CommandParameter="{Binding}">
-                <Panel Width="42" Height="42">
-                  <Border CornerRadius="21" Background="{Binding Color, Converter={StaticResource HexBrush}}" />
-                  <Border CornerRadius="21" BorderBrush="{StaticResource TextBrush}" BorderThickness="3" IsVisible="{Binding IsSelected}" />
-                  <c:Glyph Kind="check" Foreground="#1A0B0D" Width="18" Height="18" IsVisible="{Binding IsSelected}" HorizontalAlignment="Center" VerticalAlignment="Center" Thickness="2.4" />
-                </Panel>
-              </Button>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
-      </Border>
-
-      <!-- home screen: tick = shown -->
-      <TextBlock Classes="label" Text="{l:T home_screen}" Margin="4,8,4,0" />
-      <Border Classes="card" Padding="8,4">
+      <!-- ===== main group: profiles … delete data ===== -->
+      <Border Classes="card" Padding="10,2">
         <StackPanel>
-          <TextBlock Text="{l:T home_screen_hint}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="6,8,6,2" />
-          <ItemsControl ItemsSource="{Binding HomeBlocks}">
+          <Button Classes="flat" Command="{Binding OpenProfilesCommand}">
+            <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
+              <Border Classes="badge" Background="#8B5CF6"><c:Glyph Kind="users" Foreground="White" Width="18" Height="18" /></Border>
+              <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                <TextBlock Classes="title" Text="{l:T profiles_row}" />
+                <TextBlock Classes="hint" Text="{l:T profiles_hint}" />
+              </StackPanel>
+              <c:Glyph Grid.Column="2" Kind="chevronRight" Foreground="{StaticResource TextSecondaryBrush}" Width="18" Height="18" />
+            </Grid>
+          </Button>
+          <Border Classes="sep" />
+          <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
+            <Border Classes="badge" Background="#14B8A6"><c:Glyph Kind="coins" Foreground="White" Width="18" Height="18" /></Border>
+            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+              <TextBlock Classes="title" Text="{l:T main_currency}" />
+              <TextBlock Classes="hint" Text="{l:T main_currency_name}" />
+            </StackPanel>
+            <TextBlock Grid.Column="2" Text="so‘m" FontSize="20" FontWeight="Bold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
+          </Grid>
+          <Border Classes="sep" />
+          <Button Classes="flat" Command="{Binding ToggleBlockCommand}" CommandParameter="{Binding DebtsBlock}">
+            <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
+              <Border Classes="badge" Background="#F5A524"><c:Glyph Kind="handshake" Foreground="White" Width="18" Height="18" /></Border>
+              <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                <TextBlock Classes="title" Text="{l:T debts}" />
+                <TextBlock Classes="hint" Text="{l:T debts_switch_hint}" />
+              </StackPanel>
+              <c:Switch Grid.Column="2" IsOn="{Binding DebtsBlock.IsOn}" VerticalAlignment="Center" />
+            </Grid>
+          </Button>
+          <Border Classes="sep" />
+
+          <!-- panel settings: ticks for the home blocks -->
+          <Button Classes="flat" Command="{Binding TogglePanelCommand}">
+            <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
+              <Border Classes="badge" Background="#4D8DFF"><c:Glyph Kind="other" Foreground="White" Width="18" Height="18" /></Border>
+              <TextBlock Grid.Column="1" Classes="title" Text="{l:T panel_settings}" VerticalAlignment="Center" />
+              <c:Glyph Grid.Column="2" Kind="chevronDown" Foreground="{StaticResource TextSecondaryBrush}" Width="16" Height="16" />
+            </Grid>
+          </Button>
+          <StackPanel IsVisible="{Binding PanelOpen}" Margin="40,0,0,6">
+            <TextBlock Text="{l:T home_screen_hint}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="6,0,6,2" />
+            <ItemsControl ItemsSource="{Binding HomeBlocks}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:ToggleVm">
+                  <Button Classes="flat" Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).ToggleBlockCommand}" CommandParameter="{Binding}">
+                    <Grid ColumnDefinitions="Auto,*,Auto" Margin="6,8" Background="Transparent">
+                      <c:Glyph Kind="{Binding Icon}" Foreground="{StaticResource TextSecondaryBrush}" Width="18" Height="18" Margin="0,0,12,0" />
+                      <TextBlock Grid.Column="1" Text="{Binding Title}" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
+                      <Panel Grid.Column="2" Width="26" Height="26">
+                        <Border CornerRadius="8" BorderThickness="2" BorderBrush="{StaticResource TextSecondaryBrush}" IsVisible="{Binding !IsOn}" />
+                        <Border CornerRadius="8" Background="{DynamicResource AccentBrush}" IsVisible="{Binding IsOn}">
+                          <c:Glyph Kind="check" Width="15" Height="15" Thickness="2.6"
+                                   Foreground="{Binding $parent[Border].Background, Converter={StaticResource InkOn}}" />
+                        </Border>
+                      </Panel>
+                    </Grid>
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+          <Border Classes="sep" />
+
+          <Button Classes="flat" Command="{Binding OpenExportCommand}">
+            <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
+              <Border Classes="badge" Background="#22A06B"><c:Glyph Kind="download" Foreground="White" Width="18" Height="18" /></Border>
+              <TextBlock Grid.Column="1" Classes="title" Text="{l:T export}" VerticalAlignment="Center" />
+              <c:Glyph Grid.Column="2" Kind="chevronRight" Foreground="{StaticResource TextSecondaryBrush}" Width="18" Height="18" />
+            </Grid>
+          </Button>
+          <Border Classes="sep" />
+          <Button Classes="flat" Command="{Binding OpenWalletsCommand}">
+            <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
+              <Border Classes="badge" Background="#3B82F6"><c:Glyph Kind="wallet" Foreground="White" Width="18" Height="18" /></Border>
+              <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                <TextBlock Classes="title" Text="{l:T update_balances}" />
+                <TextBlock Classes="hint" Text="{l:T update_balances_hint}" />
+              </StackPanel>
+              <c:Glyph Grid.Column="2" Kind="chevronRight" Foreground="{StaticResource TextSecondaryBrush}" Width="18" Height="18" />
+            </Grid>
+          </Button>
+          <Border Classes="sep" />
+
+          <!-- delete: operations only, or everything (second tap confirms) -->
+          <Button Classes="flat" Command="{Binding ToggleWipeCommand}">
+            <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
+              <Border Classes="badge" Background="#EF4444"><c:Glyph Kind="trash" Foreground="White" Width="18" Height="18" /></Border>
+              <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                <TextBlock Classes="title" Text="{l:T wipe}" Foreground="{StaticResource ExpenseBrush}" />
+                <TextBlock Classes="hint" Text="{l:T wipe_hint2}" />
+              </StackPanel>
+              <c:Glyph Grid.Column="2" Kind="chevronDown" Foreground="{StaticResource TextSecondaryBrush}" Width="16" Height="16" />
+            </Grid>
+          </Button>
+          <StackPanel IsVisible="{Binding WipeOpen}" Spacing="8" Margin="6,0,6,12">
+            <TextBlock Text="{l:T wipe_sure}" Foreground="{StaticResource TextBrush}" TextWrapping="Wrap" />
+            <Button Classes="flat" Command="{Binding WipeOperationsCommand}">
+              <Border Height="44" CornerRadius="22" Background="#26FF6B6B" BorderBrush="{StaticResource ExpenseBrush}" BorderThickness="1">
+                <TextBlock Text="{l:T wipe_ops}" Foreground="{StaticResource ExpenseBrush}" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+              </Border>
+            </Button>
+            <Button Classes="flat" Command="{Binding ArmWipeCommand}" IsVisible="{Binding !WipeArmed}">
+              <Border Height="44" CornerRadius="22" Background="#26FF6B6B" BorderBrush="{StaticResource ExpenseBrush}" BorderThickness="1">
+                <TextBlock Text="{l:T wipe_all}" Foreground="{StaticResource ExpenseBrush}" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+              </Border>
+            </Button>
+            <Button Classes="flat" Command="{Binding WipeCommand}" IsVisible="{Binding WipeArmed}">
+              <Border Height="44" CornerRadius="22" Background="{StaticResource ExpenseBrush}">
+                <TextBlock Text="{l:T wipe_confirm}" Foreground="White" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+              </Border>
+            </Button>
+          </StackPanel>
+        </StackPanel>
+      </Border>
+
+      <!-- ===== security & look ===== -->
+      <Border Classes="card" Padding="10,2">
+        <StackPanel>
+          <Button Classes="flat" Command="{Binding TogglePinCommand}">
+            <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
+              <Border Classes="badge" Background="#64748B"><c:Glyph Kind="lock" Foreground="White" Width="18" Height="18" /></Border>
+              <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                <TextBlock Classes="title" Text="{l:T password}" />
+                <TextBlock Classes="hint" Text="{l:T password_hint}" />
+              </StackPanel>
+              <c:Switch Grid.Column="2" IsOn="{Binding PinOn}" VerticalAlignment="Center" />
+            </Grid>
+          </Button>
+          <StackPanel IsVisible="{Binding BiometricAvailable}">
+            <Border Classes="sep" />
+            <Button Classes="flat" Command="{Binding ToggleBiometricCommand}">
+              <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
+                <Border Classes="badge" Background="#34C759"><c:Glyph Kind="faceid" Foreground="White" Width="19" Height="19" /></Border>
+                <TextBlock Grid.Column="1" Classes="title" Text="{Binding BiometricName}" VerticalAlignment="Center" />
+                <c:Switch Grid.Column="2" IsOn="{Binding BiometricOn}" VerticalAlignment="Center" />
+              </Grid>
+            </Button>
+          </StackPanel>
+          <Border Classes="sep" />
+
+          <Button Classes="flat" Command="{Binding ToggleLanguageCommand}">
+            <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
+              <Border Classes="badge" Background="#0EA5E9"><c:Glyph Kind="globe" Foreground="White" Width="18" Height="18" /></Border>
+              <TextBlock Grid.Column="1" Classes="title" Text="{l:T language_row}" VerticalAlignment="Center" />
+              <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+                <TextBlock Text="{Binding LanguageName}" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                <c:Glyph Kind="chevronDown" Foreground="{StaticResource TextSecondaryBrush}" Width="16" Height="16" />
+              </StackPanel>
+            </Grid>
+          </Button>
+          <Border CornerRadius="18" Padding="3" Margin="6,0,6,10" Background="{StaticResource GlassBrush}" IsVisible="{Binding LanguageOpen}">
+            <ItemsControl ItemsSource="{Binding Languages}">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="1" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:OptionVm">
+                  <Button Classes="flat" Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).SelectLanguageCommand}" CommandParameter="{Binding}">
+                    <Border Classes="seg" Classes.on="{Binding IsSelected}"><TextBlock Text="{Binding Title}" /></Border>
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </Border>
+          <Border Classes="sep" />
+
+          <Button Classes="flat" Command="{Binding ToggleThemeCommand}">
+            <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
+              <Border Classes="badge" Background="{DynamicResource AccentBrush}">
+                <c:Glyph Kind="palette" Width="18" Height="18" Foreground="{Binding $parent[Border].Background, Converter={StaticResource InkOn}}" />
+              </Border>
+              <TextBlock Grid.Column="1" Classes="title" Text="{l:T theme_row}" VerticalAlignment="Center" />
+              <c:Glyph Grid.Column="2" Kind="chevronDown" Foreground="{StaticResource TextSecondaryBrush}" Width="16" Height="16" />
+            </Grid>
+          </Button>
+          <ItemsControl ItemsSource="{Binding Accents}" IsVisible="{Binding ThemeOpen}" Margin="0,0,0,10">
+            <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel HorizontalAlignment="Center" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
-              <DataTemplate x:DataType="vm:ToggleVm">
-                <Button Classes="flat" Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).ToggleBlockCommand}" CommandParameter="{Binding}">
-                  <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
-                    <Border Width="38" Height="38" CornerRadius="19" Background="{StaticResource GlassStrongBrush}">
-                      <c:Glyph Kind="{Binding Icon}" Foreground="{StaticResource TextBrush}" Width="18" Height="18" />
-                    </Border>
-                    <TextBlock Grid.Column="1" Margin="12,0" Text="{Binding Title}" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
-                    <!-- tick box -->
-                    <Panel Grid.Column="2" Width="28" Height="28">
-                      <Border CornerRadius="8" BorderThickness="2" BorderBrush="{StaticResource TextSecondaryBrush}" IsVisible="{Binding !IsOn}" />
-                      <Border CornerRadius="8" Background="{DynamicResource AccentBrush}" IsVisible="{Binding IsOn}">
-                        <c:Glyph Kind="check" Width="16" Height="16" Thickness="2.6"
-                                 Foreground="{Binding $parent[Border].Background, Converter={StaticResource InkOn}}" />
-                      </Border>
-                    </Panel>
-                  </Grid>
+              <DataTemplate x:DataType="vm:ChoiceVm">
+                <Button Classes="flat" Margin="5" Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).SelectAccentCommand}" CommandParameter="{Binding}">
+                  <Panel Width="40" Height="40">
+                    <Border CornerRadius="20" Background="{Binding Color, Converter={StaticResource HexBrush}}" />
+                    <Border CornerRadius="20" BorderBrush="{StaticResource TextBrush}" BorderThickness="3" IsVisible="{Binding IsSelected}" />
+                    <c:Glyph Kind="check" Width="17" Height="17" Thickness="2.4" IsVisible="{Binding IsSelected}"
+                             Foreground="{Binding Color, Converter={StaticResource InkOnHex}}" />
+                  </Panel>
                 </Button>
               </DataTemplate>
             </ItemsControl.ItemTemplate>
@@ -112,64 +252,41 @@
         </StackPanel>
       </Border>
 
-      <!-- data: catalog, debts -->
-      <TextBlock Classes="label" Text="{l:T data}" Margin="4,8,4,0" />
-      <Border Classes="card" Padding="8,4">
+      <!-- ===== catalog ===== -->
+      <TextBlock Classes="label" Text="{l:T catalog}" Margin="6,4,6,0" />
+      <Border Classes="card" Padding="10,2">
         <StackPanel>
           <Button Classes="flat" Command="{Binding OpenWalletsCommand}">
             <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
-              <Border Width="38" Height="38" CornerRadius="19" Background="#4D8DFF"><c:Glyph Kind="wallet" Foreground="White" Width="18" Height="18" /></Border>
-              <TextBlock Grid.Column="1" Margin="12,0" Text="{l:T manage_wallets}" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
+              <Border Classes="badge" Background="#4D8DFF"><c:Glyph Kind="wallet" Foreground="White" Width="18" Height="18" /></Border>
+              <TextBlock Grid.Column="1" Classes="title" Text="{l:T manage_wallets}" VerticalAlignment="Center" />
               <c:Glyph Grid.Column="2" Kind="chevronRight" Foreground="{StaticResource TextSecondaryBrush}" Width="18" Height="18" />
             </Grid>
           </Button>
-          <Border Height="1" Background="{StaticResource GlassBorderBrush}" Margin="56,0,0,0" />
+          <Border Classes="sep" />
           <Button Classes="flat" Command="{Binding OpenCategoriesCommand}">
             <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
-              <Border Width="38" Height="38" CornerRadius="19" Background="#F97316"><c:Glyph Kind="food" Foreground="White" Width="18" Height="18" /></Border>
-              <TextBlock Grid.Column="1" Margin="12,0" Text="{l:T manage_categories}" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
+              <Border Classes="badge" Background="#F97316"><c:Glyph Kind="food" Foreground="White" Width="18" Height="18" /></Border>
+              <TextBlock Grid.Column="1" Classes="title" Text="{l:T manage_categories}" VerticalAlignment="Center" />
               <c:Glyph Grid.Column="2" Kind="chevronRight" Foreground="{StaticResource TextSecondaryBrush}" Width="18" Height="18" />
             </Grid>
           </Button>
-          <Border Height="1" Background="{StaticResource GlassBorderBrush}" Margin="56,0,0,0" />
+          <Border Classes="sep" />
           <Button Classes="flat" Command="{Binding OpenSourcesCommand}">
             <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
-              <Border Width="38" Height="38" CornerRadius="19" Background="#1FCB8B"><c:Glyph Kind="salary" Foreground="White" Width="18" Height="18" /></Border>
-              <TextBlock Grid.Column="1" Margin="12,0" Text="{l:T manage_sources}" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
+              <Border Classes="badge" Background="#1FCB8B"><c:Glyph Kind="salary" Foreground="White" Width="18" Height="18" /></Border>
+              <TextBlock Grid.Column="1" Classes="title" Text="{l:T manage_sources}" VerticalAlignment="Center" />
               <c:Glyph Grid.Column="2" Kind="chevronRight" Foreground="{StaticResource TextSecondaryBrush}" Width="18" Height="18" />
             </Grid>
           </Button>
-          <Border Height="1" Background="{StaticResource GlassBorderBrush}" Margin="56,0,0,0" />
+          <Border Classes="sep" />
           <Button Classes="flat" Command="{Binding OpenDebtsCommand}">
             <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
-              <Border Width="38" Height="38" CornerRadius="19" Background="#F5A524"><c:Glyph Kind="handshake" Foreground="White" Width="18" Height="18" /></Border>
-              <TextBlock Grid.Column="1" Margin="12,0" Text="{l:T debts}" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
+              <Border Classes="badge" Background="#F5A524"><c:Glyph Kind="handshake" Foreground="White" Width="18" Height="18" /></Border>
+              <TextBlock Grid.Column="1" Classes="title" Text="{l:T debts}" VerticalAlignment="Center" />
               <c:Glyph Grid.Column="2" Kind="chevronRight" Foreground="{StaticResource TextSecondaryBrush}" Width="18" Height="18" />
             </Grid>
           </Button>
-        </StackPanel>
-      </Border>
-
-      <!-- wipe: two steps -->
-      <Border Classes="card" Padding="8,4">
-        <StackPanel>
-          <Button Classes="flat" Command="{Binding ArmWipeCommand}">
-            <Grid Classes="row" ColumnDefinitions="Auto,*">
-              <Border Width="38" Height="38" CornerRadius="19" Background="#EF4444"><c:Glyph Kind="trash" Foreground="White" Width="18" Height="18" /></Border>
-              <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center">
-                <TextBlock Text="{l:T wipe}" FontWeight="SemiBold" Foreground="{StaticResource ExpenseBrush}" />
-                <TextBlock Text="{l:T wipe_hint}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap" />
-              </StackPanel>
-            </Grid>
-          </Button>
-          <StackPanel IsVisible="{Binding WipeArmed}" Spacing="8" Margin="6,0,6,10">
-            <TextBlock Text="{l:T wipe_sure}" Foreground="{StaticResource TextBrush}" TextWrapping="Wrap" />
-            <Button Classes="flat" Command="{Binding WipeCommand}">
-              <Border Height="44" CornerRadius="22" Background="#33FF6B6B" BorderBrush="{StaticResource ExpenseBrush}" BorderThickness="1">
-                <TextBlock Classes="label" Text="{l:T wipe_confirm}" Foreground="{StaticResource ExpenseBrush}" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
-              </Border>
-            </Button>
-          </StackPanel>
         </StackPanel>
       </Border>
 

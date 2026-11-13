@@ -9,6 +9,8 @@
         <PackageVersion Include="Avalonia" Version="12.1.6" />
         <PackageVersion Include="Avalonia.Themes.Fluent" Version="12.1.6" />
         <PackageVersion Include="Avalonia.Fonts.Inter" Version="12.1.6" />
+        <PackageVersion Include="Avalonia.Skia" Version="12.1.6" />
+        <PackageVersion Include="Xamarin.AndroidX.Biometric" Version="1.1.0.33" />
         <PackageVersion Include="Avalonia.Desktop" Version="12.1.6" />
         <PackageVersion Include="Avalonia.iOS" Version="12.1.6" />
         <PackageVersion Include="Avalonia.Android" Version="12.1.6" />

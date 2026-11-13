@@ -1,7 +1,8 @@
 ﻿using Android.App;
 using Android.Content.PM;
-using Avalonia;
+using Android.OS;
 using Avalonia.Android;
+using Hamyon.App.Services;
 
 namespace Hamyon.App.Android;
 
@@ -14,4 +15,10 @@ namespace Hamyon.App.Android;
     ConfigurationChanges = ConfigChanges.Orientation | ConfigChanges.ScreenSize | ConfigChanges.UiMode)]
 public class MainActivity : AvaloniaMainActivity
 {
+    protected override void OnCreate(Bundle? savedInstanceState)
+    {
+        // before the app builds its views: the lock screen asks whether biometrics exist
+        Security.Biometrics = new AndroidBiometrics(this);
+        base.OnCreate(savedInstanceState);
+    }
 }

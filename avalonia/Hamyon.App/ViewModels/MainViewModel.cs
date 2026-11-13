@@ -37,6 +37,9 @@ public partial class MainViewModel : ViewModelBase
     /// <summary>Bottom sheet over everything (operation, catalog editor); null = closed.</summary>
     [ObservableProperty] public partial ViewModelBase? Sheet { get; set; }
 
+    /// <summary>PIN pad over everything (app lock, or setting / removing the PIN); null = unlocked.</summary>
+    [ObservableProperty] public partial LockViewModel? Lock { get; set; }
+
     /// <summary>Raised after a language change: the view tree is rebuilt so every {l:T} string is read again.</summary>
     public event Action? LanguageChanged;
 
@@ -72,7 +75,9 @@ public partial class MainViewModel : ViewModelBase
         Home.OpenDebts += () => Current = NewDebts();
         Home.OpenProfiles += OpenProfiles;
         Home.ApplyBlocks(GetPref);
-        Settings.Connect(homeChanged: () => Home.ApplyBlocks(GetPref), openProfiles: OpenProfiles);
+        Settings.Connect(homeChanged: () => Home.ApplyBlocks(GetPref), openProfiles: OpenProfiles,
+            setLock: l => Lock = l, openExport: () => Sheet = new ExportViewModel(store, close: () => Sheet = null));
+        Relock();
         Home.OpenItem += tile => Current = new ItemViewModel(store, tile.Kind, tile.Id, back: () => { Home.Refresh(); Current = Home; }, sheet: s => Sheet = s, changed: RefreshAll);
         if (profiles is not null) { var p = profiles.Current; Home.SetProfile(p.Name, p.Color); }
 
@@ -84,6 +89,14 @@ public partial class MainViewModel : ViewModelBase
             new TabVm { Key = "settings", Icon = "settings" },
         ];
         Current = Home;
+    }
+
+    /// <summary>Shows the PIN pad when a PIN is set (start-up, return from background); Face ID is offered at once.</summary>
+    public void Relock()
+    {
+        if (Lock is not null || !Security.HasPin(GetPref)) return;
+        Lock = new LockViewModel(LockMode.Unlock, GetPref, SetPref, done: () => Lock = null);
+        Lock.Biometric();
     }
 
     private string? GetPref(string key) => _profiles is not null ? _profiles.GetPref(key) : _store.GetSetting(key);
@@ -118,6 +131,11 @@ public partial class MainViewModel : ViewModelBase
     /// </summary>
     public bool HandleBack()
     {
+        if (Lock is not null)
+        {
+            if (Lock.CanCancel) { Lock = null; return true; }
+            return false; // locked: back leaves the app, it never skips the PIN
+        }
         if (Sheet is not null) { Sheet = null; return true; }
         if (Current is ItemViewModel item)
         {

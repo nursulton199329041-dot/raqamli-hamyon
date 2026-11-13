@@ -1,0 +1,76 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="using:Hamyon.App.Localization"
+             xmlns:vm="using:Hamyon.App.ViewModels"
+             xmlns:c="using:Hamyon.App.Controls"
+             x:Class="Hamyon.App.Views.ExportView"
+             x:DataType="vm:ExportViewModel">
+  <UserControl.Styles>
+    <Style Selector="Border.opt">
+      <Setter Property="CornerRadius" Value="16" />
+      <Setter Property="Padding" Value="14,12" />
+      <Setter Property="Background" Value="{StaticResource GlassBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource GlassBorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <Style Selector="Border.opt.on">
+      <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+    </Style>
+  </UserControl.Styles>
+
+  <Border Background="#F7140709" CornerRadius="30,30,0,0" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1,1,1,0"
+          BoxShadow="0 -12 40 0 #80000000">
+    <StackPanel Margin="18,10,18,22" Spacing="12">
+      <Border Width="40" Height="5" CornerRadius="3" Background="#33FFECE4" HorizontalAlignment="Center" />
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBlock Text="{l:T export}" FontSize="20" FontWeight="Bold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
+        <Button Grid.Column="1" Classes="flat" Command="{Binding CloseCommand}">
+          <Border Width="40" Height="40" CornerRadius="20" Background="{StaticResource GlassStrongBrush}">
+            <c:Glyph Kind="close" Foreground="{StaticResource TextBrush}" Width="18" Height="18" />
+          </Border>
+        </Button>
+      </Grid>
+
+      <TextBlock Classes="label" Text="{l:T exp_period}" />
+      <ItemsControl ItemsSource="{Binding Periods}">
+        <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="2" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:OptionVm">
+            <Button Classes="flat" Margin="4" Command="{Binding $parent[UserControl].((vm:ExportViewModel)DataContext).SelectPeriodCommand}" CommandParameter="{Binding}">
+              <Border Classes="opt" Classes.on="{Binding IsSelected}">
+                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" HorizontalAlignment="Center" />
+              </Border>
+            </Button>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+
+      <TextBlock Classes="label" Text="{l:T exp_format}" />
+      <ItemsControl ItemsSource="{Binding Formats}">
+        <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="2" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:OptionVm">
+            <Button Classes="flat" Margin="4" Command="{Binding $parent[UserControl].((vm:ExportViewModel)DataContext).SelectFormatCommand}" CommandParameter="{Binding}">
+              <Border Classes="opt" Classes.on="{Binding IsSelected}">
+                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" HorizontalAlignment="Center" />
+              </Border>
+            </Button>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+
+      <TextBlock Text="{Binding Status}" IsVisible="{Binding Status, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                 Foreground="{StaticResource TextBrush}" TextWrapping="Wrap" />
+      <Button Classes="flat" Command="{Binding SaveCommand}" IsEnabled="{Binding !Busy}">
+        <Border Height="54" CornerRadius="27" Background="{DynamicResource AccentBrush}">
+          <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <c:Glyph Kind="download" Width="20" Height="20" Thickness="2.2" Foreground="{Binding $parent[Border].Background, Converter={StaticResource InkOn}}" />
+            <TextBlock Classes="label" Text="{l:T exp_save}" FontWeight="Bold" FontSize="14"
+                       Foreground="{Binding $parent[Border].Background, Converter={StaticResource InkOn}}" />
+          </StackPanel>
+        </Border>
+      </Button>
+    </StackPanel>
+  </Border>
+</UserControl>

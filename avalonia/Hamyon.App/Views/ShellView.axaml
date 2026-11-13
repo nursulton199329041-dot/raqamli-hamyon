@@ -79,5 +79,8 @@
       </Button>
       <ContentControl Content="{Binding Sheet}" VerticalAlignment="Bottom" Margin="0,36,0,0" MaxWidth="600" />
     </Panel>
+
+    <!-- app lock: above everything, the tab bar included -->
+    <ContentControl Content="{Binding Lock}" IsVisible="{Binding Lock, Converter={x:Static ObjectConverters.IsNotNull}}" />
   </Grid>
 </UserControl>

@@ -17,6 +17,7 @@ public partial class AppDelegate : AvaloniaAppDelegate<App>
 {
     protected override AppBuilder CustomizeAppBuilder(AppBuilder builder)
     {
+        Hamyon.App.Services.Security.Biometrics = new IosBiometrics(); // Face ID / Touch ID for the app lock
         return base.CustomizeAppBuilder(builder)
             .WithInterFont();
     }

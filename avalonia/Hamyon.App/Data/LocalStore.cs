@@ -183,6 +183,9 @@ public sealed class LocalStore
     public void SetSetting(string key, string value) =>
         Run("INSERT INTO settings(key, value) VALUES ($k, $v) ON CONFLICT(key) DO UPDATE SET value = excluded.value", ("$k", key), ("$v", value));
 
+    /// <summary>Deletes all operations; wallets, categories and sources stay (balances return to the opening ones).</summary>
+    public void WipeOperations() => Run("DELETE FROM operations");
+
     /// <summary>Deletes every record and starts a fresh book with the default catalog. Settings (language, colour) stay.</summary>
     public void Wipe()
     {

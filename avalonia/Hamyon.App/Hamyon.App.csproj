@@ -19,5 +19,7 @@
     </PackageReference>
     <PackageReference Include="CommunityToolkit.Mvvm" />
     <PackageReference Include="Microsoft.Data.Sqlite" />
+    <!-- SkiaSharp (already shipped by Avalonia) draws the PDF export -->
+    <PackageReference Include="Avalonia.Skia" />
   </ItemGroup>
 </Project>

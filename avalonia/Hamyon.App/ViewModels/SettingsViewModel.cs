@@ -36,12 +36,64 @@ public partial class SettingsViewModel : ViewModelBase
     public ObservableCollection<ToggleVm> HomeBlocks { get; } = new();
     private Action _homeChanged = () => { };
     private Action _openProfiles = () => { };
+    private Action<LockViewModel?> _lock = _ => { };
+    private Action _openExport = () => { };
 
     /// <summary>Hooks set by the shell after construction.</summary>
-    public void Connect(Action homeChanged, Action openProfiles)
+    public void Connect(Action homeChanged, Action openProfiles, Action<LockViewModel?>? setLock = null, Action? openExport = null)
     {
         _homeChanged = homeChanged;
         _openProfiles = openProfiles;
+        if (setLock is not null) _lock = setLock;
+        if (openExport is not null) _openExport = openExport;
+    }
+
+    // ---- rows that open / expand ----
+
+    [ObservableProperty] public partial bool PanelOpen { get; set; }
+    [ObservableProperty] public partial bool WipeOpen { get; set; }
+    [ObservableProperty] public partial bool LanguageOpen { get; set; }
+    [ObservableProperty] public partial bool ThemeOpen { get; set; }
+    [RelayCommand] private void TogglePanel() => PanelOpen = !PanelOpen;
+    [RelayCommand] private void ToggleWipe() { WipeOpen = !WipeOpen; WipeArmed = false; }
+    [RelayCommand] private void ToggleLanguage() => LanguageOpen = !LanguageOpen;
+    [RelayCommand] private void ToggleTheme() => ThemeOpen = !ThemeOpen;
+    [RelayCommand] private void OpenExport() => _openExport();
+
+    public string LanguageName => Languages.FirstOrDefault(l => l.IsSelected)?.Title ?? "";
+    /// <summary>"Qarzlar" switch = the debts card on the home screen</summary>
+    public ToggleVm DebtsBlock => HomeBlocks.First(b => b.Key == "debts");
+
+    // ---- password / Face ID ----
+
+    [ObservableProperty] public partial bool PinOn { get; set; }
+    [ObservableProperty] public partial bool BiometricOn { get; set; }
+    public bool BiometricAvailable => Security.Biometrics?.IsAvailable == true;
+    public string BiometricName => Security.Biometrics?.Name ?? "Face ID";
+
+    /// <summary>On: type a new PIN twice. Off: confirm with the current PIN first.</summary>
+    [RelayCommand]
+    private void TogglePin()
+    {
+        if (!PinOn)
+            _lock(new LockViewModel(LockMode.Create, _getPref, _setPref,
+                done: () => { PinOn = true; _lock(null); }, cancel: () => _lock(null)));
+        else
+            _lock(new LockViewModel(LockMode.Disable, _getPref, _setPref,
+                done: () => { Security.ClearPin(_setPref); PinOn = false; BiometricOn = false; _lock(null); }, cancel: () => _lock(null)));
+    }
+
+    /// <summary>Face ID / fingerprint needs a PIN behind it; turning it on asks the sensor once.</summary>
+    [RelayCommand]
+    private async System.Threading.Tasks.Task ToggleBiometric()
+    {
+        if (BiometricOn) { _setPref("biometric", "0"); BiometricOn = false; return; }
+        if (!PinOn) { TogglePin(); return; }
+        if (Security.Biometrics is { IsAvailable: true } bio && await bio.AuthenticateAsync(L.T("pin_bio_reason")))
+        {
+            _setPref("biometric", "1");
+            BiometricOn = true;
+        }
     }
     [ObservableProperty] public partial bool WipeArmed { get; set; }
 
@@ -66,6 +118,9 @@ public partial class SettingsViewModel : ViewModelBase
 
         foreach (var key in HomeViewModel.Blocks)
             HomeBlocks.Add(new ToggleVm { Key = key, Title = L.T("show_" + key), Icon = BlockIcon(key), IsOn = _getPref("home_" + key) != "0" });
+
+        PinOn = Security.HasPin(_getPref);
+        BiometricOn = PinOn && _getPref("biometric") == "1";
 
         var accent = _getPref("accent") ?? Appearance.DefaultAccent;
         var i = 0;
@@ -118,6 +173,16 @@ public partial class SettingsViewModel : ViewModelBase
     {
         _store.Wipe();
         WipeArmed = false;
+        WipeOpen = false;
+        _wiped();
+    }
+
+    /// <summary>Keeps wallets, categories and sources; removes every operation (balances go back to the opening ones).</summary>
+    [RelayCommand]
+    private void WipeOperations()
+    {
+        _store.WipeOperations();
+        WipeOpen = false;
         _wiped();
     }
 }
