@@ -1,0 +1,44 @@
+# Raqamli Hamyon: API (.NET 10) + o‘z PostgreSQL bazasi.
+# Ishga tushirish: docker compose --env-file .env.docker up -d --build
+# Maxfiy qiymatlar faqat .env.docker’da (serverda yaratilgan, repo’ga qo‘shilmaydi).
+# Internetga: main_nginx (web_network) -> hamyon.raqamlinazorat.uz -> hamyon_api:8080
+name: raqamli-hamyon
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: hamyon_db
+    environment:
+      POSTGRES_DB: hamyon
+      POSTGRES_USER: hamyon
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U hamyon -d hamyon"], interval: 5s, retries: 20 }
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    image: raqamli-hamyon-api:1.0.0
+    container_name: hamyon_api
+    networks: [default, web_network]
+    depends_on:
+      db: { condition: service_healthy }
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Default: Host=db;Port=5432;Database=hamyon;Username=hamyon;Password=${POSTGRES_PASSWORD}
+      Jwt__Secret: ${JWT_SECRET}
+      Database__AutoMigrate: "true"
+      Cors__Origins__0: ${PUBLIC_URL:-https://hamyon.raqamlinazorat.uz}
+      Demo__Seed: "false"
+    volumes: [uploads:/data/uploads]
+    restart: unless-stopped
+
+networks:
+  web_network:
+    external: true
+
+volumes:
+  pgdata:
+  uploads:
