@@ -48,7 +48,7 @@
           <TextBlock Grid.Column="1" Text="{Binding Total}" FontWeight="Bold" FontSize="16" Foreground="{StaticResource TextBrush}" />
         </Grid>
         <Button Classes="flat" Command="{Binding SaveCommand}">
-          <Border Height="52" CornerRadius="26" Background="{DynamicResource AccentBrush}">
+          <Border Height="52" CornerRadius="26" Background="{DynamicResource ActionBrush}">
             <TextBlock Classes="label" Text="{l:T save}" FontWeight="Bold" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"
                        Foreground="{Binding $parent[Border].Background, Converter={StaticResource InkOn}}" />
           </Border>

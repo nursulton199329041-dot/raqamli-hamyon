@@ -12,7 +12,7 @@
       <Setter Property="Background" Value="Transparent" />
     </Style>
     <Style Selector="Border.seg.on">
-      <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+      <Setter Property="Background" Value="{DynamicResource ActionBrush}" />
     </Style>
     <Style Selector="Border.seg TextBlock">
       <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
@@ -20,7 +20,7 @@
       <Setter Property="HorizontalAlignment" Value="Center" />
     </Style>
     <Style Selector="Border.seg.on TextBlock">
-      <Setter Property="Foreground" Value="{DynamicResource OnAccentBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource OnActionBrush}" />
       <Setter Property="FontWeight" Value="Bold" />
     </Style>
   </UserControl.Styles>

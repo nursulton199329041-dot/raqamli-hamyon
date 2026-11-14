@@ -15,7 +15,7 @@
       <Setter Property="Background" Value="Transparent" />
     </Style>
     <Style Selector="Border.dot.on">
-      <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+      <Setter Property="Background" Value="{DynamicResource ActionBrush}" />
       <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
     </Style>
   </UserControl.Styles>

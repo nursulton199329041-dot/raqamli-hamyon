@@ -49,7 +49,7 @@
         </ItemsControl>
       </Border>
       <Button Classes="flat" Command="{Binding NewCommand}" IsVisible="{Binding !IsEditing}">
-        <Border Height="52" CornerRadius="26" Background="{DynamicResource AccentBrush}">
+        <Border Height="52" CornerRadius="26" Background="{DynamicResource ActionBrush}">
           <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center" VerticalAlignment="Center">
             <c:Glyph Kind="plus" Foreground="{Binding $parent[Border].Background, Converter={StaticResource InkOn}}" Width="18" Height="18" Thickness="2.2" />
             <TextBlock Classes="label" Text="{l:T new_profile}" FontWeight="Bold" FontSize="14"
@@ -86,7 +86,7 @@
             </Border>
           </Button>
           <Button Grid.Column="2" Classes="flat" Command="{Binding SaveEditCommand}">
-            <Border Height="50" CornerRadius="25" Background="{DynamicResource AccentBrush}">
+            <Border Height="50" CornerRadius="25" Background="{DynamicResource ActionBrush}">
               <TextBlock Classes="label" Text="{l:T save}" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"
                          Foreground="{Binding $parent[Border].Background, Converter={StaticResource InkOn}}" />
             </Border>

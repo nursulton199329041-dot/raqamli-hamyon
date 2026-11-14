@@ -12,14 +12,14 @@
       <Setter Property="Background" Value="{StaticResource GlassBrush}" />
     </Style>
     <Style Selector="Border.seg.on">
-      <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+      <Setter Property="Background" Value="{DynamicResource ActionBrush}" />
     </Style>
     <Style Selector="Border.seg TextBlock">
       <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
       <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
     <Style Selector="Border.seg.on TextBlock">
-      <Setter Property="Foreground" Value="{DynamicResource OnAccentBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource OnActionBrush}" />
     </Style>
   </UserControl.Styles>
 
@@ -40,7 +40,7 @@
         <TextBlock Text="{Binding Error}" IsVisible="{Binding Error, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                    Foreground="{StaticResource ExpenseBrush}" FontWeight="SemiBold" TextWrapping="Wrap" />
         <Button Classes="flat" Command="{Binding SaveCommand}">
-          <Border Height="54" CornerRadius="27" Background="{DynamicResource AccentBrush}">
+          <Border Height="54" CornerRadius="27" Background="{DynamicResource ActionBrush}">
             <TextBlock Classes="label" Text="{l:T save}" Foreground="{Binding $parent[Border].Background, Converter={StaticResource InkOn}}" FontWeight="Bold" FontSize="15"
                        HorizontalAlignment="Center" VerticalAlignment="Center" />
           </Border>

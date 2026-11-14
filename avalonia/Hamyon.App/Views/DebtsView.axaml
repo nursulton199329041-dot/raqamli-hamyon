@@ -37,7 +37,7 @@
       <!-- actions -->
       <Grid ColumnDefinitions="*,10,*">
         <Button Classes="flat" Command="{Binding LendCommand}">
-          <Border Height="50" CornerRadius="25" Background="{DynamicResource AccentBrush}">
+          <Border Height="50" CornerRadius="25" Background="{DynamicResource ActionBrush}">
             <TextBlock Classes="label" Text="{l:T op_lend}" Foreground="{Binding $parent[Border].Background, Converter={StaticResource InkOn}}" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
           </Border>
         </Button>

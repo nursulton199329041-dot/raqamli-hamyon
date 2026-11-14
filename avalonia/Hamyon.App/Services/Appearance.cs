@@ -19,6 +19,28 @@ public static class Appearance
         app.Resources["AccentBrush"] = new SolidColorBrush(c);
         app.Resources["OnAccentBrush"] = new SolidColorBrush(OnAccent(c));
         app.Resources["AccentSoftBrush"] = new SolidColorBrush(Color.FromArgb(0x33, c.R, c.G, c.B));
+        _accent = c;
+        ApplyAction(app);
+    }
+
+    private static Color _accent = Color.Parse(DefaultAccent);
+
+    /// <summary>
+    /// Filled action buttons and selected segments: {DynamicResource ActionBrush / OnActionBrush}.
+    /// The accent colour normally; clear glass with white text in Super Glass.
+    /// </summary>
+    private static void ApplyAction(Application app)
+    {
+        app.Resources["ActionBrush"] = Glass
+            ? new LinearGradientBrush
+            {
+                StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative), EndPoint = new RelativePoint(0, 1, RelativeUnit.Relative),
+                GradientStops = { new GradientStop(Color.Parse("#61FFFFFF"), 0), new GradientStop(Color.Parse("#2EFFFFFF"), 1) },
+            }
+            : new SolidColorBrush(_accent);
+        app.Resources["OnActionBrush"] = new SolidColorBrush(Glass ? Colors.White : OnAccent(_accent));
+        // selected chips / options: a soft accent tint, or lighter glass (their accent outline still marks the choice)
+        app.Resources["AccentSoftBrush"] = new SolidColorBrush(Glass ? Color.Parse("#40FFFFFF") : Color.FromArgb(0x33, _accent.R, _accent.G, _accent.B));
     }
 
     // ---- "Super Glass": iOS-style frosted glass instead of solid coloured badges ----
@@ -46,6 +68,7 @@ public static class Appearance
             : new SolidColorBrush(Color.Parse("#1AFFECE4"));
         r["SheetBrush"] = new SolidColorBrush(Color.Parse(on ? "#EB2A1A1F" : "#F7140709"));
         r["MenuBrush"] = new SolidColorBrush(Color.Parse(on ? "#E0302026" : "#F2211015"));
+        ApplyAction(app);
     }
 
     /// <summary>Badge fill: the solid colour, or (Super Glass) neutral frosted glass like the iOS control centre buttons.</summary>

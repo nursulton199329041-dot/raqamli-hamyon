@@ -16,7 +16,7 @@
         <TextBlock Grid.Column="1" Classes="label" Text="{Binding Title}" Foreground="{StaticResource TextBrush}" FontSize="13.5"
                    HorizontalAlignment="Center" VerticalAlignment="Center" />
         <Button Grid.Column="2" Classes="flat" Command="{Binding AddCommand}">
-          <Border Width="44" Height="44" CornerRadius="22" Background="{DynamicResource AccentBrush}">
+          <Border Width="44" Height="44" CornerRadius="22" Background="{DynamicResource ActionBrush}">
             <c:Glyph Kind="plus" Foreground="{Binding $parent[Border].Background, Converter={StaticResource InkOn}}" Width="20" Height="20" Thickness="2.2" />
           </Border>
         </Button>

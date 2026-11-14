@@ -39,7 +39,7 @@
       <Setter Property="Background" Value="Transparent" />
     </Style>
     <Style Selector="Border.seg.on">
-      <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+      <Setter Property="Background" Value="{DynamicResource ActionBrush}" />
     </Style>
     <Style Selector="Border.seg TextBlock">
       <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
@@ -253,7 +253,7 @@
           <Border Classes="sep" />
           <Button Classes="flat" Command="{Binding ToggleThemeCommand}">
             <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
-              <Border Classes="badge" Background="{DynamicResource AccentBrush}">
+              <Border Classes="badge" Background="{DynamicResource ActionBrush}">
                 <c:Glyph Kind="palette" Width="18" Height="18" Foreground="{Binding $parent[Border].Background, Converter={StaticResource InkOn}}" />
               </Border>
               <TextBlock Grid.Column="1" Classes="title" Text="{l:T theme_row}" VerticalAlignment="Center" />
