@@ -178,6 +178,7 @@ public static class L
         ["exp_this_month"] = ["Shu oy", "Этот месяц", "This month"],
         ["exp_last_month"] = ["O‘tgan oy", "Прошлый месяц", "Last month"],
         ["exp_this_year"] = ["Shu yil", "Этот год", "This year"],
+        ["exp_custom"] = ["Sanani tanlash", "Выбрать даты", "Pick dates"],
         ["exp_all"] = ["Butun davr", "За всё время", "All time"],
         ["exp_save"] = ["SAQLASH", "СОХРАНИТЬ", "SAVE"],
         ["exp_done"] = ["Saqlandi: {0}", "Сохранено: {0}", "Saved: {0}"],

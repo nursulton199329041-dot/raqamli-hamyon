@@ -46,6 +46,14 @@
         </ItemsControl.ItemTemplate>
       </ItemsControl>
 
+      <!-- custom range -->
+      <StackPanel IsVisible="{Binding IsCustom}" Margin="4,0" Spacing="6">
+        <TextBlock Classes="label" Text="{l:T p_from}" />
+        <DatePicker SelectedDate="{Binding CustomFrom}" HorizontalAlignment="Stretch" />
+        <TextBlock Classes="label" Text="{l:T p_to}" Margin="0,4,0,0" />
+        <DatePicker SelectedDate="{Binding CustomTo}" HorizontalAlignment="Stretch" />
+      </StackPanel>
+
       <TextBlock Classes="label" Text="{l:T exp_format}" />
       <ItemsControl ItemsSource="{Binding Formats}">
         <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="2" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>

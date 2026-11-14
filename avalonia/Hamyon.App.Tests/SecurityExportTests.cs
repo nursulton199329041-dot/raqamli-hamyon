@@ -170,6 +170,22 @@ public sealed class ExportTests : IDisposable
     }
 
     [Fact]
+    public void Custom_dates_export_exactly_that_range()
+    {
+        var vm = new ExportViewModel(_store, () => { });
+        vm.SelectPeriodCommand.Execute(vm.Periods.Single(p => p.Key == "custom"));
+        Assert.True(vm.IsCustom);
+        vm.CustomFrom = new DateTimeOffset(DateTime.Today.AddYears(-3));
+        vm.CustomTo = new DateTimeOffset(DateTime.Today.AddYears(-2));
+        var (from, to, label) = vm.Range();
+        Assert.Equal(DateTime.Today.AddYears(-3), from);
+        Assert.Equal(DateTime.Today.AddYears(-2), to.Date);
+        Assert.Contains("–", label);
+        var lines = Encoding.UTF8.GetString(vm.Build().Bytes[3..]).Trim().Split(Environment.NewLine);
+        Assert.Single(lines); // header only: nothing back then
+    }
+
+    [Fact]
     public void Delete_operations_only_keeps_the_catalog()
     {
         var shell = new MainViewModel(_store);

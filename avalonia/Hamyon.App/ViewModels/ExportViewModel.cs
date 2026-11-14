@@ -22,17 +22,22 @@ public partial class ExportViewModel : ViewModelBase
     [ObservableProperty] public partial string? Status { get; set; }
     [ObservableProperty] public partial bool Busy { get; set; }
 
+    /// <summary>"Sanani tanlash": any from – to range (the pickers show while it is selected).</summary>
+    [ObservableProperty] public partial bool IsCustom { get; set; }
+    [ObservableProperty] public partial DateTimeOffset? CustomFrom { get; set; } = new DateTimeOffset(new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1));
+    [ObservableProperty] public partial DateTimeOffset? CustomTo { get; set; } = new DateTimeOffset(DateTime.Today);
+
     public ExportViewModel(LocalStore store, Action close)
     {
         _store = store;
         _close = close;
-        foreach (var (key, title) in new[] { ("month", "exp_this_month"), ("prev", "exp_last_month"), ("year", "exp_this_year"), ("all", "exp_all") })
+        foreach (var (key, title) in new[] { ("month", "exp_this_month"), ("prev", "exp_last_month"), ("year", "exp_this_year"), ("all", "exp_all"), ("custom", "exp_custom") })
             Periods.Add(new OptionVm { Key = key, Title = L.T(title), IsSelected = key == "month" });
         Formats.Add(new OptionVm { Key = "csv", Title = "CSV (Excel)", IsSelected = true });
         Formats.Add(new OptionVm { Key = "pdf", Title = "PDF" });
     }
 
-    [RelayCommand] private void SelectPeriod(OptionVm o) { foreach (var x in Periods) x.IsSelected = x == o; Status = null; }
+    [RelayCommand] private void SelectPeriod(OptionVm o) { foreach (var x in Periods) x.IsSelected = x == o; IsCustom = o.Key == "custom"; Status = null; }
     [RelayCommand] private void SelectFormat(OptionVm o) { foreach (var x in Formats) x.IsSelected = x == o; Status = null; }
     [RelayCommand] private void Close() => _close();
 
@@ -45,8 +50,17 @@ public partial class ExportViewModel : ViewModelBase
             "prev" => (month.AddMonths(-1), month.AddTicks(-1), $"{L.Month(month.AddMonths(-1).Month)} {month.AddMonths(-1).Year}"),
             "year" => (new DateTime(t.Year, 1, 1), new DateTime(t.Year + 1, 1, 1).AddTicks(-1), t.Year.ToString()),
             "all" => (DateTime.MinValue, DateTime.MaxValue, L.T("exp_all")),
+            "custom" => CustomRange(),
             _ => (month, month.AddMonths(1).AddTicks(-1), $"{L.Month(month.Month)} {month.Year}"),
         };
+    }
+
+    private (DateTime, DateTime, string) CustomRange()
+    {
+        var a = (CustomFrom ?? DateTimeOffset.Now).Date;
+        var b = (CustomTo ?? DateTimeOffset.Now).Date;
+        if (b < a) (a, b) = (b, a);
+        return (a, b.AddDays(1).AddTicks(-1), $"{a:dd.MM.yyyy} – {b:dd.MM.yyyy}");
     }
 
     /// <summary>The file content for the current choice (also used by tests).</summary>
