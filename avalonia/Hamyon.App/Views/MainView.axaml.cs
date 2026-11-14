@@ -34,6 +34,21 @@ public partial class MainView : UserControl
         _vm = DataContext as MainViewModel;
         if (_vm is not null) { _vm.LanguageChanged += Rebuild; _vm.ProfileSwitched += SwitchProfile; }
         Rebuild();
+        if (_vm is not null) ShowSplashOnce();
+    }
+
+    private bool _splashShown;
+
+    /// <summary>The opening screen stays a moment (in the chosen language), then fades into the app.</summary>
+    private async void ShowSplashOnce()
+    {
+        if (_splashShown) return;
+        _splashShown = true;
+        Tagline.Text = Hamyon.App.Localization.L.T("splash_tagline");
+        await System.Threading.Tasks.Task.Delay(1400);
+        Splash.Opacity = 0;
+        await System.Threading.Tasks.Task.Delay(500);
+        Splash.IsVisible = false;
     }
 
     /// <summary>Another profile = another book: start a fresh shell on it.</summary>

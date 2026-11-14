@@ -2,6 +2,41 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="Hamyon.App.Views.MainView"
              Background="#0A0607">
-  <!-- the shell is created in code so a language change can rebuild every string -->
-  <ContentControl x:Name="Host" />
+  <Panel>
+    <!-- the shell is created in code so a language change can rebuild every string -->
+    <ContentControl x:Name="Host" />
+
+    <!-- opening screen: the wallet icon and the tagline, then it fades into the app -->
+    <Panel x:Name="Splash">
+      <Panel.Transitions>
+        <Transitions><DoubleTransition Property="Opacity" Duration="0:0:0.45" /></Transitions>
+      </Panel.Transitions>
+      <Border>
+        <Border.Background>
+          <LinearGradientBrush StartPoint="20%,0%" EndPoint="50%,100%">
+            <GradientStop Color="#2B0D12" Offset="0" />
+            <GradientStop Color="#0A0607" Offset="0.75" />
+          </LinearGradientBrush>
+        </Border.Background>
+      </Border>
+      <Border>
+        <Border.Background>
+          <RadialGradientBrush Center="50%,42%" GradientOrigin="50%,42%" RadiusX="70%" RadiusY="40%">
+            <GradientStop Color="#808E1F2E" Offset="0" />
+            <GradientStop Color="#008E1F2E" Offset="1" />
+          </RadialGradientBrush>
+        </Border.Background>
+      </Border>
+      <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="18" Margin="32,0,32,60">
+        <Border Width="116" Height="116" CornerRadius="30" ClipToBounds="True" HorizontalAlignment="Center"
+                BoxShadow="0 18 44 0 #99000000">
+          <Image Source="avares://Hamyon.App/Assets/Icon.png" Stretch="UniformToFill" />
+        </Border>
+        <TextBlock Text="RAQAMLI HAMYON" FontFamily="Menlo, Consolas, Cascadia Mono, monospace" FontSize="15" LetterSpacing="3"
+                   Foreground="#F2C14E" HorizontalAlignment="Center" />
+        <TextBlock x:Name="Tagline" FontSize="22" FontWeight="SemiBold" Foreground="#FBF5F2" TextAlignment="Center"
+                   TextWrapping="Wrap" MaxWidth="320" HorizontalAlignment="Center" />
+      </StackPanel>
+    </Panel>
+  </Panel>
 </UserControl>

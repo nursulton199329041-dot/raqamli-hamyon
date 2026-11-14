@@ -49,6 +49,7 @@ public static class L
         ["tab_history"] = ["TARIX", "ИСТОРИЯ", "HISTORY"],
         ["tab_reports"] = ["HISOBOT", "ОТЧЁТЫ", "REPORTS"],
         ["tab_settings"] = ["SOZLAMALAR", "НАСТРОЙКИ", "SETTINGS"],
+        ["splash_tagline"] = ["Pullaringizni raqamli nazorat qiling", "Держите свои деньги под цифровым контролем", "Keep your money under digital control"],
         ["bar_home"] = ["Panel", "Панель", "Home"],
         ["bar_history"] = ["Tarix", "История", "History"],
         ["bar_reports"] = ["Hisobot", "Отчёт", "Reports"],
