@@ -84,7 +84,7 @@
                              HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Border>
                 <!-- ✓ = save (bottom-right) -->
-                <Border Height="56" Margin="3" CornerRadius="16" Background="{StaticResource IncomeBrush}" BoxShadow="0 6 16 0 #661FCB8B"
+                <Border Height="56" Margin="3" CornerRadius="16" Background="{c:Tint '#1FCB8B'}" BoxShadow="0 6 16 0 #4D000000"
                         IsVisible="{Binding IsDone}">
                   <c:Glyph Kind="check" Width="28" Height="28" Thickness="3" Foreground="White" />
                 </Border>
@@ -120,9 +120,7 @@
                 <TextBox Text="{Binding RateText}" MinWidth="70" MinHeight="0" Padding="6,2" FontSize="12.5" FontWeight="SemiBold"
                          CornerRadius="8" VerticalAlignment="Center" TextInputOptions.ContentType="Number" />
               </StackPanel>
-              <TextBlock Text="{Binding RateHint}" FontSize="10.5" Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Center"
-                         TextAlignment="Center" TextWrapping="Wrap" />
-            </StackPanel>
+              </StackPanel>
           </Grid>
           <StackPanel HorizontalAlignment="Center" Spacing="2" IsVisible="{Binding !NeedsRate}">
             <TextBlock Classes="label" Text="{l:T amount}" HorizontalAlignment="Center" />
