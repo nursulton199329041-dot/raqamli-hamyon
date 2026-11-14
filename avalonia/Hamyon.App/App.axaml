@@ -10,6 +10,7 @@
     <conv:BadgeBrushConverter x:Key="BadgeBrush" />
     <conv:GlowConverter x:Key="Glow" />
     <conv:HexBrushConverter x:Key="HexBrush" />
+    <conv:AvatarBrushConverter x:Key="AvatarBrush" />
     <conv:ShareWidthConverter x:Key="ShareWidth" />
     <conv:InkOnConverter x:Key="InkOn" />
     <conv:InkOnHexConverter x:Key="InkOnHex" />

@@ -99,7 +99,7 @@
       <StackPanel Spacing="14" Classes="tourable" Classes.dim="{Binding DimTop}" IsVisible="{Binding !EditMode}">
         <Grid ColumnDefinitions="Auto,*,Auto">
           <Button Classes="flat" Command="{Binding ShowProfilesCommand}">
-            <Border Width="44" Height="44" CornerRadius="22" Background="{Binding ProfileColor, Converter={StaticResource HexBrush}}">
+            <Border Width="44" Height="44" CornerRadius="22" Background="{Binding ProfileColor, Converter={StaticResource AvatarBrush}}" BorderBrush="{DynamicResource GlassBorderBrush}" BorderThickness="1">
               <TextBlock Text="{Binding ProfileInitial}" FontSize="17" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"
                          Foreground="{Binding $parent[Border].Background, Converter={StaticResource InkOn}}" />
             </Border>
