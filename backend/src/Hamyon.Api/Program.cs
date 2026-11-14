@@ -152,6 +152,7 @@ app.MapCatalogs();
 app.MapOperations();
 app.MapReports();
 app.MapMeta();
+app.MapPrivacy();
 app.MapSync();
 app.MapBooks();
 app.MapAttachments();
