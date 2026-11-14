@@ -59,6 +59,19 @@
         </Button>
       </Grid>
 
+      <!-- error (not enough money, nothing chosen, …): right under the header, never hidden behind the keypad -->
+      <Border DockPanel.Dock="Top" Margin="16,2,16,6" CornerRadius="16" Padding="14,10" Background="#33FF6B6B"
+              BorderBrush="{StaticResource ExpenseBrush}" BorderThickness="1"
+              IsVisible="{Binding Error, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+        <Grid ColumnDefinitions="Auto,*">
+          <Border Width="26" Height="26" CornerRadius="13" Background="{StaticResource ExpenseBrush}" VerticalAlignment="Top">
+            <TextBlock Text="!" FontWeight="Bold" FontSize="15" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+          <TextBlock Grid.Column="1" Margin="10,3,0,0" Text="{Binding Error}" Foreground="{StaticResource TextBrush}" FontWeight="SemiBold"
+                     FontSize="14.5" TextWrapping="Wrap" />
+        </Grid>
+      </Border>
+
       <!-- keypad -->
       <ItemsControl DockPanel.Dock="Bottom" ItemsSource="{Binding KeyList}" Margin="10,4,10,14">
         <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="4" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
@@ -168,8 +181,6 @@
           </ItemsControl>
 
           <TextBox Text="{Binding Note}" Watermark="{l:T note_hint}" CornerRadius="14" />
-          <TextBlock Text="{Binding Error}" IsVisible="{Binding Error, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                     Foreground="{StaticResource ExpenseBrush}" FontWeight="SemiBold" TextWrapping="Wrap" />
         </StackPanel>
       </ScrollViewer>
     </DockPanel>
