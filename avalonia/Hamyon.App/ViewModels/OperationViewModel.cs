@@ -34,15 +34,25 @@ public partial class DayVm : ObservableObject
 /// The operation sheet (income / expense / transfer / lend / borrow): calculator amount, "from → to" choices,
 /// person for debts, date strip, note. Validates: positive amount, both ends chosen, no overdraft, two amounts across currencies.
 /// </summary>
+/// <summary>One keypad key: digits / operators, or the ✓ (save) key.</summary>
+public sealed record KeyVm(string Text)
+{
+    public bool IsDone => Text == OperationViewModel.DoneKey;
+    public bool IsPlain => !IsDone && Text.Length > 0;
+}
+
 public partial class OperationViewModel : ViewModelBase
 {
+    /// <summary>The bottom-right key: saves the operation (there is no separate "Save" button).</summary>
+    public const string DoneKey = "✓";
+
     public static readonly string[][] Keys =
     [
-        ["C", "⌫", "÷", "×"],
+        ["÷", "×", "C", "⌫"],
         ["7", "8", "9", "−"],
         ["4", "5", "6", "+"],
         ["1", "2", "3", "="],
-        ["000", "0", ",", ""],
+        ["000", "0", ",", DoneKey],
     ];
 
     private readonly LocalStore _store;
@@ -70,7 +80,7 @@ public partial class OperationViewModel : ViewModelBase
     public ObservableCollection<ChoiceVm> From { get; } = new();
     public ObservableCollection<ChoiceVm> To { get; } = new();
     public ObservableCollection<DayVm> Days { get; } = new();
-    public IEnumerable<string> KeyList => Keys.SelectMany(r => r);
+    public IEnumerable<KeyVm> KeyList => Keys.SelectMany(r => r).Select(k => new KeyVm(k));
 
     [ObservableProperty] public partial string Expression { get; set; } = "";
     [ObservableProperty] public partial string? Note { get; set; }
@@ -196,7 +206,12 @@ public partial class OperationViewModel : ViewModelBase
         OnPropertyChanged(nameof(BaseText)); OnPropertyChanged(nameof(BaseAmountText)); OnPropertyChanged(nameof(RateFormula));
     }
 
-    [RelayCommand] private void Press(string key) { if (key.Length > 0) Expression = Calc.Press(Expression, key); }
+    [RelayCommand]
+    private void Press(string key)
+    {
+        if (key == DoneKey) { Save(); return; }
+        if (key.Length > 0) Expression = Calc.Press(Expression, key);
+    }
 
     [RelayCommand] private void SelectFrom(ChoiceVm c) { Pick(From, c.Id); Changed(); }
     [RelayCommand] private void SelectTo(ChoiceVm c) { Pick(To, c.Id); Changed(); }

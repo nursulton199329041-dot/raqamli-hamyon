@@ -76,25 +76,23 @@
       <ItemsControl DockPanel.Dock="Bottom" ItemsSource="{Binding KeyList}" Margin="10,4,10,14">
         <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="4" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
         <ItemsControl.ItemTemplate>
-          <DataTemplate x:DataType="x:String">
-            <Button Classes="flat" IsVisible="{Binding Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                    Command="{Binding $parent[UserControl].((vm:OperationViewModel)DataContext).PressCommand}" CommandParameter="{Binding}">
-              <Border Classes="key">
-                <TextBlock Text="{Binding}" FontSize="22" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}"
-                           HorizontalAlignment="Center" VerticalAlignment="Center" />
-              </Border>
+          <DataTemplate x:DataType="vm:KeyVm">
+            <Button Classes="flat" Command="{Binding $parent[UserControl].((vm:OperationViewModel)DataContext).PressCommand}" CommandParameter="{Binding Text}">
+              <Panel>
+                <Border Classes="key" IsVisible="{Binding IsPlain}">
+                  <TextBlock Text="{Binding Text}" FontSize="22" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}"
+                             HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+                <!-- ✓ = save (bottom-right) -->
+                <Border Height="56" Margin="3" CornerRadius="16" Background="{StaticResource IncomeBrush}" BoxShadow="0 6 16 0 #661FCB8B"
+                        IsVisible="{Binding IsDone}">
+                  <c:Glyph Kind="check" Width="28" Height="28" Thickness="3" Foreground="White" />
+                </Border>
+              </Panel>
             </Button>
           </DataTemplate>
         </ItemsControl.ItemTemplate>
       </ItemsControl>
-
-      <!-- save -->
-      <Button DockPanel.Dock="Bottom" Classes="flat" Command="{Binding SaveCommand}" Margin="16,6,16,6">
-        <Border Height="54" CornerRadius="27" Background="{Binding Color, Converter={StaticResource BadgeBrush}}">
-          <TextBlock Classes="label" Text="{l:T save}" Foreground="White" FontWeight="Bold" FontSize="15"
-                     HorizontalAlignment="Center" VerticalAlignment="Center" />
-        </Border>
-      </Button>
 
       <ScrollViewer HorizontalScrollBarVisibility="Disabled">
         <StackPanel Margin="18,4,18,8" Spacing="12">
