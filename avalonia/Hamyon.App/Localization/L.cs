@@ -76,6 +76,7 @@ public static class L
         ["op_lend"] = ["Qarz berdim", "Дал в долг", "Lent"],
         ["op_borrow"] = ["Qarz oldim", "Взял в долг", "Borrowed"],
         ["amount"] = ["SUMMA", "СУММА", "AMOUNT"],
+        ["amount_base"] = ["SO‘MDA", "В СУМАХ", "IN SO‘M"],
         ["from_source"] = ["KIRIM MANBASI", "ИСТОЧНИК", "SOURCE"],
         ["from_wallet"] = ["QAYSI HAMYONDAN", "ИЗ КОШЕЛЬКА", "FROM WALLET"],
         ["to_wallet"] = ["QAYSI HAMYONGA", "В КОШЕЛЁК", "TO WALLET"],

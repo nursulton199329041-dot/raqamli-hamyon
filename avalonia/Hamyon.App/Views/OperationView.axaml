@@ -98,8 +98,35 @@
 
       <ScrollViewer HorizontalScrollBarVisibility="Disabled">
         <StackPanel Margin="18,4,18,8" Spacing="12">
-          <!-- amount -->
-          <StackPanel HorizontalAlignment="Center" Spacing="2">
+          <!-- amount; a dollar (non-so'm) expense shows the so'm side next to it with the rate under it -->
+          <Grid ColumnDefinitions="*,Auto,*" IsVisible="{Binding NeedsRate}">
+            <StackPanel Spacing="2" HorizontalAlignment="Stretch">
+              <TextBlock Classes="label" Text="{l:T amount}" HorizontalAlignment="Center" />
+              <Viewbox StretchDirection="DownOnly" Height="44">
+                <TextBlock Classes="hero" Text="{Binding AmountText}" FontSize="34" />
+              </Viewbox>
+              <Border Height="2" CornerRadius="1" Background="{DynamicResource AccentBrush}" Margin="8,0" />
+              <TextBlock Text="{Binding Expression}" IsVisible="{Binding ShowExpression}" HorizontalAlignment="Center"
+                         Foreground="{StaticResource TextSecondaryBrush}" FontFamily="{StaticResource MonoFont}" />
+            </StackPanel>
+            <c:Glyph Grid.Column="1" Kind="chevronRight" Foreground="{StaticResource TextSecondaryBrush}" Width="20" Height="20" Thickness="2.4"
+                     Margin="6,0" VerticalAlignment="Center" />
+            <StackPanel Grid.Column="2" Spacing="2" HorizontalAlignment="Stretch">
+              <TextBlock Classes="label" Text="{l:T amount_base}" HorizontalAlignment="Center" />
+              <Viewbox StretchDirection="DownOnly" Height="44">
+                <TextBlock Classes="hero" Text="{Binding BaseAmountText}" FontSize="34" Foreground="{StaticResource TextSecondaryBrush}" />
+              </Viewbox>
+              <!-- "100 USD × [12 650]" — the rate can be corrected right here -->
+              <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="4">
+                <TextBlock Text="{Binding RateFormula}" FontSize="12.5" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                <TextBox Text="{Binding RateText}" MinWidth="70" MinHeight="0" Padding="6,2" FontSize="12.5" FontWeight="SemiBold"
+                         CornerRadius="8" VerticalAlignment="Center" TextInputOptions.ContentType="Number" />
+              </StackPanel>
+              <TextBlock Text="{Binding RateHint}" FontSize="10.5" Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Center"
+                         TextAlignment="Center" TextWrapping="Wrap" />
+            </StackPanel>
+          </Grid>
+          <StackPanel HorizontalAlignment="Center" Spacing="2" IsVisible="{Binding !NeedsRate}">
             <TextBlock Classes="label" Text="{l:T amount}" HorizontalAlignment="Center" />
             <TextBlock Classes="hero" Text="{Binding AmountText}" HorizontalAlignment="Center" FontSize="38" />
             <TextBlock Text="{Binding Expression}" IsVisible="{Binding ShowExpression}" HorizontalAlignment="Center"
@@ -139,22 +166,6 @@
               </ItemsControl.ItemTemplate>
             </ItemsControl>
           </ScrollViewer>
-
-          <!-- expense from a dollar (non-so'm) wallet: rate, and what the category is charged in so'm -->
-          <Border IsVisible="{Binding NeedsRate}" CornerRadius="18" Padding="12" Background="{StaticResource GlassBrush}"
-                  BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1">
-            <StackPanel Spacing="8">
-              <TextBlock Classes="label" Text="{Binding RateLabel}" />
-              <Grid ColumnDefinitions="*,Auto">
-                <TextBox Text="{Binding RateText}" CornerRadius="14" FontSize="17" FontWeight="SemiBold" />
-                <TextBlock Grid.Column="1" Text="UZS" Margin="10,0,4,0" VerticalAlignment="Center" FontWeight="Bold" Foreground="{StaticResource TextSecondaryBrush}" />
-              </Grid>
-              <Grid ColumnDefinitions="*,Auto">
-                <TextBlock Text="{Binding RateHint}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
-                <TextBlock Grid.Column="1" Text="{Binding BaseText}" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" />
-              </Grid>
-            </StackPanel>
-          </Border>
 
           <!-- received amount when currencies differ -->
           <StackPanel Spacing="6" IsVisible="{Binding NeedsToAmount}">

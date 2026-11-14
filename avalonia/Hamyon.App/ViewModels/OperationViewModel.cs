@@ -103,11 +103,18 @@ public partial class OperationViewModel : ViewModelBase
         ? "≈ " + Money.Format(decimal.Round(a * r, 2, MidpointRounding.AwayFromZero), BaseCurrency)
         : "";
 
+    /// <summary>The so'm side shown next to the dollar amount at the top ("1 197 344,5 UZS"; 0 until amount and rate are known).</summary>
+    public string BaseAmountText => Money.Format(
+        Calc.Evaluate(Expression) is { } a && Rate is { } r && r > 0 ? decimal.Round(a * r, 2, MidpointRounding.AwayFromZero) : 0m, BaseCurrency);
+
+    /// <summary>"100 USD ×" — the rate box follows it under the so'm amount.</summary>
+    public string RateFormula => $"{Money.Format(Calc.Evaluate(Expression) ?? 0, Currency)} ×";
+
     partial void OnRateTextChanged(string? value)
     {
         if (!_settingRate) _rateTyped = true;
         Error = null;
-        OnPropertyChanged(nameof(BaseText));
+        OnPropertyChanged(nameof(BaseText)); OnPropertyChanged(nameof(BaseAmountText)); OnPropertyChanged(nameof(RateFormula));
     }
 
     private void SetRate(decimal? rate, string hintKey)
@@ -186,7 +193,7 @@ public partial class OperationViewModel : ViewModelBase
         Error = null;
         OnPropertyChanged(nameof(AmountText));
         OnPropertyChanged(nameof(ShowExpression));
-        OnPropertyChanged(nameof(BaseText));
+        OnPropertyChanged(nameof(BaseText)); OnPropertyChanged(nameof(BaseAmountText)); OnPropertyChanged(nameof(RateFormula));
     }
 
     [RelayCommand] private void Press(string key) { if (key.Length > 0) Expression = Calc.Press(Expression, key); }
@@ -210,7 +217,7 @@ public partial class OperationViewModel : ViewModelBase
         OnPropertyChanged(nameof(ToCurrency));
         OnPropertyChanged(nameof(NeedsRate));
         OnPropertyChanged(nameof(RateLabel));
-        OnPropertyChanged(nameof(BaseText));
+        OnPropertyChanged(nameof(BaseText)); OnPropertyChanged(nameof(BaseAmountText)); OnPropertyChanged(nameof(RateFormula));
         _rateTyped = false; // another wallet may be in another currency
         LoadRate();
     }
