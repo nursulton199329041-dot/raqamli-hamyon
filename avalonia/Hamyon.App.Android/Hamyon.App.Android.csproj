@@ -16,7 +16,7 @@
   <!-- Play upload key: kept OUTSIDE the repo; the password comes from the HAMYON_KS_PASS environment variable.
        Without the key file a Release build is signed with the debug key (fine for installing the APK by hand). -->
   <PropertyGroup>
-    <HamyonKeyStore>$(USERPROFILE).androidaqamli-hamyon-upload.jks</HamyonKeyStore>
+    <HamyonKeyStore>$(USERPROFILE)\.android\raqamli-hamyon-upload.jks</HamyonKeyStore>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)' == 'Release' And Exists('$(HamyonKeyStore)')">
     <AndroidKeyStore>true</AndroidKeyStore>

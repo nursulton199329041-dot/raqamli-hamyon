@@ -23,6 +23,10 @@ try {
     dotnet publish (Join-Path $root 'Hamyon.App.Android\Hamyon.App.Android.csproj') -c Release -o $out
     if ($LASTEXITCODE -ne 0) { throw 'Build xato' }
     $aab = Join-Path $out 'uz.raqamlinazorat.hamyon-Signed.aab'
+    # Play refuses the debug key: make sure the bundle carries the upload key
+    $cert = & $keytool -printcert -jarfile $aab | Out-String
+    if ($cert -match 'CN=Android Debug') { throw "Bundle debug kalit bilan imzolangan - Play qabul qilmaydi" }
+    Write-Host ($cert -split "`n" | Select-String 'Owner:' | Select-Object -First 1)
     $dest = Join-Path ([Environment]::GetFolderPath('Desktop')) 'RaqamliHamyon.aab'
     Copy-Item $aab $dest -Force
     Write-Host "TAYYOR: $dest" -ForegroundColor Green
