@@ -46,31 +46,69 @@
       </Border.Background>
     </Border>
 
-    <!-- iOS-style bar: round glass buttons, the active tab grows into an accent pill -->
-    <ItemsControl ItemsSource="{Binding Tabs}" VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="16,0,16,20">
-      <ItemsControl.ItemsPanel>
-        <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="8" /></ItemsPanelTemplate>
-      </ItemsControl.ItemsPanel>
-      <ItemsControl.ItemTemplate>
-        <DataTemplate x:DataType="vm:TabVm">
-          <Button Classes="flat" Command="{Binding #Root.((vm:MainViewModel)DataContext).SelectTabCommand}" CommandParameter="{Binding}">
-            <Panel>
-              <Border IsVisible="{Binding IsActive}" Height="60" MinWidth="140" CornerRadius="30" Padding="20,0"
-                      Background="{DynamicResource AccentBrush}" BoxShadow="0 10 28 0 #66000000">
-                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" HorizontalAlignment="Center">
-                  <c:Glyph Kind="{Binding Icon}" Foreground="{Binding $parent[Border].Background, Converter={StaticResource InkOn}}" Width="20" Height="20" />
-                  <TextBlock Classes="label" Text="{Binding Title}" Foreground="{Binding $parent[Border].Background, Converter={StaticResource InkOn}}" FontWeight="Bold" FontSize="13" VerticalAlignment="Center" />
-                </StackPanel>
-              </Border>
-              <Border IsVisible="{Binding !IsActive}" Width="60" Height="60" CornerRadius="30"
-                      Background="#D1160A0C" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1" BoxShadow="0 10 28 0 #66000000">
-                <c:Glyph Kind="{Binding Icon}" Foreground="{StaticResource TextBrush}" Width="24" Height="24" />
-              </Border>
-            </Panel>
-          </Button>
-        </DataTemplate>
-      </ItemsControl.ItemTemplate>
-    </ItemsControl>
+    <!-- Liquid-glass tab bar: one glass capsule, a glass lens under the active tab. Tap a tab, or press anywhere on the
+         bar and slide: the lens grows, follows the finger, magnifies the icons under it, and snaps to a tab on release.
+         All pointer handling is in ShellView.axaml.cs. -->
+    <Border x:Name="TabBar" VerticalAlignment="Bottom" HorizontalAlignment="Stretch" MaxWidth="520" Margin="16,0,16,18"
+            Height="68" CornerRadius="34" Padding="5" BorderThickness="1" BoxShadow="0 14 34 0 #8C000000">
+      <Border.Background>
+        <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+          <GradientStop Color="#E6342027" Offset="0" />
+          <GradientStop Color="#EB1A0E12" Offset="1" />
+        </LinearGradientBrush>
+      </Border.Background>
+      <Border.BorderBrush>
+        <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+          <GradientStop Color="#59FFFFFF" Offset="0" />
+          <GradientStop Color="#14FFFFFF" Offset="1" />
+        </LinearGradientBrush>
+      </Border.BorderBrush>
+      <Panel x:Name="TabArea" Background="Transparent" Cursor="Hand">
+        <!-- the lens -->
+        <Border x:Name="Lens" HorizontalAlignment="Left" CornerRadius="29" BorderThickness="1" IsHitTestVisible="False"
+                BoxShadow="0 6 18 0 #59000000">
+          <Border.Background>
+            <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+              <GradientStop Color="#40FFFFFF" Offset="0" />
+              <GradientStop Color="#1AFFFFFF" Offset="1" />
+            </LinearGradientBrush>
+          </Border.Background>
+          <Border.BorderBrush>
+            <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+              <GradientStop Color="#80FFFFFF" Offset="0" />
+              <GradientStop Color="#1FFFFFFF" Offset="1" />
+            </LinearGradientBrush>
+          </Border.BorderBrush>
+          <Border.Transitions>
+            <Transitions>
+              <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.32">
+                <TransformOperationsTransition.Easing><CubicEaseOut /></TransformOperationsTransition.Easing>
+              </TransformOperationsTransition>
+              <DoubleTransition Property="Opacity" Duration="0:0:0.2" />
+            </Transitions>
+          </Border.Transitions>
+        </Border>
+        <ItemsControl x:Name="TabItems" ItemsSource="{Binding Tabs}" IsHitTestVisible="False">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate><UniformGrid Rows="1" /></ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:TabVm">
+              <StackPanel Spacing="3" HorizontalAlignment="Center" VerticalAlignment="Center" Classes.on="{Binding IsActive}">
+                <StackPanel.Styles>
+                  <Style Selector="StackPanel > c|Glyph"><Setter Property="Foreground" Value="{StaticResource TextBrush}" /></Style>
+                  <Style Selector="StackPanel > TextBlock"><Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" /></Style>
+                  <Style Selector="StackPanel.on > c|Glyph"><Setter Property="Foreground" Value="{DynamicResource AccentBrush}" /></Style>
+                  <Style Selector="StackPanel.on > TextBlock"><Setter Property="Foreground" Value="{DynamicResource AccentBrush}" /></Style>
+                </StackPanel.Styles>
+                <c:Glyph Kind="{Binding Icon}" Width="23" Height="23" HorizontalAlignment="Center" />
+                <TextBlock Text="{Binding Title}" FontSize="11" FontWeight="SemiBold" HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </Panel>
+    </Border>
 
     <!-- bottom sheet: dimmed backdrop (tap closes) + the sheet itself -->
     <Panel IsVisible="{Binding Sheet, Converter={x:Static ObjectConverters.IsNotNull}}">

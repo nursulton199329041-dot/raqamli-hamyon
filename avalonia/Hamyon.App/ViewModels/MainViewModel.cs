@@ -13,7 +13,7 @@ public partial class TabVm : ObservableObject
 {
     public required string Key { get; init; }
     public required string Icon { get; init; }
-    public string Title => L.T("tab_" + Key);
+    public string Title => L.T("bar_" + Key);
     [ObservableProperty] public partial bool IsActive { get; set; }
 }
 
