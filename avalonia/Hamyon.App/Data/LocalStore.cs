@@ -120,6 +120,16 @@ public sealed partial class LocalStore
             Exec(c, "PRAGMA user_version = 3");
             tx.Commit();
         }
+        if (Scalar(c, "PRAGMA user_version") < 4)
+        {
+            // monthly budget per expense category (so'm, minor units; 0 = none). Sources get the column too so the
+            // catalog sync code stays one statement for both tables.
+            using var tx = c.BeginTransaction();
+            foreach (var table in new[] { "categories", "sources" })
+                if (!HasColumn(c, table, "budget_minor")) Exec(c, $"ALTER TABLE {table} ADD COLUMN budget_minor INTEGER NOT NULL DEFAULT 0");
+            Exec(c, "PRAGMA user_version = 4");
+            tx.Commit();
+        }
         Exec(c, "UPDATE sync_ctl SET applying = 0"); // a crash while applying remote changes must not leave tracking off
         if (Scalar(c, "SELECT COUNT(*) FROM wallets") == 0) Seed(c);
     }
@@ -223,6 +233,28 @@ public sealed partial class LocalStore
 
     public void ArchiveNamed(string table, long id) => Run($"UPDATE {Named(table)} SET archived = 1 WHERE id = $id", ("$id", id));
 
+    /// <summary>Puts the items of a table in this order (the panel's "arrange" mode). Only changed rows are written.</summary>
+    public void SetOrder(string table, IReadOnlyList<long> ids)
+    {
+        var t = table == "wallets" ? table : Named(table);
+        var current = Read($"SELECT id, sort FROM {t}", r => (r.GetInt64(0), r.GetInt64(1))).ToDictionary(x => x.Item1, x => x.Item2);
+        for (var i = 0; i < ids.Count; i++)
+            if (current.GetValueOrDefault(ids[i], -1) != i + 1)
+                Run($"UPDATE {t} SET sort = $s WHERE id = $id", ("$s", (long)(i + 1)), ("$id", ids[i]));
+    }
+
+    /// <summary>Monthly budget per expense category in so'm (only categories that have one).</summary>
+    public Dictionary<long, decimal> Budgets() =>
+        Read("SELECT id, budget_minor FROM categories WHERE archived = 0 AND budget_minor > 0", r => (r.GetInt64(0), r.GetInt64(1)))
+            .ToDictionary(x => x.Item1, x => Money.FromMinor(x.Item2));
+
+    /// <summary>Sets a category's monthly budget (0 removes it).</summary>
+    public void SetBudget(long categoryId, decimal monthly)
+    {
+        var minor = Money.ToMinor(Math.Max(0, monthly));
+        Run("UPDATE categories SET budget_minor = $b WHERE id = $id AND budget_minor <> $b", ("$b", minor), ("$id", categoryId));
+    }
+
     private static string Named(string table) => table is "categories" or "sources" ? table : throw new ArgumentException(table);
 
     // ---- debts: kind 4 = I lent (money leaves the wallet), kind 5 = I borrowed / got it back (money comes in) ----
@@ -303,6 +335,43 @@ public sealed partial class LocalStore
         using var r = cmd.ExecuteReader();
         while (r.Read()) map[r.GetInt32(0)] = Money.FromMinor(r.GetInt64(1));
         return map;
+    }
+
+    /// <summary>
+    /// Income or expense of one currency per calendar day (byMonth = false) or per calendar month (key = the 1st),
+    /// for periods of any length (several months or years).
+    /// </summary>
+    public Dictionary<DateTime, decimal> SeriesByDate(OpKind kind, Period p, string currency, bool byMonth)
+    {
+        using var c = Open();
+        using var cmd = c.CreateCommand();
+        cmd.CommandText = $"""
+            SELECT substr(date, 1, {(byMonth ? 7 : 10)}), SUM(COALESCE(base_minor, amount_minor)) FROM operations
+            WHERE kind = $k AND (CASE WHEN base_minor IS NOT NULL THEN 'UZS' ELSE currency END) = $cur AND date >= $from AND date <= $to
+            GROUP BY 1
+            """;
+        cmd.Parameters.AddWithValue("$k", (int)kind);
+        cmd.Parameters.AddWithValue("$cur", currency);
+        cmd.Parameters.AddWithValue("$from", Iso(p.From));
+        cmd.Parameters.AddWithValue("$to", Iso(p.To));
+        var map = new Dictionary<DateTime, decimal>();
+        using var r = cmd.ExecuteReader();
+        while (r.Read())
+        {
+            var key = r.GetString(0) + (byMonth ? "-01" : "");
+            if (DateTime.TryParseExact(key, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d))
+                map[d] = map.GetValueOrDefault(d) + Money.FromMinor(r.GetInt64(1));
+        }
+        return map;
+    }
+
+    /// <summary>The date of the oldest operation (null when there are none).</summary>
+    public DateTime? FirstOperationDate()
+    {
+        using var c = Open();
+        using var cmd = c.CreateCommand();
+        cmd.CommandText = "SELECT MIN(date) FROM operations";
+        return cmd.ExecuteScalar() is string s && DateTime.TryParse(s[..Math.Min(10, s.Length)], CultureInfo.InvariantCulture, DateTimeStyles.None, out var d) ? d : null;
     }
 
     /// <summary>Income per source (kind 1) or expense per category (kind 2) in the period: id -> currency -> amount.</summary>

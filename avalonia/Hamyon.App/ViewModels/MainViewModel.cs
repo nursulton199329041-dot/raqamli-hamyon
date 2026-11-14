@@ -89,6 +89,19 @@ public partial class MainViewModel : ViewModelBase
         Home.OpenItem += tile => Current = new ItemViewModel(store, tile.Kind, tile.Id, back: () => { Home.Refresh(); Current = Home; }, sheet: s => Sheet = s, changed: RefreshAll);
         if (profiles is not null) { var p = profiles.Current; Home.SetProfile(p.Name, p.Color); }
 
+        // period sheet: the home date chip and the filter buttons of History / Reports (each keeps its own period)
+        Home.OpenPeriod += () => Sheet = new PeriodPickerViewModel(Home.Period, p => Home.Period = p, close: () => Sheet = null);
+        History.OpenPeriod += () => Sheet = new PeriodPickerViewModel(History.Period, p => History.Period = p, close: () => Sheet = null);
+        Reports.OpenPeriod += () => Sheet = new PeriodPickerViewModel(Reports.Period, p => Reports.Period = p, close: () => Sheet = null);
+
+        // "+" tiles, "⋯" menu
+        Home.AddItem += kind => Sheet = new EditorViewModel(store, kind, null, done: () => { Sheet = null; RefreshAll(); }, close: () => Sheet = null);
+        Home.OpenBudgets += () => Sheet = new BudgetViewModel(store, saved: RefreshAll, close: () => Sheet = null);
+        Home.Arranged += RefreshAll;
+        Home.TourFinished += () => SetPref("tour_done", "1");
+        // the guide runs once on a new install (it stays in the "⋯" menu)
+        if (profiles is not null && string.IsNullOrEmpty(GetPref("tour_done"))) Home.StartTour();
+
         // account + sync (the real app; unit tests without a profile index never touch the network)
         if (profiles is not null)
         {
@@ -246,6 +259,9 @@ public partial class MainViewModel : ViewModelBase
         }
         if (Current is CatalogViewModel or DebtsViewModel) { Current = Settings; return true; }
         if (Current != Home) { SelectTab(Tabs[0]); return true; }
+        if (Home.MenuOpen) { Home.MenuOpen = false; return true; }
+        if (Home.TourOn) { Home.TourSkipCommand.Execute(null); return true; }
+        if (Home.EditMode) { Home.EditMode = false; return true; }
         return false;
     }
 

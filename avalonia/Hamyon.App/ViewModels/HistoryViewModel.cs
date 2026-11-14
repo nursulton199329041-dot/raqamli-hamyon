@@ -41,7 +41,8 @@ public partial class HistoryViewModel : ViewModelBase
     private readonly LocalStore _store;
     private readonly Action _changed;
 
-    [ObservableProperty] public partial DateTime Month { get; set; } = new(DateTime.Today.Year, DateTime.Today.Month, 1);
+    /// <summary>The period shown: the current month by default; the filter button picks any other.</summary>
+    [ObservableProperty] public partial Period Period { get; set; } = Period.Of(PeriodKind.Month, DateTime.Now);
     [ObservableProperty] public partial string? Search { get; set; }
     [ObservableProperty] public partial string Saldo { get; set; } = "0";
     [ObservableProperty] public partial string Income { get; set; } = "0";
@@ -49,8 +50,13 @@ public partial class HistoryViewModel : ViewModelBase
     [ObservableProperty] public partial bool IsEmpty { get; set; }
 
     public ObservableCollection<DayGroupVm> Days { get; } = new();
-    public string MonthTitle => $"{L.Month(Month.Month)} {Month.Year}";
-    public bool CanGoNext => Month < new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+    public string MonthTitle => Period.Title;
+    public bool CanGoNext => !Period.IsLatest;
+    public bool CanGoPrev => Period.CanShift;
+
+    /// <summary>Asks the shell to open the period sheet (filter button, tap on the title).</summary>
+    public event Action? OpenPeriod;
+    [RelayCommand] private void PickPeriod() => OpenPeriod?.Invoke();
 
     /// <param name="changed">called after a delete, so the home screen refreshes too</param>
     public HistoryViewModel(LocalStore store, Action changed)
@@ -60,17 +66,18 @@ public partial class HistoryViewModel : ViewModelBase
         Refresh();
     }
 
-    partial void OnMonthChanged(DateTime value)
+    partial void OnPeriodChanged(Period value)
     {
         OnPropertyChanged(nameof(MonthTitle));
         OnPropertyChanged(nameof(CanGoNext));
+        OnPropertyChanged(nameof(CanGoPrev));
         Refresh();
     }
 
     partial void OnSearchChanged(string? value) => Refresh();
 
-    [RelayCommand] private void PrevMonth() => Month = Month.AddMonths(-1);
-    [RelayCommand] private void NextMonth() { if (CanGoNext) Month = Month.AddMonths(1); }
+    [RelayCommand] private void PrevMonth() { if (CanGoPrev) Period = Period.Shift(-1); }
+    [RelayCommand] private void NextMonth() { if (CanGoNext) Period = Period.Shift(1); }
 
     [RelayCommand]
     private void Toggle(HistoryRowVm row)
@@ -91,7 +98,7 @@ public partial class HistoryViewModel : ViewModelBase
     [RelayCommand]
     public void Refresh()
     {
-        var all = _store.Operations(Month, Month.AddMonths(1).AddTicks(-1));
+        var all = _store.Operations(Period.From, Period.To);
 
         // month totals (whole month, not just the search hits): transfers move money, they are neither in nor out
         var inc = Sum(all.Where(o => o.Kind == OpKind.Income));

@@ -68,7 +68,7 @@ public sealed class ReportsTests : IDisposable
         Assert.Equal(Money.Format(10_000_000m, "UZS"), vm.Total);
         Assert.Equal("Ish haqi", vm.TopName);
 
-        vm.SelectRangeCommand.Execute(vm.Ranges[1]);
+        vm.Period = Period.Of(PeriodKind.Year, DateTime.Now);
         Assert.Equal(12, vm.Bars.Count);
         Assert.Equal(10_000_000d, vm.Bars[Mid.Month - 1]);
         Assert.False(vm.CanGoNext);

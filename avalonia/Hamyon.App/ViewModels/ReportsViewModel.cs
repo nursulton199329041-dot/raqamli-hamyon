@@ -36,15 +36,11 @@ public partial class ReportsViewModel : ViewModelBase
         new() { Key = "expense", Title = L.T("r_expenses"), IsSelected = true },
         new() { Key = "income", Title = L.T("r_incomes") },
     ];
-    public ObservableCollection<OptionVm> Ranges { get; } =
-    [
-        new() { Key = "month", Title = L.T("r_month"), IsSelected = true },
-        new() { Key = "year", Title = L.T("r_year") },
-    ];
     public ObservableCollection<OptionVm> Currencies { get; } = new();
     public ObservableCollection<BreakdownRowVm> Breakdown { get; } = new();
 
-    [ObservableProperty] public partial DateTime Anchor { get; set; } = new(DateTime.Today.Year, DateTime.Today.Month, 1);
+    /// <summary>The period shown: the current month by default; the filter button picks any other.</summary>
+    [ObservableProperty] public partial Period Period { get; set; } = Period.Of(PeriodKind.Month, DateTime.Now);
     [ObservableProperty] public partial IReadOnlyList<double> Bars { get; set; } = [];
     [ObservableProperty] public partial IReadOnlyList<string> BarLabels { get; set; } = [];
     [ObservableProperty] public partial IReadOnlyList<ChartSlice> Slices { get; set; } = [];
@@ -56,13 +52,13 @@ public partial class ReportsViewModel : ViewModelBase
     [ObservableProperty] public partial bool IsEmpty { get; set; }
 
     public bool IsExpense => Kinds[0].IsSelected;
-    public bool IsYear => Ranges[1].IsSelected;
     public string Currency => Currencies.FirstOrDefault(c => c.IsSelected)?.Key ?? "UZS";
     public string Title => L.T(IsExpense ? "r_expenses" : "r_incomes").ToUpperInvariant();
     public string BarColor => IsExpense ? "#FF6B6B" : "#1FCB8B";
-    public string RangeTitle => IsYear ? $"{Anchor.Year}" : $"{L.Month(Anchor.Month)} {Anchor.Year}";
+    public string RangeTitle => Period.Title;
     public string TopLabel => L.T(IsExpense ? "top_category" : "top_source");
-    public bool CanGoNext => IsYear ? Anchor.Year < DateTime.Today.Year : Anchor < new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+    public bool CanGoNext => !Period.IsLatest;
+    public bool CanGoPrev => Period.CanShift;
 
     public ReportsViewModel(LocalStore store)
     {
@@ -70,13 +66,16 @@ public partial class ReportsViewModel : ViewModelBase
         Refresh();
     }
 
-    partial void OnAnchorChanged(DateTime value) => Refresh();
+    partial void OnPeriodChanged(Period value) => Refresh();
+
+    /// <summary>Asks the shell to open the period sheet (filter button, tap on the title).</summary>
+    public event Action? OpenPeriod;
+    [RelayCommand] private void PickPeriod() => OpenPeriod?.Invoke();
 
     [RelayCommand] private void SelectKind(OptionVm o) { Select(Kinds, o); Refresh(); }
-    [RelayCommand] private void SelectRange(OptionVm o) { Select(Ranges, o); Refresh(); }
     [RelayCommand] private void SelectCurrency(OptionVm o) { Select(Currencies, o); Refresh(); }
-    [RelayCommand] private void Prev() => Anchor = IsYear ? Anchor.AddYears(-1) : Anchor.AddMonths(-1);
-    [RelayCommand] private void Next() { if (CanGoNext) Anchor = IsYear ? Anchor.AddYears(1) : Anchor.AddMonths(1); }
+    [RelayCommand] private void Prev() { if (CanGoPrev) Period = Period.Shift(-1); }
+    [RelayCommand] private void Next() { if (CanGoNext) Period = Period.Shift(1); }
 
     private static void Select(IEnumerable<OptionVm> list, OptionVm o)
     {
@@ -89,18 +88,23 @@ public partial class ReportsViewModel : ViewModelBase
         SyncCurrencies();
         // labels follow the current language
         Kinds[0].Title = L.T("r_expenses"); Kinds[1].Title = L.T("r_incomes");
-        Ranges[0].Title = L.T("r_month"); Ranges[1].Title = L.T("r_year");
         var kind = IsExpense ? OpKind.Expense : OpKind.Income;
-        var from = IsYear ? new DateTime(Anchor.Year, 1, 1) : Anchor;
-        var to = (IsYear ? from.AddYears(1) : from.AddMonths(1)).AddTicks(-1);
-        var period = new Period(IsYear ? PeriodKind.Year : PeriodKind.Month, from, to);
+        var period = Period;
         var cur = Currency;
+        // "all time" draws from the first operation to today
+        var from = period.Kind == PeriodKind.All ? (_store.FirstOperationDate() ?? DateTime.Today).Date : period.From;
+        var to = period.Kind == PeriodKind.All ? DateTime.Today.AddDays(1).AddTicks(-1) : period.To;
 
-        // bars: every day of the month / every month of the year, empty buckets included
-        var series = _store.Series(kind, period, cur, byMonth: IsYear);
-        var buckets = IsYear ? 12 : DateTime.DaysInMonth(from.Year, from.Month);
-        Bars = Enumerable.Range(1, buckets).Select(i => (double)series.GetValueOrDefault(i)).ToList();
-        BarLabels = Enumerable.Range(1, buckets).Select(i => IsYear ? L.MonthShort(i) : i.ToString(CultureInfo.InvariantCulture)).ToList();
+        // bars: one per day up to ~2 months, otherwise one per month; empty buckets included
+        var byMonth = (to - from).TotalDays > 62;
+        var series = _store.SeriesByDate(kind, new Period(period.Kind, from, to), cur, byMonth);
+        var keys = new List<DateTime>();
+        for (var d = byMonth ? new DateTime(from.Year, from.Month, 1) : from.Date; d <= to; d = byMonth ? d.AddMonths(1) : d.AddDays(1)) keys.Add(d);
+        Bars = keys.Select(d => (double)series.GetValueOrDefault(d)).ToList();
+        var manyYears = byMonth && from.Year != to.Year;
+        BarLabels = keys.Select(d => byMonth
+            ? (manyYears && d.Month == 1 ? d.Year.ToString(CultureInfo.InvariantCulture) : L.MonthShort(d.Month))
+            : d.Day.ToString(CultureInfo.InvariantCulture)).ToList();
 
         // breakdown by category / source in this currency
         var totals = _store.Totals(kind, period);
@@ -132,7 +136,7 @@ public partial class ReportsViewModel : ViewModelBase
         TopDetail = rows.Count > 0 ? $"{Money.Format(rows[0].amount, cur)} · {Breakdown[0].Percent}" : "";
         IsEmpty = rows.Count == 0;
 
-        foreach (var p in new[] { nameof(IsExpense), nameof(IsYear), nameof(Currency), nameof(Title), nameof(BarColor), nameof(RangeTitle), nameof(TopLabel), nameof(CanGoNext) })
+        foreach (var p in new[] { nameof(IsExpense), nameof(Currency), nameof(Title), nameof(BarColor), nameof(RangeTitle), nameof(TopLabel), nameof(CanGoNext), nameof(CanGoPrev) })
             OnPropertyChanged(p);
     }
 

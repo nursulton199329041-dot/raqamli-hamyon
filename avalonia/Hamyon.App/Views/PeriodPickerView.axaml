@@ -1,0 +1,61 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="using:Hamyon.App.Localization"
+             xmlns:vm="using:Hamyon.App.ViewModels"
+             xmlns:c="using:Hamyon.App.Controls"
+             x:Class="Hamyon.App.Views.PeriodPickerView"
+             x:DataType="vm:PeriodPickerViewModel">
+  <Border Background="#F7140709" CornerRadius="30,30,0,0" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1,1,1,0"
+          BoxShadow="0 -12 40 0 #80000000">
+    <StackPanel Margin="18,10,18,22" Spacing="12">
+      <Border Width="40" Height="5" CornerRadius="3" Background="#33FFECE4" HorizontalAlignment="Center" />
+      <Grid ColumnDefinitions="40,*,Auto">
+        <TextBlock Grid.Column="1" Text="{l:T p_title}" FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextBrush}"
+                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+        <Button Grid.Column="2" Classes="flat" Command="{Binding CloseCommand}">
+          <Border Width="40" Height="40" CornerRadius="20" Background="{StaticResource GlassStrongBrush}">
+            <c:Glyph Kind="close" Foreground="{StaticResource TextBrush}" Width="18" Height="18" />
+          </Border>
+        </Button>
+      </Grid>
+
+      <Border Classes="card" Padding="16,4">
+        <ItemsControl ItemsSource="{Binding Options}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:PeriodOptionVm">
+              <Button Classes="flat" HorizontalContentAlignment="Stretch"
+                      Command="{Binding $parent[UserControl].((vm:PeriodPickerViewModel)DataContext).ChooseCommand}" CommandParameter="{Binding}">
+                <Grid ColumnDefinitions="*,Auto" MinHeight="52" Background="Transparent">
+                  <StackPanel VerticalAlignment="Center" Spacing="2">
+                    <TextBlock Text="{Binding Title}" FontSize="16" Foreground="{StaticResource TextBrush}" />
+                    <TextBlock Text="{Binding Hint}" FontSize="12.5" Foreground="{StaticResource TextSecondaryBrush}"
+                               IsVisible="{Binding Hint, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                  </StackPanel>
+                  <c:Glyph Grid.Column="1" Kind="check" Foreground="{DynamicResource AccentBrush}" Width="20" Height="20" Thickness="2.4"
+                           VerticalAlignment="Center" IsVisible="{Binding IsSelected}" />
+                  <Border Grid.ColumnSpan="2" Height="1" VerticalAlignment="Bottom" Background="{StaticResource GlassBorderBrush}" />
+                </Grid>
+              </Button>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </Border>
+
+      <!-- any range: from – to -->
+      <Border Classes="card" Padding="16,12" IsVisible="{Binding CustomOpen}">
+        <StackPanel Spacing="10">
+          <TextBlock Classes="label" Text="{l:T p_from}" />
+          <DatePicker SelectedDate="{Binding CustomFrom}" HorizontalAlignment="Stretch" />
+          <TextBlock Classes="label" Text="{l:T p_to}" />
+          <DatePicker SelectedDate="{Binding CustomTo}" HorizontalAlignment="Stretch" />
+          <Button Classes="flat" Command="{Binding ApplyCustomCommand}" Margin="0,6,0,0">
+            <Border Height="50" CornerRadius="25" Background="{DynamicResource AccentBrush}">
+              <TextBlock Classes="label" Text="{l:T p_apply}" FontWeight="Bold" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"
+                         Foreground="{Binding $parent[Border].Background, Converter={StaticResource InkOn}}" />
+            </Border>
+          </Button>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </Border>
+</UserControl>

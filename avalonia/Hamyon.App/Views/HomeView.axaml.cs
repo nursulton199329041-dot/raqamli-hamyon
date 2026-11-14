@@ -51,10 +51,25 @@ public partial class HomeView : UserControl
         AddHandler(PointerMovedEvent, OnMoved, RoutingStrategies.Tunnel, handledEventsToo: true);
         AddHandler(PointerReleasedEvent, OnReleased, RoutingStrategies.Tunnel, handledEventsToo: true);
         PointerCaptureLost += (_, _) => { if (_dragging) EndDrag(drop: false); };
+        DataContextChanged += (_, _) =>
+        {
+            if (DataContext is HomeViewModel vm) vm.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(HomeViewModel.TourStep)) ShowTourStep(vm.TourStep); };
+        };
     }
 
+    /// <summary>The guide scrolls the section it explains into view (top for the drag steps).</summary>
+    private void ShowTourStep(int step) => Dispatcher.UIThread.Post(() =>
+    {
+        Control? target = step switch { 1 => SourcesCard, 2 => WalletsCard, 3 => CategoriesCard, _ => null };
+        if (target is null) { Scroller.Offset = new Vector(0, 0); return; }
+        // the section a little below the top, its caption visible too
+        var y = target.TranslatePoint(new Point(0, 0), Scroller.Content as Visual ?? Scroller)?.Y ?? 0;
+        var max = Math.Max(0, Scroller.Extent.Height - Scroller.Viewport.Height);
+        Scroller.Offset = new Vector(0, Math.Clamp(y - 140, 0, max));
+    }, DispatcherPriority.Background);
+
     private static Button? TileOf(object? source) =>
-        (source as Visual)?.GetSelfAndVisualAncestors().OfType<Button>().FirstOrDefault(b => b.Classes.Contains("tile") && b.DataContext is TileVm);
+        (source as Visual)?.GetSelfAndVisualAncestors().OfType<Button>().FirstOrDefault(b => b.Classes.Contains("tile") && b.DataContext is TileVm { IsAdd: false });
 
     private void OnPressed(object? sender, PointerPressedEventArgs e)
     {
@@ -139,7 +154,7 @@ public partial class HomeView : UserControl
         foreach (var hit in this.GetInputElementsAt(probe))
         {
             if (TileOf(hit) is not { } b) continue;
-            if (b != _source && b.DataContext is TileVm to && HomeViewModel.DropKind(from, to) is not null) found = b;
+            if (b != _source && b.DataContext is TileVm to && DataContext is HomeViewModel vm && vm.CanDrop(from, to)) found = b;
             break;
         }
         if (found == _target) return;

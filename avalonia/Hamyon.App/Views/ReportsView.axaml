@@ -36,10 +36,19 @@
 
   <ScrollViewer HorizontalScrollBarVisibility="Disabled">
     <StackPanel Margin="16,12,16,120" Spacing="12" MaxWidth="600">
-      <TextBlock Classes="label" Text="{l:T tab_reports}" Foreground="{StaticResource TextBrush}" FontSize="13.5" HorizontalAlignment="Center" Margin="0,12,0,0" />
+      <!-- title + filter (period sheet) top-right -->
+      <Grid ColumnDefinitions="44,*,44" Margin="0,4,0,0">
+        <TextBlock Grid.Column="1" Classes="label" Text="{l:T tab_reports}" Foreground="{StaticResource TextBrush}" FontSize="13.5"
+                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+        <Button Grid.Column="2" Classes="flat" Command="{Binding PickPeriodCommand}">
+          <Border Width="44" Height="44" CornerRadius="22" Background="{StaticResource GlassBrush}" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1">
+            <c:Glyph Kind="filter" Foreground="{DynamicResource AccentBrush}" Width="20" Height="20" />
+          </Border>
+        </Button>
+      </Grid>
 
-      <!-- kind + range -->
-      <Grid ColumnDefinitions="*,10,Auto">
+      <!-- kind -->
+      <Grid>
         <Border CornerRadius="20" Padding="3" Background="{StaticResource GlassBrush}" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1">
           <ItemsControl ItemsSource="{Binding Kinds}">
             <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="1" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
@@ -52,29 +61,21 @@
             </ItemsControl.ItemTemplate>
           </ItemsControl>
         </Border>
-        <Border Grid.Column="2" CornerRadius="20" Padding="3" Background="{StaticResource GlassBrush}" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1">
-          <ItemsControl ItemsSource="{Binding Ranges}">
-            <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-            <ItemsControl.ItemTemplate>
-              <DataTemplate x:DataType="vm:OptionVm">
-                <Button Classes="flat" Command="{Binding $parent[UserControl].((vm:ReportsViewModel)DataContext).SelectRangeCommand}" CommandParameter="{Binding}">
-                  <ContentControl Content="{Binding}" ContentTemplate="{StaticResource SegBody}" />
-                </Button>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-        </Border>
       </Grid>
 
-      <!-- period switcher + currency -->
+      <!-- period switcher (tap the title for the period sheet) + currency -->
       <Grid ColumnDefinitions="Auto,*,Auto">
-        <Button Classes="flat" Command="{Binding PrevCommand}">
+        <Button Classes="flat" Command="{Binding PrevCommand}" IsVisible="{Binding CanGoPrev}">
           <Border Width="44" Height="44" CornerRadius="22" Background="{StaticResource GlassBrush}">
             <c:Glyph Kind="chevronLeft" Foreground="{DynamicResource AccentBrush}" Width="20" Height="20" />
           </Border>
         </Button>
-        <TextBlock Grid.Column="1" Text="{Binding RangeTitle}" FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextBrush}"
-                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+        <Button Grid.Column="1" Classes="flat" Command="{Binding PickPeriodCommand}" HorizontalAlignment="Center">
+          <StackPanel Orientation="Horizontal" Spacing="8" Background="Transparent">
+            <TextBlock Text="{Binding RangeTitle}" FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
+            <c:Glyph Kind="chevronDown" Foreground="{StaticResource TextSecondaryBrush}" Width="12" Height="12" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
         <Button Grid.Column="2" Classes="flat" Command="{Binding NextCommand}" IsVisible="{Binding CanGoNext}">
           <Border Width="44" Height="44" CornerRadius="22" Background="{StaticResource GlassBrush}">
             <c:Glyph Kind="chevronRight" Foreground="{DynamicResource AccentBrush}" Width="20" Height="20" />

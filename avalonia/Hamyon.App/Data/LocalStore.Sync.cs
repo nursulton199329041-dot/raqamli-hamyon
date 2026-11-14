@@ -44,11 +44,11 @@ public sealed partial class LocalStore
                 ["opening"] = r.GetInt64(6), ["sort"] = r.GetInt64(7), ["archived"] = r.GetInt64(8) != 0,
             }.ToJsonString(), r.GetString(1), false), docs);
         foreach (var (table, kind) in new[] { ("sources", "source"), ("categories", "category") })
-            ReadDocs(c, $"SELECT uid, updated_at, name, icon, color, sort, archived FROM {table} WHERE dirty = 1",
+            ReadDocs(c, $"SELECT uid, updated_at, name, icon, color, sort, archived, budget_minor FROM {table} WHERE dirty = 1",
                 r => new SyncDoc(kind, r.GetString(0), new JsonObject
                 {
                     ["name"] = r.GetString(2), ["icon"] = r.GetString(3), ["color"] = r.GetString(4),
-                    ["sort"] = r.GetInt64(5), ["archived"] = r.GetInt64(6) != 0,
+                    ["sort"] = r.GetInt64(5), ["archived"] = r.GetInt64(6) != 0, ["budget"] = r.GetInt64(7),
                 }.ToJsonString(), r.GetString(1), false), docs);
         ReadDocs(c, """
             SELECT o.uid, o.updated_at, o.kind, o.amount_minor, o.currency, w.uid, tw.uid, o.to_amount_minor, s.uid, k.uid,
@@ -166,10 +166,11 @@ public sealed partial class LocalStore
             case "source":
             case "category":
                 cmd.CommandText = $"""
-                    INSERT INTO {table}(uid, updated_at, dirty, name, icon, color, sort, archived)
-                    VALUES ($u, $t, 0, $n, $i, $c, $s, $a)
-                    ON CONFLICT(uid) DO UPDATE SET updated_at = $t, dirty = 0, name = $n, icon = $i, color = $c, sort = $s, archived = $a
+                    INSERT INTO {table}(uid, updated_at, dirty, name, icon, color, sort, archived, budget_minor)
+                    VALUES ($u, $t, 0, $n, $i, $c, $s, $a, $b)
+                    ON CONFLICT(uid) DO UPDATE SET updated_at = $t, dirty = 0, name = $n, icon = $i, color = $c, sort = $s, archived = $a, budget_minor = $b
                     """;
+                cmd.Parameters.AddWithValue("$b", (long?)j["budget"] ?? 0);
                 break;
             default:
                 cmd.CommandText = """

@@ -29,6 +29,8 @@
     <DataTemplate DataType="vm:LockViewModel"><views:LockView /></DataTemplate>
     <DataTemplate DataType="vm:ExportViewModel"><views:ExportView /></DataTemplate>
     <DataTemplate DataType="vm:AccountViewModel"><views:AccountView /></DataTemplate>
+    <DataTemplate DataType="vm:PeriodPickerViewModel"><views:PeriodPickerView /></DataTemplate>
+    <DataTemplate DataType="vm:BudgetViewModel"><views:BudgetView /></DataTemplate>
   </Application.DataTemplates>
 
   <Application.Styles>

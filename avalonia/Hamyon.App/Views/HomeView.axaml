@@ -18,17 +18,53 @@
     <Style Selector="Button.tile.dragSource"><Setter Property="Opacity" Value="0.35" /></Style>
     <Style Selector="Button.tile.dropTarget"><Setter Property="RenderTransform" Value="scale(1.14)" /></Style>
     <Style Selector="Button.tile.dropTarget Border.ring"><Setter Property="IsVisible" Value="True" /></Style>
+
+    <!-- guide: everything except the section being explained fades back -->
+    <Style Selector=":is(Control).tourable">
+      <Setter Property="Transitions">
+        <Transitions><DoubleTransition Property="Opacity" Duration="0:0:0.25" /></Transitions>
+      </Setter>
+    </Style>
+    <Style Selector=":is(Control).tourable.dim"><Setter Property="Opacity" Value="0.12" /></Style>
+
+    <Style Selector="TextBlock.tourTitle">
+      <Setter Property="FontSize" Value="30" />
+      <Setter Property="FontWeight" Value="Bold" />
+      <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+      <Setter Property="TextAlignment" Value="Center" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style Selector="TextBlock.tourText">
+      <Setter Property="FontSize" Value="15" />
+      <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+      <Setter Property="TextAlignment" Value="Center" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="MaxWidth" Value="340" />
+    </Style>
+
+    <!-- "⋯" menu pills -->
+    <Style Selector="Border.pill">
+      <Setter Property="CornerRadius" Value="24" />
+      <Setter Property="Height" Value="48" />
+      <Setter Property="Padding" Value="18,0" />
+      <Setter Property="Background" Value="{StaticResource GlassStrongBrush}" />
+    </Style>
   </UserControl.Styles>
   <UserControl.Resources>
-    <!-- round coloured badge + name + period amount -->
+    <!-- round coloured badge + name + period amount; the "+" tile creates a new item in its section -->
     <DataTemplate x:Key="Tile" x:DataType="vm:TileVm">
       <Button Classes="flat tile" Command="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).OpenTileCommand}" CommandParameter="{Binding}">
       <StackPanel Width="84" Spacing="6" Margin="0,4">
         <Panel Width="62" Height="62" HorizontalAlignment="Center">
-          <Border Width="54" Height="54" CornerRadius="27"
+          <Border Width="54" Height="54" CornerRadius="27" IsVisible="{Binding IsItem}"
                   Background="{Binding Color, Converter={StaticResource BadgeBrush}}"
                   BoxShadow="{Binding Color, Converter={StaticResource Glow}}">
             <c:Glyph Kind="{Binding Icon}" Foreground="White" Width="24" Height="24" HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+          <Border Width="54" Height="54" CornerRadius="27" IsVisible="{Binding IsAdd}" Background="#F2FFFFFF" BoxShadow="0 6 16 0 #59000000">
+            <c:Glyph Kind="plus" Foreground="#5A4A4E" Width="22" Height="22" Thickness="2" HorizontalAlignment="Center" VerticalAlignment="Center" />
           </Border>
           <Border Classes="ring" IsVisible="False" CornerRadius="31" BorderThickness="2.5" BorderBrush="{DynamicResource AccentBrush}" />
         </Panel>
@@ -41,6 +77,15 @@
             <Style Selector="TextBlock.neg"><Setter Property="Foreground" Value="{StaticResource ExpenseBrush}" /></Style>
           </TextBlock.Styles>
         </TextBlock>
+        <!-- budget: how much of the month's limit is spent (red once over) -->
+        <Border Width="54" Height="4" CornerRadius="2" Background="#26FFFFFF" IsVisible="{Binding HasBudget}">
+          <Border Width="{Binding BudgetWidth}" HorizontalAlignment="Left" CornerRadius="2" Classes.over="{Binding OverBudget}">
+            <Border.Styles>
+              <Style Selector="Border"><Setter Property="Background" Value="{StaticResource IncomeBrush}" /></Style>
+              <Style Selector="Border.over"><Setter Property="Background" Value="{StaticResource ExpenseBrush}" /></Style>
+            </Border.Styles>
+          </Border>
+        </Border>
       </StackPanel>
       </Button>
     </DataTemplate>
@@ -50,49 +95,52 @@
   <ScrollViewer x:Name="Scroller" HorizontalScrollBarVisibility="Disabled">
     <StackPanel Margin="16,12,16,120" Spacing="14" MaxWidth="560">
 
-      <!-- header: profile avatar | mono title + profile name | profile switcher (both open the profiles sheet) -->
-      <Grid ColumnDefinitions="Auto,*,Auto">
-        <Button Classes="flat" Command="{Binding ShowProfilesCommand}">
-          <Border Width="44" Height="44" CornerRadius="22" Background="{Binding ProfileColor, Converter={StaticResource HexBrush}}">
-            <TextBlock Text="{Binding ProfileInitial}" FontSize="17" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"
-                       Foreground="{Binding $parent[Border].Background, Converter={StaticResource InkOn}}" />
-          </Border>
-        </Button>
-        <StackPanel Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="2">
-          <TextBlock Classes="label" Text="{l:T app}" Foreground="{StaticResource TextBrush}" FontSize="13.5" HorizontalAlignment="Center" />
-          <TextBlock Text="{Binding ProfileName}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Center"
-                     IsVisible="{Binding ProfileName, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-        </StackPanel>
-        <Button Grid.Column="2" Classes="flat" Command="{Binding ShowProfilesCommand}">
-          <Border Width="44" Height="44" CornerRadius="22" Background="{StaticResource GlassBrush}"
-                  BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1">
-            <c:Glyph Kind="users" Foreground="{StaticResource TextBrush}" Width="20" Height="20" />
-          </Border>
-        </Button>
-      </Grid>
-      <Border Height="1" Background="{StaticResource GlassBorderBrush}" />
-
-      <!-- hero -->
-      <StackPanel Spacing="14" HorizontalAlignment="Center" Margin="0,22,0,16" IsVisible="{Binding ShowBalance}">
-        <TextBlock Classes="label" Text="{l:T total_balance}" HorizontalAlignment="Center" />
-        <Grid ColumnDefinitions="*,Auto" HorizontalAlignment="Center">
-          <ItemsControl ItemsSource="{Binding Balance}">
-            <ItemsControl.ItemTemplate>
-              <DataTemplate x:DataType="vm:BalanceLine">
-                <TextBlock Text="{Binding Text}" HorizontalAlignment="Center" Classes.hero="{Binding Primary}" Classes.sub="{Binding !Primary}" />
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-          <Button Grid.Column="1" Classes="flat" Command="{Binding ToggleBalanceCommand}" VerticalAlignment="Top" Margin="12,10,0,0">
-            <Panel>
-              <c:Glyph Kind="eyeOff" Foreground="{StaticResource TextBrush}" Width="26" Height="26" IsVisible="{Binding !HideBalance}" />
-              <c:Glyph Kind="eye" Foreground="{StaticResource TextBrush}" Width="26" Height="26" IsVisible="{Binding HideBalance}" />
-            </Panel>
+      <!-- header: profile avatar (profiles sheet) | mono title + profile name | "⋯" menu -->
+      <StackPanel Spacing="14" Classes="tourable" Classes.dim="{Binding DimTop}" IsVisible="{Binding !EditMode}">
+        <Grid ColumnDefinitions="Auto,*,Auto">
+          <Button Classes="flat" Command="{Binding ShowProfilesCommand}">
+            <Border Width="44" Height="44" CornerRadius="22" Background="{Binding ProfileColor, Converter={StaticResource HexBrush}}">
+              <TextBlock Text="{Binding ProfileInitial}" FontSize="17" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"
+                         Foreground="{Binding $parent[Border].Background, Converter={StaticResource InkOn}}" />
+            </Border>
+          </Button>
+          <StackPanel Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="2">
+            <TextBlock Classes="label" Text="{l:T app}" Foreground="{StaticResource TextBrush}" FontSize="13.5" HorizontalAlignment="Center" />
+            <TextBlock Text="{Binding ProfileName}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Center"
+                       IsVisible="{Binding ProfileName, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+          </StackPanel>
+          <Button Grid.Column="2" Classes="flat" Command="{Binding ToggleMenuCommand}">
+            <Border Width="44" Height="44" CornerRadius="22" Background="{StaticResource GlassBrush}"
+                    BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1">
+              <c:Glyph Kind="more" Foreground="{StaticResource TextBrush}" Width="22" Height="22" Thickness="2.6" />
+            </Border>
           </Button>
         </Grid>
-        <Button Classes="flat" HorizontalAlignment="Center" Command="{Binding NextPeriodCommand}">
+        <Border Height="1" Background="{StaticResource GlassBorderBrush}" />
+
+        <!-- hero: total balance and the period chip (tap = period sheet) -->
+        <StackPanel Spacing="14" HorizontalAlignment="Center" Margin="0,22,0,16" IsVisible="{Binding ShowBalance}">
+          <TextBlock Classes="label" Text="{l:T total_balance}" HorizontalAlignment="Center" />
+          <Grid ColumnDefinitions="*,Auto" HorizontalAlignment="Center">
+            <ItemsControl ItemsSource="{Binding Balance}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:BalanceLine">
+                  <TextBlock Text="{Binding Text}" HorizontalAlignment="Center" Classes.hero="{Binding Primary}" Classes.sub="{Binding !Primary}" />
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Button Grid.Column="1" Classes="flat" Command="{Binding ToggleBalanceCommand}" VerticalAlignment="Top" Margin="12,10,0,0">
+              <Panel>
+                <c:Glyph Kind="eyeOff" Foreground="{StaticResource TextBrush}" Width="26" Height="26" IsVisible="{Binding !HideBalance}" />
+                <c:Glyph Kind="eye" Foreground="{StaticResource TextBrush}" Width="26" Height="26" IsVisible="{Binding HideBalance}" />
+              </Panel>
+            </Button>
+          </Grid>
+        </StackPanel>
+        <Button Classes="flat" HorizontalAlignment="Center" Command="{Binding PickPeriodCommand}" Margin="0,-8,0,0">
           <Border CornerRadius="22" Height="44" Padding="20,0" Background="{StaticResource GlassStrongBrush}">
             <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+              <c:Glyph Kind="calendar" Foreground="{StaticResource TextSecondaryBrush}" Width="16" Height="16" VerticalAlignment="Center" />
               <TextBlock Classes="label" Text="{Binding PeriodLabel}" Foreground="{StaticResource TextBrush}" FontSize="13" VerticalAlignment="Center" />
               <c:Glyph Kind="chevronDown" Foreground="{StaticResource TextSecondaryBrush}" Width="12" Height="12" VerticalAlignment="Center" />
             </StackPanel>
@@ -100,8 +148,16 @@
         </Button>
       </StackPanel>
 
+      <!-- arrange mode hint -->
+      <Border Classes="card" IsVisible="{Binding EditMode}" Padding="14,12">
+        <Grid ColumnDefinitions="Auto,*">
+          <c:Glyph Kind="grid" Foreground="{DynamicResource AccentBrush}" Width="20" Height="20" VerticalAlignment="Center" />
+          <TextBlock Grid.Column="1" Margin="10,0,0,0" Text="{l:T arrange_hint}" FontSize="13" Foreground="{StaticResource TextBrush}" TextWrapping="Wrap" VerticalAlignment="Center" />
+        </Grid>
+      </Border>
+
       <!-- income sources -->
-      <Border Classes="card" IsVisible="{Binding ShowSources}">
+      <Border x:Name="SourcesCard" Classes="card tourable" Classes.dim="{Binding DimSources}" IsVisible="{Binding ShowSources}">
         <StackPanel Spacing="8">
           <Grid ColumnDefinitions="*,Auto">
             <TextBlock Classes="label" Text="{l:T income_sources}" />
@@ -114,9 +170,13 @@
           </ScrollViewer>
         </StackPanel>
       </Border>
+      <StackPanel IsVisible="{Binding Tour1}" Spacing="4" Margin="0,8">
+        <TextBlock Text="{l:T tour_incomes}" Classes="tourTitle" />
+        <TextBlock Text="{l:T tour_incomes_hint}" Classes="tourText" />
+      </StackPanel>
 
       <!-- debts (only while something is open); tap opens the debts page -->
-      <Button Classes="flat" Command="{Binding ShowDebtsCommand}" IsVisible="{Binding DebtsVisible}">
+      <Button Classes="flat tourable" Classes.dim="{Binding DimTop}" Command="{Binding ShowDebtsCommand}" IsVisible="{Binding DebtsVisible}">
         <Border Classes="card">
           <Grid ColumnDefinitions="Auto,*,Auto">
             <Border Width="40" Height="40" CornerRadius="20" Background="#F5A524">
@@ -137,7 +197,11 @@
       </Button>
 
       <!-- wallets -->
-      <Border Classes="card" IsVisible="{Binding ShowWallets}">
+      <StackPanel IsVisible="{Binding Tour2}" Spacing="4" Margin="0,8">
+        <TextBlock Text="{l:T tour_wallets}" Classes="tourTitle" />
+        <TextBlock Text="{l:T tour_wallets_hint}" Classes="tourText" />
+      </StackPanel>
+      <Border x:Name="WalletsCard" Classes="card tourable" Classes.dim="{Binding DimWallets}" IsVisible="{Binding ShowWallets}">
         <StackPanel Spacing="8">
           <Grid ColumnDefinitions="*,Auto">
             <TextBlock Classes="label" Text="{l:T wallets}" />
@@ -152,7 +216,11 @@
       </Border>
 
       <!-- expense categories (wrapping grid) -->
-      <Border Classes="card" IsVisible="{Binding ShowCategories}">
+      <StackPanel IsVisible="{Binding Tour3}" Spacing="4" Margin="0,8">
+        <TextBlock Text="{l:T tour_expenses}" Classes="tourTitle" />
+        <TextBlock Text="{l:T tour_expenses_hint}" Classes="tourText" />
+      </StackPanel>
+      <Border x:Name="CategoriesCard" Classes="card tourable" Classes.dim="{Binding DimCategories}" IsVisible="{Binding ShowCategories}">
         <StackPanel Spacing="8">
           <Grid ColumnDefinitions="*,Auto">
             <TextBlock Classes="label" Text="{l:T expense_categories}" />
@@ -163,9 +231,74 @@
           </ItemsControl>
         </StackPanel>
       </Border>
+
+      <!-- arrange mode: done -->
+      <Button Classes="flat" HorizontalAlignment="Center" Command="{Binding ArrangeDoneCommand}" IsVisible="{Binding EditMode}">
+        <TextBlock Classes="label" Text="{l:T done}" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" Padding="24,12" Background="Transparent" />
+      </Button>
     </StackPanel>
   </ScrollViewer>
+
   <!-- the floating copy of the dragged tile lives here, above everything, ignoring input -->
   <Canvas x:Name="DragLayer" IsHitTestVisible="False" />
+
+  <!-- "⋯" menu: a tap anywhere else closes it -->
+  <Panel IsVisible="{Binding MenuOpen}">
+    <Button Classes="flat" Command="{Binding ToggleMenuCommand}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+            HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
+      <Border Background="#66000000" />
+    </Button>
+    <Border HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,64,16,0" CornerRadius="28" Padding="10"
+            Background="#F2211015" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1" BoxShadow="0 16 40 0 #99000000">
+      <StackPanel Spacing="8">
+        <Button Classes="flat" Command="{Binding StartTourCommand}">
+          <Border Classes="pill"><StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+            <c:Glyph Kind="help" Foreground="{DynamicResource AccentBrush}" Width="20" Height="20" />
+            <TextBlock Text="{l:T menu_help}" FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
+          </StackPanel></Border>
+        </Button>
+        <Button Classes="flat" Command="{Binding BudgetsCommand}">
+          <Border Classes="pill"><StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+            <c:Glyph Kind="target" Foreground="{DynamicResource AccentBrush}" Width="20" Height="20" />
+            <TextBlock Text="{l:T menu_budget}" FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
+          </StackPanel></Border>
+        </Button>
+        <Button Classes="flat" Command="{Binding ArrangeCommand}">
+          <Border Classes="pill"><StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+            <c:Glyph Kind="grid" Foreground="{DynamicResource AccentBrush}" Width="20" Height="20" />
+            <TextBlock Text="{l:T menu_panel}" FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
+          </StackPanel></Border>
+        </Button>
+      </StackPanel>
+    </Border>
+  </Panel>
+
+  <!-- guide overlay: catches taps; the drag steps draw the gesture; "Davom etish" goes on -->
+  <Grid IsVisible="{Binding TourOn}" Background="#01000000" RowDefinitions="*,Auto">
+    <StackPanel IsVisible="{Binding TourDrag}" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="10" Margin="24,0">
+      <Border Width="62" Height="62" CornerRadius="31" HorizontalAlignment="Center"
+              Background="{Binding TourFrom.Color, Converter={StaticResource BadgeBrush}, FallbackValue=#3B82F6}">
+        <c:Glyph Kind="{Binding TourFrom.Icon, FallbackValue=wallet}" Foreground="White" Width="28" Height="28" HorizontalAlignment="Center" VerticalAlignment="Center" />
+      </Border>
+      <c:Glyph Kind="arrowDown" Foreground="{StaticResource TextBrush}" Width="34" Height="64" Thickness="2.4" HorizontalAlignment="Center" />
+      <Border Width="62" Height="62" CornerRadius="31" HorizontalAlignment="Center"
+              Background="{Binding TourTo.Color, Converter={StaticResource BadgeBrush}, FallbackValue=#FF6B6B}">
+        <c:Glyph Kind="{Binding TourTo.Icon, FallbackValue=other}" Foreground="White" Width="28" Height="28" HorizontalAlignment="Center" VerticalAlignment="Center" />
+      </Border>
+      <TextBlock Text="{Binding TourDragTitle}" Classes="tourTitle" Margin="0,12,0,0" />
+      <TextBlock Text="{Binding TourDragText}" Classes="tourText" />
+    </StackPanel>
+    <StackPanel Grid.Row="1" Margin="20,0,20,112" Spacing="6" MaxWidth="520">
+      <Button Classes="flat" Command="{Binding TourNextCommand}">
+        <Border Height="54" CornerRadius="16" Background="{DynamicResource AccentBrush}">
+          <TextBlock Text="{l:T tour_continue}" FontWeight="Bold" FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center"
+                     Foreground="{Binding $parent[Border].Background, Converter={StaticResource InkOn}}" />
+        </Border>
+      </Button>
+      <Button Classes="flat" Command="{Binding TourSkipCommand}" HorizontalAlignment="Center">
+        <TextBlock Text="{l:T tour_skip}" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}" Padding="10,6" Background="Transparent" />
+      </Button>
+    </StackPanel>
+  </Grid>
   </Panel>
 </UserControl>
