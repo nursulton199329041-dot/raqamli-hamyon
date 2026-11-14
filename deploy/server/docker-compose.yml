@@ -1,5 +1,5 @@
 # Raqamli Hamyon: API (.NET 10) + o‘z PostgreSQL bazasi.
-# Ishga tushirish: docker compose --env-file .env.docker up -d --build
+# Ishga tushirish: bash src/deploy/server/update.sh  (kod ./src da — Gitea’dan git clone)
 # Maxfiy qiymatlar faqat .env.docker’da (serverda yaratilgan, repo’ga qo‘shilmaydi).
 # Internetga: main_nginx (web_network) -> hamyon.raqamlinazorat.uz -> hamyon_api:8080
 name: raqamli-hamyon
@@ -18,7 +18,7 @@ services:
 
   api:
     build:
-      context: .
+      context: ./src
       dockerfile: backend/Dockerfile
     image: raqamli-hamyon-api:1.0.0
     container_name: hamyon_api
