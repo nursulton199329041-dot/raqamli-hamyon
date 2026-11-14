@@ -191,6 +191,9 @@ public static class L
         ["csv_counterpart"] = ["Toifa / manba / kim", "Категория / источник / кто", "Category / source / who"],
         ["csv_note"] = ["Izoh", "Примечание", "Note"],
 
+        ["glass_row"] = ["Super Glass", "Super Glass", "Super Glass"],
+        ["glass_hint"] = ["iPhone kabi shisha ko‘rinish: ikonkalar xira shisha fonda", "Стеклянный вид как на iPhone: иконки на матовом стекле", "iPhone-like glass look: icons on frosted glass"],
+
         // periods, home menu, guide, budget
         ["p_title"] = ["Hisob davri", "Период учета", "Period"],
         ["p_week"] = ["Hafta", "Неделя", "Week"],

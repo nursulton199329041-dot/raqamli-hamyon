@@ -135,6 +135,28 @@ public partial class SettingsViewModel : ViewModelBase
         var i = 0;
         foreach (var hex in Appearance.Accents)
             Accents.Add(new ChoiceVm { Id = i++, Name = hex, Icon = "check", Color = hex, IsSelected = string.Equals(hex, accent, StringComparison.OrdinalIgnoreCase) });
+        _glassOn = _getPref("glass") == "1";
+    }
+
+    // ---- Super Glass (iOS-style frosted badges, cards and sheets) ----
+
+    [RelayCommand] private void ToggleGlass() => GlassOn = !GlassOn;
+
+    private bool _glassOn;
+
+    /// <summary>Switching rebuilds the screens so every badge, card and sheet takes the new look at once.</summary>
+    public bool GlassOn
+    {
+        get => _glassOn;
+        set
+        {
+            if (_glassOn == value) return;
+            _glassOn = value;
+            OnPropertyChanged();
+            _setPref("glass", value ? "1" : "0");
+            Appearance.ApplyGlass(value);
+            _languageChanged();
+        }
     }
 
     [RelayCommand]

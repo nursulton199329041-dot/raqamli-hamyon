@@ -15,6 +15,8 @@
     <SolidColorBrush x:Key="AccentSoftBrush" Color="#33F2C14E" />
     <SolidColorBrush x:Key="IncomeBrush" Color="#1FCB8B" />
     <SolidColorBrush x:Key="ExpenseBrush" Color="#FF6B6B" />
+    <SolidColorBrush x:Key="SheetBrush" Color="#F7140709" />
+    <SolidColorBrush x:Key="MenuBrush" Color="#F2211015" />
     <SolidColorBrush x:Key="SolidCardBrush" Color="#E6160A0D" />
     <FontFamily x:Key="MonoFont">Menlo, Consolas, Cascadia Mono, monospace</FontFamily>
   </Styles.Resources>
@@ -40,8 +42,8 @@
 
   <!-- frosted card -->
   <Style Selector="Border.card">
-    <Setter Property="Background" Value="{StaticResource GlassBrush}" />
-    <Setter Property="BorderBrush" Value="{StaticResource GlassBorderBrush}" />
+    <Setter Property="Background" Value="{DynamicResource GlassBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource GlassBorderBrush}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="28" />
     <Setter Property="Padding" Value="14" />

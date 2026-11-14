@@ -21,6 +21,65 @@ public static class Appearance
         app.Resources["AccentSoftBrush"] = new SolidColorBrush(Color.FromArgb(0x33, c.R, c.G, c.B));
     }
 
+    // ---- "Super Glass": iOS-style frosted glass instead of solid coloured badges ----
+
+    /// <summary>
+    /// On: every coloured badge becomes frosted glass with the icon in its own colour (like the iOS control centre),
+    /// cards and sheets turn to lighter glass and the background gets soft colour light behind the glass.
+    /// Read when views are built (the shell is rebuilt when it changes).
+    /// </summary>
+    public static bool Glass { get; private set; }
+
+    public static void ApplyGlass(bool on)
+    {
+        Glass = on;
+        if (Application.Current is not { } app) return;
+        var r = app.Resources;
+        r["GlassBrush"] = new SolidColorBrush(Color.Parse(on ? "#21FFFFFF" : "#12FFECE4"));
+        r["GlassStrongBrush"] = new SolidColorBrush(Color.Parse(on ? "#33FFFFFF" : "#21FFECE4"));
+        r["GlassBorderBrush"] = on
+            ? new LinearGradientBrush
+            {
+                StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative), EndPoint = new RelativePoint(0, 1, RelativeUnit.Relative),
+                GradientStops = { new GradientStop(Color.Parse("#66FFFFFF"), 0), new GradientStop(Color.Parse("#1AFFFFFF"), 1) },
+            }
+            : new SolidColorBrush(Color.Parse("#1AFFECE4"));
+        r["SheetBrush"] = new SolidColorBrush(Color.Parse(on ? "#EB2A1A1F" : "#F7140709"));
+        r["MenuBrush"] = new SolidColorBrush(Color.Parse(on ? "#E0302026" : "#F2211015"));
+    }
+
+    /// <summary>Badge fill: the solid colour, or (Super Glass) neutral frosted glass like the iOS control centre buttons.</summary>
+    public static IBrush BadgeFill(Color c, bool gradient) => Glass
+        ? new LinearGradientBrush
+        {
+            StartPoint = new RelativePoint(0.2, 0, RelativeUnit.Relative), EndPoint = new RelativePoint(0.8, 1, RelativeUnit.Relative),
+            GradientStops =
+            {
+                new GradientStop(Color.Parse("#6BD9D4D6"), 0),
+                new GradientStop(Color.Parse("#4D9C9598"), 0.55),
+                new GradientStop(Color.Parse("#408A8386"), 1),
+            },
+        }
+        : gradient
+            ? new LinearGradientBrush
+            {
+                StartPoint = new RelativePoint(0.15, 0, RelativeUnit.Relative), EndPoint = new RelativePoint(0.85, 1, RelativeUnit.Relative),
+                GradientStops = { new GradientStop(Mix(c, Colors.White, 0.28), 0), new GradientStop(c, 0.55), new GradientStop(Mix(c, Colors.Black, 0.22), 1) },
+            }
+            : new SolidColorBrush(c);
+
+
+    /// <summary>Badge shadow: a coloured glow, or (glass) a bright top edge plus a soft drop shadow.</summary>
+    public static BoxShadows BadgeShadow(Color c) => Glass
+        ? new BoxShadows(
+            new BoxShadow { IsInset = true, OffsetY = 1.2, Blur = 0, Color = Color.Parse("#8CFFFFFF") },
+            [new BoxShadow { OffsetY = 8, Blur = 20, Color = Color.Parse("#52000000") }])
+        : new BoxShadows(new BoxShadow { OffsetY = 6, Blur = 18, Color = Color.FromArgb(0x66, c.R, c.G, c.B) });
+
+    private static Color Mix(Color a, Color b, double t) =>
+        Color.FromRgb((byte)(a.R + (b.R - a.R) * t), (byte)(a.G + (b.G - a.G) * t), (byte)(a.B + (b.B - a.B) * t));
+
+
     /// <summary>Dark ink on light accents (gold, champagne, silver), white on deep ones — WCAG relative luminance.</summary>
     public static Color OnAccent(Color c)
     {

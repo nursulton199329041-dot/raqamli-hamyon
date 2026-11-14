@@ -170,19 +170,19 @@
         <Button Classes="flat" Command="{Binding NewTransferCommand}" HorizontalAlignment="Right">
           <StackPanel Orientation="Horizontal" Spacing="14">
             <TextBlock Text="{l:T op_transfer}" FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
-            <Border Width="52" Height="52" CornerRadius="26" Background="#FBF5F2"><c:Glyph Kind="swap" Foreground="#7C6CFF" Width="22" Height="22" Thickness="2.2" /></Border>
+            <Border Width="52" Height="52" CornerRadius="26" Background="{c:Tint '#FBF5F2'}"><c:Glyph Kind="swap" Foreground="{c:Ink '#7C6CFF'}" Width="22" Height="22" Thickness="2.2" /></Border>
           </StackPanel>
         </Button>
         <Button Classes="flat" Command="{Binding NewIncomeCommand}" HorizontalAlignment="Right">
           <StackPanel Orientation="Horizontal" Spacing="14">
             <TextBlock Text="{l:T op_income}" FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
-            <Border Width="52" Height="52" CornerRadius="26" Background="#FBF5F2"><c:Glyph Kind="plus" Foreground="#1FCB8B" Width="22" Height="22" Thickness="2.4" /></Border>
+            <Border Width="52" Height="52" CornerRadius="26" Background="{c:Tint '#FBF5F2'}"><c:Glyph Kind="plus" Foreground="{c:Ink '#1FCB8B'}" Width="22" Height="22" Thickness="2.4" /></Border>
           </StackPanel>
         </Button>
         <Button Classes="flat" Command="{Binding NewExpenseCommand}" HorizontalAlignment="Right">
           <StackPanel Orientation="Horizontal" Spacing="14">
             <TextBlock Text="{l:T op_expense}" FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
-            <Border Width="52" Height="52" CornerRadius="26" Background="#FBF5F2"><c:Glyph Kind="minus" Foreground="#FF6B6B" Width="22" Height="22" Thickness="2.4" /></Border>
+            <Border Width="52" Height="52" CornerRadius="26" Background="{c:Tint '#FBF5F2'}"><c:Glyph Kind="minus" Foreground="{c:Ink '#FF6B6B'}" Width="22" Height="22" Thickness="2.4" /></Border>
           </StackPanel>
         </Button>
       </StackPanel>
@@ -199,7 +199,7 @@
     </StackPanel>
 
     <!-- filter: which incomes and expenses this wallet page shows -->
-    <Border IsVisible="{Binding FilterOpen}" Background="#FA140709">
+    <Border IsVisible="{Binding FilterOpen}" Background="{DynamicResource SheetBrush}">
       <DockPanel Margin="18,14,18,110">
         <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,10">
           <Border Width="44" />

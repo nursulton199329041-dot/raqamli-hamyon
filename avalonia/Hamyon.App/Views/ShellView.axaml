@@ -3,6 +3,7 @@
              xmlns:l="using:Hamyon.App.Localization"
              xmlns:vm="using:Hamyon.App.ViewModels"
              xmlns:c="using:Hamyon.App.Controls"
+             xmlns:svc="using:Hamyon.App.Services"
              x:Class="Hamyon.App.Views.ShellView"
              x:DataType="vm:MainViewModel"
              x:Name="Root">
@@ -32,6 +33,34 @@
         </RadialGradientBrush>
       </Border.Background>
     </Border>
+
+    <!-- Super Glass: soft coloured light behind the glass, so the frosted surfaces have something to show -->
+    <Panel IsVisible="{x:Static svc:Appearance.Glass}" IsHitTestVisible="False">
+      <Border>
+        <Border.Background>
+          <RadialGradientBrush Center="85%,22%" GradientOrigin="85%,22%" RadiusX="65%" RadiusY="32%">
+            <GradientStop Color="#704D5BFF" Offset="0" />
+            <GradientStop Color="#004D5BFF" Offset="1" />
+          </RadialGradientBrush>
+        </Border.Background>
+      </Border>
+      <Border>
+        <Border.Background>
+          <RadialGradientBrush Center="10%,62%" GradientOrigin="10%,62%" RadiusX="60%" RadiusY="30%">
+            <GradientStop Color="#5914B8A6" Offset="0" />
+            <GradientStop Color="#0014B8A6" Offset="1" />
+          </RadialGradientBrush>
+        </Border.Background>
+      </Border>
+      <Border>
+        <Border.Background>
+          <RadialGradientBrush Center="70%,95%" GradientOrigin="70%,95%" RadiusX="70%" RadiusY="28%">
+            <GradientStop Color="#66EC4899" Offset="0" />
+            <GradientStop Color="#00EC4899" Offset="1" />
+          </RadialGradientBrush>
+        </Border.Background>
+      </Border>
+    </Panel>
 
     <ContentControl Content="{Binding Current}" />
 

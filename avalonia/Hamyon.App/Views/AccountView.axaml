@@ -5,12 +5,12 @@
              xmlns:c="using:Hamyon.App.Controls"
              x:Class="Hamyon.App.Views.AccountView"
              x:DataType="vm:AccountViewModel">
-  <Border Background="#F7140709" CornerRadius="30,30,0,0" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1,1,1,0"
+  <Border Background="{DynamicResource SheetBrush}" CornerRadius="30,30,0,0" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1,1,1,0"
           BoxShadow="0 -12 40 0 #80000000">
     <StackPanel Margin="18,10,18,22" Spacing="12">
       <Border Width="40" Height="5" CornerRadius="3" Background="#33FFECE4" HorizontalAlignment="Center" />
       <Grid ColumnDefinitions="Auto,*,Auto">
-        <Border Width="42" Height="42" CornerRadius="21" Background="#0EA5E9">
+        <Border Width="42" Height="42" CornerRadius="21" Background="{c:Tint '#0EA5E9'}">
           <c:Glyph Kind="user" Foreground="White" Width="20" Height="20" />
         </Border>
         <TextBlock Grid.Column="1" Margin="12,0" Classes="label" Text="{l:T acct_title}" Foreground="{StaticResource TextBrush}" FontSize="13.5" VerticalAlignment="Center" />

@@ -61,7 +61,7 @@
       <Border Classes="card" Padding="10,2" IsVisible="{Binding HasAccount}">
         <Button Classes="flat" Command="{Binding OpenAccountCommand}">
           <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
-            <Border Classes="badge" Background="#0EA5E9"><c:Glyph Kind="user" Foreground="White" Width="18" Height="18" /></Border>
+            <Border Classes="badge" Background="{c:Tint '#0EA5E9'}"><c:Glyph Kind="user" Foreground="White" Width="18" Height="18" /></Border>
             <StackPanel Grid.Column="1" VerticalAlignment="Center">
               <TextBlock Classes="title" Text="{Binding AccountTitle}" TextTrimming="CharacterEllipsis" />
               <TextBlock Classes="hint" Text="{Binding AccountHint}" />
@@ -76,7 +76,7 @@
         <StackPanel>
           <Button Classes="flat" Command="{Binding OpenProfilesCommand}">
             <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
-              <Border Classes="badge" Background="#8B5CF6"><c:Glyph Kind="users" Foreground="White" Width="18" Height="18" /></Border>
+              <Border Classes="badge" Background="{c:Tint '#8B5CF6'}"><c:Glyph Kind="users" Foreground="White" Width="18" Height="18" /></Border>
               <StackPanel Grid.Column="1" VerticalAlignment="Center">
                 <TextBlock Classes="title" Text="{l:T profiles_row}" />
                 <TextBlock Classes="hint" Text="{l:T profiles_hint}" />
@@ -86,7 +86,7 @@
           </Button>
           <Border Classes="sep" />
           <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
-            <Border Classes="badge" Background="#14B8A6"><c:Glyph Kind="coins" Foreground="White" Width="18" Height="18" /></Border>
+            <Border Classes="badge" Background="{c:Tint '#14B8A6'}"><c:Glyph Kind="coins" Foreground="White" Width="18" Height="18" /></Border>
             <StackPanel Grid.Column="1" VerticalAlignment="Center">
               <TextBlock Classes="title" Text="{l:T main_currency}" />
               <TextBlock Classes="hint" Text="{l:T main_currency_name}" />
@@ -96,7 +96,7 @@
           <Border Classes="sep" />
           <Button Classes="flat" Command="{Binding ToggleBlockCommand}" CommandParameter="{Binding DebtsBlock}">
             <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
-              <Border Classes="badge" Background="#F5A524"><c:Glyph Kind="handshake" Foreground="White" Width="18" Height="18" /></Border>
+              <Border Classes="badge" Background="{c:Tint '#F5A524'}"><c:Glyph Kind="handshake" Foreground="White" Width="18" Height="18" /></Border>
               <StackPanel Grid.Column="1" VerticalAlignment="Center">
                 <TextBlock Classes="title" Text="{l:T debts}" />
                 <TextBlock Classes="hint" Text="{l:T debts_switch_hint}" />
@@ -109,7 +109,7 @@
           <!-- panel settings: ticks for the home blocks -->
           <Button Classes="flat" Command="{Binding TogglePanelCommand}">
             <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
-              <Border Classes="badge" Background="#4D8DFF"><c:Glyph Kind="other" Foreground="White" Width="18" Height="18" /></Border>
+              <Border Classes="badge" Background="{c:Tint '#4D8DFF'}"><c:Glyph Kind="other" Foreground="White" Width="18" Height="18" /></Border>
               <TextBlock Grid.Column="1" Classes="title" Text="{l:T panel_settings}" VerticalAlignment="Center" />
               <c:Glyph Grid.Column="2" Kind="chevronDown" Foreground="{StaticResource TextSecondaryBrush}" Width="16" Height="16" />
             </Grid>
@@ -140,7 +140,7 @@
 
           <Button Classes="flat" Command="{Binding OpenExportCommand}">
             <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
-              <Border Classes="badge" Background="#22A06B"><c:Glyph Kind="download" Foreground="White" Width="18" Height="18" /></Border>
+              <Border Classes="badge" Background="{c:Tint '#22A06B'}"><c:Glyph Kind="download" Foreground="White" Width="18" Height="18" /></Border>
               <TextBlock Grid.Column="1" Classes="title" Text="{l:T export}" VerticalAlignment="Center" />
               <c:Glyph Grid.Column="2" Kind="chevronRight" Foreground="{StaticResource TextSecondaryBrush}" Width="18" Height="18" />
             </Grid>
@@ -148,7 +148,7 @@
           <Border Classes="sep" />
           <Button Classes="flat" Command="{Binding OpenWalletsCommand}">
             <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
-              <Border Classes="badge" Background="#3B82F6"><c:Glyph Kind="wallet" Foreground="White" Width="18" Height="18" /></Border>
+              <Border Classes="badge" Background="{c:Tint '#3B82F6'}"><c:Glyph Kind="wallet" Foreground="White" Width="18" Height="18" /></Border>
               <StackPanel Grid.Column="1" VerticalAlignment="Center">
                 <TextBlock Classes="title" Text="{l:T update_balances}" />
                 <TextBlock Classes="hint" Text="{l:T update_balances_hint}" />
@@ -161,7 +161,7 @@
           <!-- delete: operations only, or everything (second tap confirms) -->
           <Button Classes="flat" Command="{Binding ToggleWipeCommand}">
             <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
-              <Border Classes="badge" Background="#EF4444"><c:Glyph Kind="trash" Foreground="White" Width="18" Height="18" /></Border>
+              <Border Classes="badge" Background="{c:Tint '#EF4444'}"><c:Glyph Kind="trash" Foreground="White" Width="18" Height="18" /></Border>
               <StackPanel Grid.Column="1" VerticalAlignment="Center">
                 <TextBlock Classes="title" Text="{l:T wipe}" Foreground="{StaticResource ExpenseBrush}" />
                 <TextBlock Classes="hint" Text="{l:T wipe_hint2}" />
@@ -195,7 +195,7 @@
         <StackPanel>
           <Button Classes="flat" Command="{Binding TogglePinCommand}">
             <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
-              <Border Classes="badge" Background="#64748B"><c:Glyph Kind="lock" Foreground="White" Width="18" Height="18" /></Border>
+              <Border Classes="badge" Background="{c:Tint '#64748B'}"><c:Glyph Kind="lock" Foreground="White" Width="18" Height="18" /></Border>
               <StackPanel Grid.Column="1" VerticalAlignment="Center">
                 <TextBlock Classes="title" Text="{l:T password}" />
                 <TextBlock Classes="hint" Text="{l:T password_hint}" />
@@ -207,7 +207,7 @@
             <Border Classes="sep" />
             <Button Classes="flat" Command="{Binding ToggleBiometricCommand}">
               <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
-                <Border Classes="badge" Background="#34C759"><c:Glyph Kind="faceid" Foreground="White" Width="19" Height="19" /></Border>
+                <Border Classes="badge" Background="{c:Tint '#34C759'}"><c:Glyph Kind="faceid" Foreground="White" Width="19" Height="19" /></Border>
                 <TextBlock Grid.Column="1" Classes="title" Text="{Binding BiometricName}" VerticalAlignment="Center" />
                 <c:Switch Grid.Column="2" IsOn="{Binding BiometricOn}" VerticalAlignment="Center" />
               </Grid>
@@ -217,7 +217,7 @@
 
           <Button Classes="flat" Command="{Binding ToggleLanguageCommand}">
             <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
-              <Border Classes="badge" Background="#0EA5E9"><c:Glyph Kind="globe" Foreground="White" Width="18" Height="18" /></Border>
+              <Border Classes="badge" Background="{c:Tint '#0EA5E9'}"><c:Glyph Kind="globe" Foreground="White" Width="18" Height="18" /></Border>
               <TextBlock Grid.Column="1" Classes="title" Text="{l:T language_row}" VerticalAlignment="Center" />
               <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
                 <TextBlock Text="{Binding LanguageName}" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
@@ -239,6 +239,18 @@
           </Border>
           <Border Classes="sep" />
 
+          <!-- Super Glass: iOS-style frosted glass look -->
+          <Button Classes="flat" Command="{Binding ToggleGlassCommand}">
+            <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
+              <Border Classes="badge" Background="{c:Tint #7C8BA1}"><c:Glyph Kind="target" Foreground="White" Width="18" Height="18" /></Border>
+              <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                <TextBlock Classes="title" Text="{l:T glass_row}" />
+                <TextBlock Classes="hint" Text="{l:T glass_hint}" />
+              </StackPanel>
+              <c:Switch Grid.Column="2" IsOn="{Binding GlassOn}" VerticalAlignment="Center" />
+            </Grid>
+          </Button>
+          <Border Classes="sep" />
           <Button Classes="flat" Command="{Binding ToggleThemeCommand}">
             <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
               <Border Classes="badge" Background="{DynamicResource AccentBrush}">
@@ -272,7 +284,7 @@
         <StackPanel>
           <Button Classes="flat" Command="{Binding OpenWalletsCommand}">
             <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
-              <Border Classes="badge" Background="#4D8DFF"><c:Glyph Kind="wallet" Foreground="White" Width="18" Height="18" /></Border>
+              <Border Classes="badge" Background="{c:Tint '#4D8DFF'}"><c:Glyph Kind="wallet" Foreground="White" Width="18" Height="18" /></Border>
               <TextBlock Grid.Column="1" Classes="title" Text="{l:T manage_wallets}" VerticalAlignment="Center" />
               <c:Glyph Grid.Column="2" Kind="chevronRight" Foreground="{StaticResource TextSecondaryBrush}" Width="18" Height="18" />
             </Grid>
@@ -280,7 +292,7 @@
           <Border Classes="sep" />
           <Button Classes="flat" Command="{Binding OpenCategoriesCommand}">
             <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
-              <Border Classes="badge" Background="#F97316"><c:Glyph Kind="food" Foreground="White" Width="18" Height="18" /></Border>
+              <Border Classes="badge" Background="{c:Tint '#F97316'}"><c:Glyph Kind="food" Foreground="White" Width="18" Height="18" /></Border>
               <TextBlock Grid.Column="1" Classes="title" Text="{l:T manage_categories}" VerticalAlignment="Center" />
               <c:Glyph Grid.Column="2" Kind="chevronRight" Foreground="{StaticResource TextSecondaryBrush}" Width="18" Height="18" />
             </Grid>
@@ -288,7 +300,7 @@
           <Border Classes="sep" />
           <Button Classes="flat" Command="{Binding OpenSourcesCommand}">
             <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
-              <Border Classes="badge" Background="#1FCB8B"><c:Glyph Kind="salary" Foreground="White" Width="18" Height="18" /></Border>
+              <Border Classes="badge" Background="{c:Tint '#1FCB8B'}"><c:Glyph Kind="salary" Foreground="White" Width="18" Height="18" /></Border>
               <TextBlock Grid.Column="1" Classes="title" Text="{l:T manage_sources}" VerticalAlignment="Center" />
               <c:Glyph Grid.Column="2" Kind="chevronRight" Foreground="{StaticResource TextSecondaryBrush}" Width="18" Height="18" />
             </Grid>
@@ -296,7 +308,7 @@
           <Border Classes="sep" />
           <Button Classes="flat" Command="{Binding OpenDebtsCommand}">
             <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
-              <Border Classes="badge" Background="#F5A524"><c:Glyph Kind="handshake" Foreground="White" Width="18" Height="18" /></Border>
+              <Border Classes="badge" Background="{c:Tint '#F5A524'}"><c:Glyph Kind="handshake" Foreground="White" Width="18" Height="18" /></Border>
               <TextBlock Grid.Column="1" Classes="title" Text="{l:T debts}" VerticalAlignment="Center" />
               <c:Glyph Grid.Column="2" Kind="chevronRight" Foreground="{StaticResource TextSecondaryBrush}" Width="18" Height="18" />
             </Grid>

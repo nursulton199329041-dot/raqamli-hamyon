@@ -63,8 +63,8 @@
                   BoxShadow="{Binding Color, Converter={StaticResource Glow}}">
             <c:Glyph Kind="{Binding Icon}" Foreground="White" Width="24" Height="24" HorizontalAlignment="Center" VerticalAlignment="Center" />
           </Border>
-          <Border Width="54" Height="54" CornerRadius="27" IsVisible="{Binding IsAdd}" Background="#F2FFFFFF" BoxShadow="0 6 16 0 #59000000">
-            <c:Glyph Kind="plus" Foreground="#5A4A4E" Width="22" Height="22" Thickness="2" HorizontalAlignment="Center" VerticalAlignment="Center" />
+          <Border Width="54" Height="54" CornerRadius="27" IsVisible="{Binding IsAdd}" Background="{c:Tint '#F2FFFFFF'}" BoxShadow="0 6 16 0 #59000000">
+            <c:Glyph Kind="plus" Foreground="{c:Ink '#5A4A4E'}" Width="22" Height="22" Thickness="2" HorizontalAlignment="Center" VerticalAlignment="Center" />
           </Border>
           <Border Classes="ring" IsVisible="False" CornerRadius="31" BorderThickness="2.5" BorderBrush="{DynamicResource AccentBrush}" />
         </Panel>
@@ -179,7 +179,7 @@
       <Button Classes="flat tourable" Classes.dim="{Binding DimTop}" Command="{Binding ShowDebtsCommand}" IsVisible="{Binding DebtsVisible}">
         <Border Classes="card">
           <Grid ColumnDefinitions="Auto,*,Auto">
-            <Border Width="40" Height="40" CornerRadius="20" Background="#F5A524">
+            <Border Width="40" Height="40" CornerRadius="20" Background="{c:Tint '#F5A524'}">
               <c:Glyph Kind="handshake" Foreground="White" Width="20" Height="20" HorizontalAlignment="Center" VerticalAlignment="Center" />
             </Border>
             <StackPanel Grid.Column="1" Margin="12,0" Spacing="3" VerticalAlignment="Center">
@@ -249,7 +249,7 @@
       <Border Background="#66000000" />
     </Button>
     <Border HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,64,16,0" CornerRadius="28" Padding="10"
-            Background="#F2211015" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1" BoxShadow="0 16 40 0 #99000000">
+            Background="{DynamicResource MenuBrush}" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1" BoxShadow="0 16 40 0 #99000000">
       <StackPanel Spacing="8">
         <Button Classes="flat" Command="{Binding StartTourCommand}">
           <Border Classes="pill"><StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">

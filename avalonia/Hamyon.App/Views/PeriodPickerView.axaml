@@ -5,7 +5,7 @@
              xmlns:c="using:Hamyon.App.Controls"
              x:Class="Hamyon.App.Views.PeriodPickerView"
              x:DataType="vm:PeriodPickerViewModel">
-  <Border Background="#F7140709" CornerRadius="30,30,0,0" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1,1,1,0"
+  <Border Background="{DynamicResource SheetBrush}" CornerRadius="30,30,0,0" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1,1,1,0"
           BoxShadow="0 -12 40 0 #80000000">
     <StackPanel Margin="18,10,18,22" Spacing="12">
       <Border Width="40" Height="5" CornerRadius="3" Background="#33FFECE4" HorizontalAlignment="Center" />

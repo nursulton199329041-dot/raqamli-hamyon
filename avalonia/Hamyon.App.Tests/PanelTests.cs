@@ -188,3 +188,24 @@ public sealed class PanelTests : IDisposable
         Assert.True(finished);
     }
 }
+
+public sealed class GlassTests
+{
+    [Fact]
+    public void Super_glass_turns_badges_into_neutral_glass_and_back()
+    {
+        var food = Avalonia.Media.Color.Parse("#F97316");
+        try
+        {
+            Hamyon.App.Services.Appearance.ApplyGlass(true);
+            var glass = Assert.IsType<Avalonia.Media.LinearGradientBrush>(Hamyon.App.Services.Appearance.BadgeFill(food, gradient: false));
+            Assert.All(glass.GradientStops, s => Assert.True(s.Color.A < 0x80)); // see-through
+            Assert.Equal(Hamyon.App.Services.Appearance.BadgeFill(Avalonia.Media.Color.Parse("#4D8DFF"), false).ToString(), glass.ToString()); // same glass for every colour
+        }
+        finally
+        {
+            Hamyon.App.Services.Appearance.ApplyGlass(false);
+        }
+        Assert.IsType<Avalonia.Media.SolidColorBrush>(Hamyon.App.Services.Appearance.BadgeFill(food, gradient: false));
+    }
+}

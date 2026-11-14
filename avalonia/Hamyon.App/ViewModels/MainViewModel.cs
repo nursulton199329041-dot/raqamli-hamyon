@@ -66,6 +66,7 @@ public partial class MainViewModel : ViewModelBase
         _profiles = profiles;
         if (Enum.TryParse<Lang>(GetPref("lang"), out var lang)) L.Current = lang;
         Appearance.ApplyAccent(GetPref("accent"));
+        Appearance.ApplyGlass(GetPref("glass") == "1");
 
         Home = new HomeViewModel(store);
         History = new HistoryViewModel(store, changed: RefreshAll);

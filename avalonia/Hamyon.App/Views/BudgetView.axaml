@@ -5,7 +5,7 @@
              xmlns:c="using:Hamyon.App.Controls"
              x:Class="Hamyon.App.Views.BudgetView"
              x:DataType="vm:BudgetViewModel">
-  <Border Background="#F7140709" CornerRadius="30,30,0,0" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1,1,1,0"
+  <Border Background="{DynamicResource SheetBrush}" CornerRadius="30,30,0,0" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1,1,1,0"
           BoxShadow="0 -12 40 0 #80000000" MaxHeight="760">
     <Grid RowDefinitions="Auto,*,Auto" Margin="18,10,18,22">
       <StackPanel Spacing="10">
