@@ -13,16 +13,14 @@ Server: `raqamli-nazorat@192.168.1.10`, papka `~/apps/raqamli-hamyon/` (boshqa R
 Tekshirish: `https://hamyon.raqamlinazorat.uz/health` → `{"status":"ok"}` (2026-11-14).
 
 ## Yangilash (kod o‘zgarganda)
+Kod Gitea'da: https://git.raqamlinazorat.uz/nursulton/raqamli-hamyon (serverda `~/apps/raqamli-hamyon/src`).
 ```bash
-# kompyuterda (repo ildizida): backend manbasini yuborish
-tar --exclude=bin --exclude=obj -czf hamyon-backend.tgz backend/Dockerfile backend/src
-scp -i ~/.ssh/id_ed25519_hamyon hamyon-backend.tgz raqamli-nazorat@192.168.1.10:apps/raqamli-hamyon/
-# serverda
-cd ~/apps/raqamli-hamyon && tar -xzf hamyon-backend.tgz && rm hamyon-backend.tgz
-docker compose --env-file .env.docker up -d --build api
+# kompyuterda: o'zgarishni yuklash
+git push origin main
+# serverda: bitta buyruq (baza zaxirasi + git + qayta yig'ish + tekshirish)
+cd ~/apps/raqamli-hamyon && bash src/deploy/server/update.sh
 ```
-Migratsiyalar API ishga tushganda o‘zi qo‘llanadi (`Database__AutoMigrate=true`). Yangilashdan oldin zaxira:
-`docker exec hamyon_db pg_dump -U hamyon -Fc hamyon > ~/backups/hamyon-$(date +%F).dump`
+Migratsiyalar API ishga tushganda o‘zi qo‘llanadi (`Database__AutoMigrate=true`). Zaxiralar: `~/backups/hamyon-*.dump`.
 
 ## Orqaga qaytarish
 ```bash
