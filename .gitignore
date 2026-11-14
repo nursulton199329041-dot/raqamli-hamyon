@@ -29,8 +29,3 @@ pgdata/
 logs/
 backups/
 config.*.local.psd1
-
-# AI tool state
-.claude-flow/
-mobile/.claude/.proven-config-version
-mobile/.claude/proven-config.json
