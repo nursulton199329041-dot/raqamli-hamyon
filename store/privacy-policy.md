@@ -16,8 +16,7 @@ Raqamli Hamyon ("ilova") shaxsiy va oilaviy moliyani hisobga olish uchun mo'ljal
 
 **Reklama va kuzatuv.** Ilovada reklama, analitika yoki kuzatuv vositalari yo'q.
 
-**Ma'lumotni o'chirish.** Qurilmadagi ma'lumotlarni Sozlamalar → "Ma'lumotlarni o'chirish" orqali yoki ilovani o'chirib yuborib o'chirasiz. Serverdagi hisobingiz va undagi barcha ma'lumotlarni o'chirish uchun quyidagi manzilga yozing — 30 kun ichida o'chiriladi.
+**Ma'lumotni o'chirish.** Qurilmadagi ma'lumotlarni Sozlamalar → "Ma'lumotlarni o'chirish" orqali yoki ilovani o'chirib yuborib o'chirasiz. Serverdagi hisobingiz va undagi barcha maʼlumotlarni istalgan vaqtda darhol oʻchirasiz: ilovada Sozlamalar → Hisob → "Hisobni oʻchirish" yoki https://hamyon.raqamlinazorat.uz/delete-account sahifasida.
 
 **Bolalar.** Ilova 18 yoshdan kichiklarga mo'ljallanmagan va ulardan ataylab ma'lumot yig'maydi.
 
-**Bog'lanish.** Savollar va ma'lumotni o'chirish so'rovlari bo'yicha: [email manzilingizni yozing]

@@ -59,7 +59,7 @@ public static class PrivacyEndpoints
         new("Valyuta kursi", "Valyuta kursini olish uchun ilova O‘zbekiston Respublikasi Markaziy bankining ochiq sahifasiga (cbu.uz) murojaat qiladi. Bunda shaxsiy ma’lumot yuborilmaydi."),
         new("Xavfsizlik", "Ilovaga PIN-kod, barmoq izi yoki Face ID bilan kirishni yoqish mumkin. PIN-kod qurilmada xeshlangan holda saqlanadi."),
         new("Reklama va kuzatuv", "Ilovada reklama, analitika yoki kuzatuv vositalari yo‘q."),
-        new("Ma’lumotni o‘chirish", "Qurilmadagi ma’lumotlarni Sozlamalar → “Ma’lumotlarni o‘chirish” orqali yoki ilovani o‘chirib yuborib o‘chirasiz. Serverdagi hisobingiz va undagi barcha ma’lumotlarni o‘chirishni so‘rasangiz, 30 kun ichida o‘chiriladi."),
+        new("Ma’lumotni o‘chirish", "Qurilmadagi ma’lumotlarni Sozlamalar → “Ma’lumotlarni o‘chirish” orqali yoki ilovani o‘chirib yuborib o‘chirasiz. Serverdagi hisobingiz va undagi barcha ma’lumotlarni istalgan vaqtda darhol o‘chirasiz: ilovada Sozlamalar → Hisob → “Hisobni o‘chirish” yoki https://hamyon.raqamlinazorat.uz/delete-account sahifasida."),
         new("Bolalar", "Ilova 18 yoshdan kichiklarga mo‘ljallanmagan va ulardan ataylab ma’lumot yig‘maydi."),
     ];
 
@@ -72,7 +72,7 @@ public static class PrivacyEndpoints
         new("Курс валют", "Для курса валют приложение обращается к открытой странице Центрального банка Узбекистана (cbu.uz) без передачи личных данных."),
         new("Безопасность", "Можно включить вход по PIN-коду, отпечатку или Face ID. PIN хранится на устройстве в виде хеша."),
         new("Реклама и отслеживание", "В приложении нет рекламы, аналитики и средств отслеживания."),
-        new("Удаление данных", "Данные на устройстве удаляются через Настройки → «Удалить данные» или удалением приложения. Аккаунт и все данные на сервере удаляются по запросу в течение 30 дней."),
+        new("Удаление данных", "Данные на устройстве удаляются через Настройки → «Удалить данные» или удалением приложения. Аккаунт и все данные на сервере удаляются сразу: в приложении Настройки → Аккаунт → «Удалить аккаунт» или на странице https://hamyon.raqamlinazorat.uz/delete-account."),
         new("Дети", "Приложение не предназначено для лиц младше 18 лет и намеренно не собирает их данные."),
     ];
 
@@ -85,7 +85,7 @@ public static class PrivacyEndpoints
         new("Exchange rates", "For exchange rates the app reads the public page of the Central Bank of Uzbekistan (cbu.uz); no personal data is sent."),
         new("Security", "You can lock the app with a PIN, fingerprint or Face ID. The PIN is stored on the device as a hash."),
         new("Ads and tracking", "There are no ads, analytics or tracking tools."),
-        new("Deleting data", "Delete data on the device in Settings → “Delete data” or by uninstalling the app. Your account and all its data on the server are deleted on request within 30 days."),
+        new("Deleting data", "Delete data on the device in Settings → “Delete data” or by uninstalling the app. Delete your account and all its data on the server at once: in the app (Settings → Account → Delete account) or at https://hamyon.raqamlinazorat.uz/delete-account."),
         new("Children", "The app is not intended for anyone under 18 and does not knowingly collect their data."),
     ];
 }

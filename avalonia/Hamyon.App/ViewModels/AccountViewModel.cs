@@ -106,6 +106,33 @@ public partial class AccountViewModel : ViewModelBase
         Status = _status();
     }
 
+    // ---- delete the account (store requirement): first tap asks, second deletes ----
+
+    [ObservableProperty] public partial bool ConfirmDelete { get; set; }
+    /// <summary>a green note on the sign-in form ("the account was deleted")</summary>
+    [ObservableProperty] public partial string? Notice { get; set; }
+
+    [RelayCommand] private void AskDelete() { ConfirmDelete = !ConfirmDelete; Error = null; }
+
+    [RelayCommand]
+    private async Task DeleteAccount()
+    {
+        Busy = true;
+        Error = null;
+        try
+        {
+            await _account.DeleteAccountAsync();
+            ConfirmDelete = false;
+            SignedIn = false;
+            Email = null;
+            Notice = L.T("acct_deleted");
+        }
+        catch (ApiException e) { Error = Message(e); }
+        catch (HttpRequestException) { Error = L.T("acct_err_offline"); }
+        catch (TaskCanceledException) { Error = L.T("acct_err_offline"); }
+        finally { Busy = false; }
+    }
+
     public static string Message(ApiException e) => e.Code switch
     {
         "auth.invalid_credentials" => L.T("acct_err_invalid"),

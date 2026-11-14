@@ -23,6 +23,8 @@
 
       <!-- signed out: email + password (+ name when signing up) -->
       <StackPanel Spacing="10" IsVisible="{Binding !SignedIn}">
+        <TextBlock Text="{Binding Notice}" IsVisible="{Binding Notice, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                   Foreground="{StaticResource IncomeBrush}" FontWeight="SemiBold" TextWrapping="Wrap" />
         <TextBlock Text="{l:T acct_intro}" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap" />
         <StackPanel Spacing="6" IsVisible="{Binding RegisterMode}">
           <TextBlock Classes="label" Text="{l:T name}" />
@@ -71,6 +73,30 @@
             </StackPanel>
           </Border>
         </Button>
+
+        <!-- delete the account: a quiet link, then a clear confirmation -->
+        <TextBlock Text="{Binding Error}" IsVisible="{Binding Error, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                   Foreground="{StaticResource ExpenseBrush}" FontWeight="SemiBold" TextWrapping="Wrap" />
+        <Button Classes="flat" Command="{Binding AskDeleteCommand}" HorizontalAlignment="Center" IsVisible="{Binding !ConfirmDelete}">
+          <TextBlock Text="{l:T acct_delete}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="13" Padding="8" TextDecorations="Underline" Background="Transparent" />
+        </Button>
+        <Border IsVisible="{Binding ConfirmDelete}" CornerRadius="18" Padding="14" Background="#26FF6B6B" BorderBrush="{StaticResource ExpenseBrush}" BorderThickness="1">
+          <StackPanel Spacing="10">
+            <TextBlock Text="{l:T acct_delete_warn}" Foreground="{StaticResource TextBrush}" TextWrapping="Wrap" FontSize="13.5" />
+            <Grid ColumnDefinitions="*,10,*">
+              <Button Classes="flat" Command="{Binding AskDeleteCommand}">
+                <Border Height="44" CornerRadius="22" Background="{StaticResource GlassStrongBrush}">
+                  <TextBlock Text="{l:T cancel}" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+              </Button>
+              <Button Grid.Column="2" Classes="flat" Command="{Binding DeleteAccountCommand}" IsEnabled="{Binding !Busy}">
+                <Border Height="44" CornerRadius="22" Background="{StaticResource ExpenseBrush}">
+                  <TextBlock Text="{l:T acct_delete_yes}" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+              </Button>
+            </Grid>
+          </StackPanel>
+        </Border>
       </StackPanel>
     </StackPanel>
   </Border>

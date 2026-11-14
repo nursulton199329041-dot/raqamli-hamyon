@@ -153,6 +153,7 @@ app.MapOperations();
 app.MapReports();
 app.MapMeta();
 app.MapPrivacy();
+app.MapDeleteAccountPage();
 app.MapSync();
 app.MapBooks();
 app.MapAttachments();

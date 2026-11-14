@@ -65,26 +65,33 @@ public static class AuthEndpoints
         // Right to erasure: removes the profile and every record owned by the user.
         me.MapDelete("/", async (HttpContext ctx, AppDbContext db, CancellationToken ct) =>
         {
-            var id = ctx.User.UserId();
-            await using var tx = await db.Database.BeginTransactionAsync(ct);
-            // every profile of the account, not just the one this request is scoped to
-            await db.Attachments.IgnoreQueryFilters().Where(a => a.UserId == id).ExecuteDeleteAsync(ct);
-            await db.LedgerLines.IgnoreQueryFilters().Where(l => l.UserId == id).ExecuteDeleteAsync(ct);
-            await db.JournalEntries.IgnoreQueryFilters().Where(e => e.UserId == id).ExecuteDeleteAsync(ct);
-            await db.Debts.IgnoreQueryFilters().Where(d => d.UserId == id).ExecuteDeleteAsync(ct);
-            await db.Wallets.IgnoreQueryFilters().Where(w => w.UserId == id).ExecuteDeleteAsync(ct);
-            await db.LedgerAccounts.IgnoreQueryFilters().Where(a => a.UserId == id).ExecuteDeleteAsync(ct);
-            await db.Categories.IgnoreQueryFilters().Where(c => c.UserId == id).ExecuteDeleteAsync(ct);
-            await db.IncomeSources.IgnoreQueryFilters().Where(c => c.UserId == id).ExecuteDeleteAsync(ct);
-            await db.People.IgnoreQueryFilters().Where(c => c.UserId == id).ExecuteDeleteAsync(ct);
-            await db.Projects.IgnoreQueryFilters().Where(c => c.UserId == id).ExecuteDeleteAsync(ct);
-            await db.Profiles.Where(p => p.UserId == id).ExecuteDeleteAsync(ct);
-            await db.RefreshTokens.Where(t => t.UserId == id).ExecuteDeleteAsync(ct);
-            await db.Users.Where(u => u.Id == id).ExecuteDeleteAsync(ct);
-            db.AuditLogs.Add(new AuditLog { Action = "user.delete", EntityType = "User", EntityId = id });
-            await db.SaveChangesAsync(ct);
-            await tx.CommitAsync(ct);
+            await DeleteAccountAsync(db, ctx.User.UserId(), ct);
             return Results.NoContent();
         });
+    }
+
+    /// <summary>
+    /// Deletes an account and everything it owns (all profiles; synced books go with the user row by cascade).
+    /// Used by DELETE /api/me (in the app) and the public /delete-account page.
+    /// </summary>
+    public static async Task DeleteAccountAsync(AppDbContext db, Guid id, CancellationToken ct)
+    {
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+        await db.Attachments.IgnoreQueryFilters().Where(a => a.UserId == id).ExecuteDeleteAsync(ct);
+        await db.LedgerLines.IgnoreQueryFilters().Where(l => l.UserId == id).ExecuteDeleteAsync(ct);
+        await db.JournalEntries.IgnoreQueryFilters().Where(e => e.UserId == id).ExecuteDeleteAsync(ct);
+        await db.Debts.IgnoreQueryFilters().Where(d => d.UserId == id).ExecuteDeleteAsync(ct);
+        await db.Wallets.IgnoreQueryFilters().Where(w => w.UserId == id).ExecuteDeleteAsync(ct);
+        await db.LedgerAccounts.IgnoreQueryFilters().Where(a => a.UserId == id).ExecuteDeleteAsync(ct);
+        await db.Categories.IgnoreQueryFilters().Where(c => c.UserId == id).ExecuteDeleteAsync(ct);
+        await db.IncomeSources.IgnoreQueryFilters().Where(c => c.UserId == id).ExecuteDeleteAsync(ct);
+        await db.People.IgnoreQueryFilters().Where(c => c.UserId == id).ExecuteDeleteAsync(ct);
+        await db.Projects.IgnoreQueryFilters().Where(c => c.UserId == id).ExecuteDeleteAsync(ct);
+        await db.Profiles.Where(p => p.UserId == id).ExecuteDeleteAsync(ct);
+        await db.RefreshTokens.Where(t => t.UserId == id).ExecuteDeleteAsync(ct);
+        await db.Users.Where(u => u.Id == id).ExecuteDeleteAsync(ct);
+        db.AuditLogs.Add(new AuditLog { Action = "user.delete", EntityType = "User", EntityId = id });
+        await db.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
     }
 }

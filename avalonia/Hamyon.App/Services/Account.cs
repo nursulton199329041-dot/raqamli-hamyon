@@ -58,6 +58,13 @@ public sealed class Account
         catch (Exception) { /* offline: the token just expires on the server */ }
     }
 
+    /// <summary>Deletes the account and all its data on the server, then ends the session (data on this phone stays).</summary>
+    public async Task DeleteAccountAsync(CancellationToken ct = default)
+    {
+        await SendAsync(HttpMethod.Delete, "/api/me", null, ct);
+        Clear();
+    }
+
     /// <summary>An authenticated call. Refreshes the access token when it is about to expire, and once on a 401.</summary>
     public async Task<JsonNode?> SendAsync(HttpMethod method, string path, JsonNode? body = null, CancellationToken ct = default)
     {

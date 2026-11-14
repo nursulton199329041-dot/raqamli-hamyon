@@ -111,11 +111,12 @@ Raqamli Hamyon is a simple, beautiful app for personal and family money. Cash, c
 - Hisobga kirilsa (ixtiyoriy): **Email manzil** (hisob uchun) va **moliyaviy ma'lumotlar** (hamyonlar, operatsiyalar — sinxronlash uchun) serverga yuboriladi.
   - Maqsad: App functionality, Account management.
   - Uchinchi shaxslarga berilmaydi. Reklama/analitika uchun ishlatilmaydi.
-  - Uzatishda shifrlanadi (HTTPS). Foydalanuvchi o'chirishni so'rashi mumkin.
+  - Uzatishda shifrlanadi (HTTPS). Foydalanuvchi hisobini ilovada yoki veb-sahifada darhol o'chira oladi.
 - Ilova faqat Markaziy bank kursini olish uchun cbu.uz'ga murojaat qiladi (shaxsiy ma'lumotsiz).
 
 **Content rating:** so'rovnomada hammasiga "Yo'q" — natija: Hamma uchun.
 **Target audience:** 18+ (moliya ilovasi).
 **Ads:** Yo'q.
 **Financial features declaration:** "Shaxsiy moliyani hisobga olish (budgeting / expense tracking)" — pul o'tkazmaydi, kredit bermaydi.
+**Delete account URL (Data safety → Data deletion):** https://hamyon.raqamlinazorat.uz/delete-account (ilovada ham: Sozlamalar → Hisob → Hisobni o‘chirish)
 **Privacy policy URL:** https://hamyon.raqamlinazorat.uz/privacy (rus: `?lang=ru`, ingliz: `?lang=en`)
