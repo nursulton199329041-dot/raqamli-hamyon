@@ -144,7 +144,11 @@
       <Button Classes="flat" Command="{Binding CloseSheetCommand}">
         <Border Background="#A8080304" />
       </Button>
-      <ContentControl Content="{Binding Sheet}" VerticalAlignment="Bottom" Margin="0,36,0,0" MaxWidth="600" />
+      <ContentControl x:Name="SheetHost" Content="{Binding Sheet}" VerticalAlignment="Bottom" Margin="0,36,0,0" MaxWidth="600">
+        <ContentControl.Transitions>
+          <Transitions><ThicknessTransition Property="Margin" Duration="0:0:0.2" /></Transitions>
+        </ContentControl.Transitions>
+      </ContentControl>
     </Panel>
 
     <!-- app lock: above everything, the tab bar included -->

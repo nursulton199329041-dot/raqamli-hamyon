@@ -39,6 +39,36 @@ public partial class ShellView : UserControl
         DataContextChanged += (_, _) => Attach(DataContext as MainViewModel);
     }
 
+    // ---- on-screen keyboard: sheets (sign-in, editor, budget, …) move up so their fields stay visible ----
+
+    private Avalonia.Controls.Platform.IInputPane? _pane;
+
+    protected override void OnAttachedToVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        _pane = TopLevel.GetTopLevel(this)?.InputPane;
+        if (_pane is null) return;
+        _pane.StateChanged += OnKeyboard;
+        LiftSheet(_pane.OccludedRect);
+    }
+
+    protected override void OnDetachedFromVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
+    {
+        if (_pane is not null) _pane.StateChanged -= OnKeyboard;
+        _pane = null;
+        base.OnDetachedFromVisualTree(e);
+    }
+
+    private void OnKeyboard(object? sender, Avalonia.Controls.Platform.InputPaneStateEventArgs e) =>
+        LiftSheet(e.NewState == Avalonia.Controls.Platform.InputPaneState.Open ? e.EndRect : default);
+
+    /// <summary>Bottom margin = the part of this view the keyboard covers.</summary>
+    private void LiftSheet(Avalonia.Rect keyboard)
+    {
+        var covered = keyboard.Height <= 0 ? 0 : Math.Max(0, Bounds.Height - keyboard.Top);
+        SheetHost.Margin = new Avalonia.Thickness(0, 36, 0, covered);
+    }
+
     private void Attach(MainViewModel? vm)
     {
         _vm = vm;

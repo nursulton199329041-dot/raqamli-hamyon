@@ -118,4 +118,4 @@ Raqamli Hamyon is a simple, beautiful app for personal and family money. Cash, c
 **Target audience:** 18+ (moliya ilovasi).
 **Ads:** Yo'q.
 **Financial features declaration:** "Shaxsiy moliyani hisobga olish (budgeting / expense tracking)" — pul o'tkazmaydi, kredit bermaydi.
-**Privacy policy URL:** `privacy-policy.md` matni joylangan sahifa manzili (majburiy).
+**Privacy policy URL:** https://hamyon.raqamlinazorat.uz/privacy (rus: `?lang=ru`, ingliz: `?lang=en`)
