@@ -14,11 +14,12 @@ function render(html, hash, w, h, out) {
 }
 
 const items = [
-  ['1-home', 'Raqamli Hamyon', 'Barcha pulingiz bir qarashda'],
+  ['1-home', 'Raqamli Hamyon', 'Pullaringizni raqamli nazorat qiling'],
   ['4-operation', 'Tez kiritish', 'Kalkulyator bilan bir zumda yozing'],
   ['2-history', 'Tarix', 'Har bir so‘m yozib boriladi'],
   ['3-reports', 'Hisobot', 'Xarajatlaringizni tahlil qiling'],
-  ['5-appearance', 'Ko‘rinish', 'O‘zingizga yoqqan rangni tanlang'],
+  ['5-glass', 'Super Glass', 'iPhone kabi shisha ko‘rinish'],
+  ['6-settings', 'Sozlamalar', 'Parol, eksport, profillar, sinxron'],
 ];
 items.forEach(([shot, eb, title], i) => {
   render('frame.html', '#' + encodeURIComponent(`${shot}|${eb}|${title}|1080|1920`), 1080, 1920, join(root, 'play', `screenshot-${i + 1}.png`));

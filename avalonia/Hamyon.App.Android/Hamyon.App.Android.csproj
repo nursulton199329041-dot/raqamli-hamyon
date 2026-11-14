@@ -13,6 +13,19 @@
     <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
   </PropertyGroup>
 
+  <!-- Play upload key: kept OUTSIDE the repo; the password comes from the HAMYON_KS_PASS environment variable.
+       Without the key file a Release build is signed with the debug key (fine for installing the APK by hand). -->
+  <PropertyGroup>
+    <HamyonKeyStore>$(USERPROFILE).androidaqamli-hamyon-upload.jks</HamyonKeyStore>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Release' And Exists('$(HamyonKeyStore)')">
+    <AndroidKeyStore>true</AndroidKeyStore>
+    <AndroidSigningKeyStore>$(HamyonKeyStore)</AndroidSigningKeyStore>
+    <AndroidSigningKeyAlias>hamyon</AndroidSigningKeyAlias>
+    <AndroidSigningStorePass>env:HAMYON_KS_PASS</AndroidSigningStorePass>
+    <AndroidSigningKeyPass>env:HAMYON_KS_PASS</AndroidSigningKeyPass>
+  </PropertyGroup>
+
   <ItemGroup>
     <AndroidResource Include="Icon.png">
       <Link>Resources\drawable\Icon.png</Link>

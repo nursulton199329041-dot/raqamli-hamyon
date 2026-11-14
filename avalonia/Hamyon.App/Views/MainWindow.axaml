@@ -2,7 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:views="using:Hamyon.App.Views"
         x:Class="Hamyon.App.Views.MainWindow"
-        Icon="/Assets/avalonia-logo.ico"
+        Icon="/Assets/Icon.png"
         Title="Raqamli Hamyon"
         Width="420" Height="880" MinWidth="360" MinHeight="640"
         Background="#0A0607">

@@ -24,8 +24,11 @@ public sealed partial class LocalStore
         Migrate();
     }
 
+    /// <summary>HAMYON_DATA=folder keeps the data elsewhere (desktop: demo data for store screenshots, never the real book).</summary>
     public static string DefaultPath() =>
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RaqamliHamyon", "hamyon.db");
+        Environment.GetEnvironmentVariable("HAMYON_DATA") is { Length: > 0 } dir
+            ? Path.Combine(dir, "hamyon.db")
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RaqamliHamyon", "hamyon.db");
 
     private SqliteConnection Open()
     {
